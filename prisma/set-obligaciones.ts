@@ -29,8 +29,9 @@ const OBLIGACIONES = [
   },
   {
     entidad: "Banco Serfinanza", tipo: "tarjeta", numero: "SERFINANZA-MC",
-    saldoCapital: "0", diaPago: 13, corte: d("2026-07-15"),
-    notas: "⚠️ Saldo POR CONFIRMAR (el extracto es un formato de formulario, no se pudo leer). Corte 15/07/2026.",
+    saldoCapital: "20673079.53", cuotaMensual: "7400812.63", tasaEA: "28.73",
+    diaPago: 13, corte: d("2026-07-15"),
+    notas: "Tarjeta empresarial Mastercard. Pago total $20.673.079,63 · pago mínimo $7.400.812,63 · corte 15/07/2026. Confirmar fecha límite de pago para la alerta.",
   },
 ];
 
