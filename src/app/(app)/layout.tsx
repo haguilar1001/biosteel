@@ -16,8 +16,11 @@ const MODULOS: { href: string; label: string; permiso: PermisoClave }[] = [
   { href: "/recaudos", label: "Recaudos", permiso: "recaudo.create" },
   { href: "/cxp", label: "Cuentas por Pagar", permiso: "cxp.view" },
   { href: "/pagos", label: "Pagos", permiso: "pago.create" },
-  { href: "/terceros", label: "Terceros", permiso: "tercero.manage" },
+  { href: "/reportes", label: "Reportes", permiso: "reporte.view" },
 ];
+
+// La pestaña Administración aparece si el usuario tiene CUALQUIER permiso de admin.
+const PERMISOS_ADMIN: PermisoClave[] = ["usuario.manage", "rol.manage", "tercero.manage", "auditoria.view"];
 
 function iniciales(nombre: string): string {
   return nombre
@@ -33,6 +36,13 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const items: ItemNav[] = [];
   for (const m of MODULOS) {
     if (await puede(usuario, m.permiso)) items.push({ href: m.href, label: m.label });
+  }
+  // Administración: visible con cualquier permiso de admin.
+  for (const p of PERMISOS_ADMIN) {
+    if (await puede(usuario, p)) {
+      items.push({ href: "/admin", label: "Administración" });
+      break;
+    }
   }
 
   const sedeLabel = usuario.sedeId == null ? "Todas las sedes" : `Sede #${usuario.sedeId}`;

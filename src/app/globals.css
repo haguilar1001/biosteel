@@ -148,6 +148,15 @@ h1, h2, h3 { margin: 0; }
 .appnav a:hover { color: var(--ink); }
 .appnav a.active { color: var(--brand); border-bottom-color: var(--brand); }
 
+/* Sub-navegación (Administración) */
+.subnav { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 16px; border-bottom: 1px solid var(--line); }
+.subnav a {
+  color: var(--muted); text-decoration: none; font-size: 13px; font-weight: 600;
+  padding: 8px 12px; border-bottom: 2px solid transparent; margin-bottom: -1px;
+}
+.subnav a:hover { color: var(--ink); }
+.subnav a.active { color: var(--brand); border-bottom-color: var(--brand); }
+
 /* Contenido */
 .wrap { max-width: 1240px; margin: 0 auto; padding: 18px 16px 48px; }
 .page-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
