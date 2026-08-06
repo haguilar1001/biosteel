@@ -1,6 +1,8 @@
 "use server";
 import { z } from "zod";
+import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
+import { env } from "@/lib/env";
 import { requireUsuario } from "@/server/auth-context";
 import { exigirPermiso } from "@/lib/rbac/authorize";
 import { ejecutarRecordatorios, type ResultadoRecordatorios } from "@/lib/notificaciones/recordatorios";
@@ -84,8 +86,13 @@ export async function enviarAnuncioAction(_prev: AnuncioState): Promise<AnuncioS
   // A los destinatarios configurados + tu propio correo de sesión (para que
   // quien dispara la prueba también lo reciba). Sin duplicados.
   const to = Array.from(new Set([...cfg.destinatarios, usuario.email]));
+  // URL base real de la petición (para el logo del correo), no APP_URL.
+  const h = await headers();
+  const host = h.get("x-forwarded-host") ?? h.get("host");
+  const proto = h.get("x-forwarded-proto") ?? "https";
+  const baseUrl = host ? `${proto}://${host}` : env.APP_URL;
   try {
-    await enviarAnuncio(to, cfg.diasAntes);
+    await enviarAnuncio(to, cfg.diasAntes, baseUrl);
     return { enviado: true, destinatarios: to };
   } catch (e) {
     return { error: e instanceof Error ? e.message : "No se pudo enviar el anuncio." };

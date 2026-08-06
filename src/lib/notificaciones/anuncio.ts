@@ -2,21 +2,17 @@
 // Correo de anuncio / bienvenida: explica a los destinatarios que, en
 // adelante, recibirán un recordatorio por correo N días antes de cada
 // vencimiento financiero. El logo se enlaza desde la URL pública de la app
-// (APP_URL/BIOSTEEL.png), de modo que se ve tanto por SMTP como por la API
-// HTTP de Brevo (sin depender de adjuntos CID).
+// (<baseUrl>/BIOSTEEL.png), de modo que se ve tanto por SMTP como por la API
+// HTTP de Brevo (sin depender de adjuntos CID). El baseUrl se calcula desde el
+// dominio real de la petición (ver la Server Action), no de APP_URL.
 // ==========================================================
 import "server-only";
-import { env } from "@/lib/env";
 import { enviarCorreo } from "./mailer";
 
 const AZUL = "#2A4F98";
 
-function logoUrl(): string {
-  return `${env.APP_URL.replace(/\/$/, "")}/BIOSTEEL.png`;
-}
-
-function plantillaAnuncio(diasAntes: number): string {
-  const logo = logoUrl();
+function plantillaAnuncio(diasAntes: number, baseUrl: string): string {
+  const logo = `${baseUrl.replace(/\/$/, "")}/BIOSTEEL.png`;
   return `
   <div style="background:#EEF2F8;padding:24px 0;font-family:Arial,Helvetica,sans-serif">
     <div style="max-width:600px;margin:auto;background:#fff;border:1px solid #E3E9F1;border-radius:14px;overflow:hidden">
@@ -63,7 +59,7 @@ function plantillaAnuncio(diasAntes: number): string {
 }
 
 /** Envía el correo de anuncio a los destinatarios indicados. */
-export async function enviarAnuncio(destinatarios: string[], diasAntes: number): Promise<void> {
+export async function enviarAnuncio(destinatarios: string[], diasAntes: number, baseUrl: string): Promise<void> {
   const asunto = "BioSteel · Empezaremos a enviar recordatorios de vencimientos financieros";
-  await enviarCorreo(destinatarios, asunto, plantillaAnuncio(diasAntes));
+  await enviarCorreo(destinatarios, asunto, plantillaAnuncio(diasAntes, baseUrl));
 }
