@@ -9,16 +9,18 @@ import { resumenCartera, listarFacturas } from "@/lib/negocio/cartera";
 import { CUBETAS, type CubetaAging } from "@/lib/negocio/aging";
 
 const CUBETA_TAG: Record<CubetaAging, string> = {
-  corriente: "t-ok",
+  d1_30: "t-ok",
   d31_60: "t-w1",
   d61_90: "t-w2",
-  mas90: "t-bad",
+  d91_120: "t-bad",
+  mas120: "t-bad",
 };
 const CUBETA_LABEL: Record<CubetaAging, string> = {
-  corriente: "Corriente",
+  d1_30: "1–30",
   d31_60: "31–60",
   d61_90: "61–90",
-  mas90: "+90",
+  d91_120: "91–120",
+  mas120: "+120",
 };
 const ESTADO_LABEL: Record<string, string> = {
   corriente: "Corriente",

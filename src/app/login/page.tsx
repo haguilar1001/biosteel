@@ -8,10 +8,17 @@ const estadoInicial: LoginState = {};
 
 function LoginForm() {
   const [state, formAction, pending] = useActionState(loginAction, estadoInicial);
-  const next = useSearchParams().get("next") ?? "/dashboard";
+  const params = useSearchParams();
+  const next = params.get("next") ?? "/dashboard";
+  const cambiada = params.get("cambiada");
 
   return (
     <form action={formAction} className="auth-body">
+      {cambiada && (
+        <div className="alert" role="status" style={{ background: "#E7F5EE", color: "var(--ok)", border: "1px solid #B8E0CC" }}>
+          Contraseña actualizada. Inicia sesión de nuevo.
+        </div>
+      )}
       {state.error && <div className="alert" role="alert">{state.error}</div>}
 
       <input type="hidden" name="next" value={next} />

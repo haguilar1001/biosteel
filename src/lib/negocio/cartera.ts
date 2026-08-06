@@ -49,10 +49,11 @@ function whereAbiertas(usuario: UsuarioConRol, alcance: Alcance) {
 
 function celdasVacias(): Record<CubetaAging, CeldaCubeta> {
   return {
-    corriente: { monto: 0, cantidad: 0 },
+    d1_30: { monto: 0, cantidad: 0 },
     d31_60: { monto: 0, cantidad: 0 },
     d61_90: { monto: 0, cantidad: 0 },
-    mas90: { monto: 0, cantidad: 0 },
+    d91_120: { monto: 0, cantidad: 0 },
+    mas120: { monto: 0, cantidad: 0 },
   };
 }
 

@@ -89,6 +89,11 @@ enum AlcancePermiso {
   ninguno
 }
 
+enum TipoMovimiento {
+  ingreso
+  egreso
+}
+
 // =============== 1. ORGANIZACIÓN ===============
 
 model Empresa {
@@ -449,6 +454,8 @@ model DocumentoCxp {
   fechaVencimiento DateTime        @db.Date
   tipo             TipoProveedor   @default(nacional)
   estado           EstadoDocumento @default(vigente)
+  concepto         String?         // "Notas" del reporte SIESA
+  plazo            Int?            // días de plazo pactado
   createdAt        DateTime        @default(now())
 
   costos       CostoImportacion[]
@@ -509,4 +516,59 @@ model DiferenciaCambio {
   pago   Pago    @relation(fields: [pagoId], references: [id], onDelete: Cascade)
   pagoId Int     @unique
   valor  Decimal @db.Decimal(18, 2) // + ingreso / - gasto
+}
+
+// =============== 7. FLUJO DE CAJA & PRESUPUESTO ===============
+// Modelo de flujo por movimientos + presupuesto mensual por grupo.
+// (Alimentado desde el Excel "PRESUPUESTO 2026": TBFlujo, TBRecaudos,
+//  Detalle presupuesto, Parametros.)
+
+// Grupo/categoría de flujo (NOMINA, PROVEEDORES_OPERACIÓN, IMPUESTOS, ...)
+model CategoriaFlujo {
+  id           Int            @id @default(autoincrement())
+  nombre       String         @unique
+  tipo         TipoMovimiento @default(egreso)
+  orden        Int            @default(0)
+  activo       Boolean        @default(true)
+
+  movimientos  MovimientoFlujo[]
+  presupuestos PresupuestoMensual[]
+}
+
+// Movimiento de caja (ingreso o egreso). Ledger denormalizado: el tercero
+// se guarda por nombre/NIT tal como viene del ERP (no todos existen como Tercero).
+model MovimientoFlujo {
+  id            Int             @id @default(autoincrement())
+  fecha         DateTime        @db.Date
+  anio          Int
+  mes           Int             // 1–12
+  tipo          TipoMovimiento
+  categoria     CategoriaFlujo? @relation(fields: [categoriaId], references: [id])
+  categoriaId   Int?
+  terceroNombre String
+  nit           String?
+  beneficiario  String?
+  detalle       String?         // "DETALLE MOVIMIENTO" del ERP
+  observacion   String?         // "OBSERVACIÓN"
+  valor         Decimal         @db.Decimal(18, 2)
+  saldo         Decimal?        @db.Decimal(18, 2) // saldo corrido informativo del ERP
+  createdAt     DateTime        @default(now())
+
+  @@index([anio, mes])
+  @@index([tipo])
+  @@index([categoriaId])
+}
+
+// Presupuesto de egresos por mes / grupo / tercero.
+model PresupuestoMensual {
+  id            Int            @id @default(autoincrement())
+  anio          Int
+  mes           Int            // 1–12
+  categoria     CategoriaFlujo @relation(fields: [categoriaId], references: [id])
+  categoriaId   Int
+  terceroNombre String?
+  valor         Decimal        @db.Decimal(18, 2)
+
+  @@index([anio, mes])
+  @@index([categoriaId])
 }
