@@ -521,6 +521,28 @@ model DiferenciaCambio {
   valor  Decimal @db.Decimal(18, 2) // + ingreso / - gasto
 }
 
+// =============== 8. OBLIGACIONES FINANCIERAS ===============
+// Créditos, leasing y tarjetas. Alimentado de los planes de amortización.
+model ObligacionFinanciera {
+  id               Int       @id @default(autoincrement())
+  entidad          String
+  tipo             String    // credito | credito_fng | leasing | tarjeta
+  numero           String    @unique
+  moneda           String    @default("COP")
+  montoInicial     Decimal?  @db.Decimal(18, 2)
+  saldoCapital     Decimal   @db.Decimal(18, 2)
+  tasaEA           Decimal?  @db.Decimal(7, 4) // % efectiva anual
+  cuotaMensual     Decimal?  @db.Decimal(18, 2)
+  diaPago          Int?      // día del mes de la cuota
+  periodicidad     String    @default("mensual")
+  fechaDesembolso  DateTime? @db.Date
+  fechaVencimiento DateTime? @db.Date
+  corte            DateTime? @db.Date
+  estado           String    @default("al_dia") // al_dia | en_mora
+  notas            String?
+  createdAt        DateTime  @default(now())
+}
+
 // =============== 7. FLUJO DE CAJA & PRESUPUESTO ===============
 // Modelo de flujo por movimientos + presupuesto mensual por grupo.
 // (Alimentado desde el Excel "PRESUPUESTO 2026": TBFlujo, TBRecaudos,

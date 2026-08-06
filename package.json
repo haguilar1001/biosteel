@@ -18,6 +18,7 @@
     "db:seed": "tsx prisma/seed.ts",
     "db:seed:demo": "tsx prisma/seed-demo.ts",
     "db:internos": "tsx prisma/set-internos.ts",
+    "db:obligaciones": "tsx prisma/set-obligaciones.ts",
     "db:studio": "prisma studio",
     "audit": "npm audit --audit-level=high"
   },
