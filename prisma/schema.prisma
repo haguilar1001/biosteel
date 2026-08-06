@@ -543,6 +543,24 @@ model ObligacionFinanciera {
   createdAt        DateTime  @default(now())
 }
 
+// Impuestos pendientes por mes (histórico). Entidad = BioSteel (por ahora).
+model ImpuestoMensual {
+  id          Int       @id @default(autoincrement())
+  entidad     String    @default("BioSteel")
+  anio        Int
+  mes         Int       // 1–12
+  fecha       DateTime  @db.Date
+  retencion   Decimal   @default(0) @db.Decimal(18, 2)
+  iva         Decimal   @default(0) @db.Decimal(18, 2)
+  ica         Decimal   @default(0) @db.Decimal(18, 2)
+  renta       Decimal   @default(0) @db.Decimal(18, 2)
+  granTotal   Decimal?  @db.Decimal(18, 2) // valor reportado en el Excel (inconsistente)
+  vencimiento DateTime? @db.Date
+
+  @@unique([entidad, anio, mes])
+  @@index([anio, mes])
+}
+
 // Bitácora de notificaciones enviadas (evita duplicados).
 model NotificacionEnviada {
   id            Int      @id @default(autoincrement())
