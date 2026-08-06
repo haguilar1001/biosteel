@@ -3,7 +3,7 @@
 // que despliega el subtotal por IPS.
 // ==========================================================
 import { requirePermiso } from "@/server/auth-context";
-import { formatCOP, formatPorcentaje } from "@/lib/format";
+import { formatCOP, formatPorcentaje, formatNumero } from "@/lib/format";
 import { carteraPorCiudad } from "@/lib/negocio/cartera";
 import { Donut } from "../../_components/charts/Donut";
 import { MapaCartera } from "../../_components/charts/MapaCartera";
@@ -80,7 +80,7 @@ export default async function CarteraPorCiudadPage({
               <td className="r num" style={{ fontWeight: 800 }}>{formatCOP(total)}</td>
               <td className="r num" style={{ fontWeight: 800 }}>{formatPorcentaje(100)}</td>
               <td className="r num"></td>
-              <td className="r num" style={{ fontWeight: 800 }}>{totalDocs}</td>
+              <td className="r num" style={{ fontWeight: 800 }}>{formatNumero(totalDocs)}</td>
             </tr>
             {ciudades.map((c) => (
               <tr key={c.ciudad}>
@@ -90,10 +90,10 @@ export default async function CarteraPorCiudadPage({
                       <i style={{ display: "inline-block", width: 9, height: 9, borderRadius: 2, background: color.get(c.ciudad), marginRight: 7 }} />{c.ciudad}
                     </span>
                     <div className="tt-pop">
-                      <h4>IPS en {c.ciudad} · {c.clientes}</h4>
+                      <h4>IPS en {c.ciudad} · {formatNumero(c.clientes)}</h4>
                       {c.ips.map((ips) => (
                         <div className="tt-row" key={ips.cliente}>
-                          <span>{ips.cliente} <span className="n">· {ips.documentos} fac.</span></span>
+                          <span>{ips.cliente} <span className="n">· {formatNumero(ips.documentos)} fac.</span></span>
                           <span className="num" style={{ fontWeight: 700, whiteSpace: "nowrap" }}>{formatCOP(ips.saldo)}</span>
                         </div>
                       ))}
@@ -103,8 +103,8 @@ export default async function CarteraPorCiudadPage({
                 </td>
                 <td className="r num" style={{ fontWeight: 700 }}>{formatCOP(c.saldo)}</td>
                 <td className="r num">{total !== 0 ? formatPorcentaje((c.saldo / total) * 100) : "—"}</td>
-                <td className="r num">{c.clientes}</td>
-                <td className="r num">{c.documentos}</td>
+                <td className="r num">{formatNumero(c.clientes)}</td>
+                <td className="r num">{formatNumero(c.documentos)}</td>
               </tr>
             ))}
           </tbody>

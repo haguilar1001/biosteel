@@ -4,7 +4,7 @@
 // concepto y acceso al informe por proveedor.
 // ==========================================================
 import { requirePermiso } from "@/server/auth-context";
-import { formatCOP } from "@/lib/format";
+import { formatCOP, formatNumero } from "@/lib/format";
 import { resumenCxp, listarDocumentosCxp, diasParaVencer } from "@/lib/negocio/cxp";
 import { Buscador } from "../_components/Buscador";
 
@@ -45,7 +45,7 @@ export default async function CxpPage({
         <div className="kpi">
           <div className="klabel">CxP neta</div>
           <div className="kval num">{formatCOP(resumen.total)}</div>
-          <div className="ksub"><span className="flag">{resumen.cantidad} documentos</span></div>
+          <div className="ksub"><span className="flag">{formatNumero(resumen.cantidad)} documentos</span></div>
         </div>
         <div className="kpi k-bad">
           <div className="klabel">Vencida</div>

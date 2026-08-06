@@ -4,7 +4,7 @@
 // Los anticipos NO entran aquí (van en /cxp/anticipos).
 // ==========================================================
 import { requirePermiso } from "@/server/auth-context";
-import { formatCOP, formatPorcentaje } from "@/lib/format";
+import { formatCOP, formatPorcentaje, formatNumero } from "@/lib/format";
 import { cxpPorProveedor, type TipoProveedorFiltro } from "@/lib/negocio/cxp";
 import { Buscador } from "../../_components/Buscador";
 
@@ -33,7 +33,7 @@ export default async function CxpPorProveedorPage({
         <div>
           <div className="eyebrow">Cuentas por Pagar</div>
           <h1>Informe por proveedor</h1>
-          <p>{filas.length} proveedores · saldo neto {formatCOP(tot.saldo)}</p>
+          <p>{formatNumero(filas.length)} proveedores · saldo neto {formatCOP(tot.saldo)}</p>
         </div>
         <div className="toolbar">
           <a href={filtro(undefined)} className={`btn${!tipo ? " primary" : ""}`}>Todos</a>
@@ -59,7 +59,7 @@ export default async function CxpPorProveedorPage({
             <tbody>
               {filas.length > 0 && (
                 <tr className="fila-total">
-                  <td style={{ fontWeight: 800 }}>Total · {filas.length} proveedores</td>
+                  <td style={{ fontWeight: 800 }}>Total · {formatNumero(filas.length)} proveedores</td>
                   <td></td><td></td>
                   <td className="r num" style={{ fontWeight: 800 }}>{tot.docs}</td>
                   <td className="r num" style={{ fontWeight: 800 }}>{formatCOP(tot.saldo)}</td>
@@ -76,7 +76,7 @@ export default async function CxpPorProveedorPage({
                     <td style={{ fontWeight: 600 }}>{f.proveedor}</td>
                     <td className="num flag">{f.nit}</td>
                     <td><span className={`tag ${f.interno ? "t-w1" : "t-blue"}`}>{f.interno ? "Interno" : "Externo"}</span></td>
-                    <td className="r num">{f.documentos}</td>
+                    <td className="r num">{formatNumero(f.documentos)}</td>
                     <td className="r num" style={{ fontWeight: 700 }}>{formatCOP(f.saldoNeto)}</td>
                     <td className="r num">{tot.saldo !== 0 ? formatPorcentaje((f.saldoNeto / tot.saldo) * 100) : "—"}</td>
                     <td className="r num" style={{ color: f.vencido > 0 ? "var(--bad)" : undefined }}>{f.vencido !== 0 ? formatCOP(f.vencido) : "—"}</td>
