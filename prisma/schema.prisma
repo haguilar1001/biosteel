@@ -262,6 +262,7 @@ model Tercero {
   ciudad       String?
   esCliente    Boolean  @default(false)
   esProveedor  Boolean  @default(false)
+  esInterno    Boolean  @default(false) // parte relacionada: se ocultan sus anticipos
   createdAt    DateTime @default(now())
 
   clientePerfil   ClientePerfil?

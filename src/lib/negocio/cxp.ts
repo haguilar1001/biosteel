@@ -35,9 +35,16 @@ export interface FilaCxp {
   estado: string;
 }
 
-/** Documentos con saldo (positivo o negativo); excluye los saldados en 0. */
+/**
+ * Documentos con saldo (positivo o negativo); excluye los saldados en 0.
+ * Regla de partes relacionadas: los ANTICIPOS (saldo < 0) de proveedores
+ * INTERNOS no se muestran; solo los externos exhiben anticipos.
+ */
 function whereConSaldo(): Prisma.DocumentoCxpWhereInput {
-  return { saldo: { not: 0 } };
+  return {
+    saldo: { not: 0 },
+    NOT: { proveedor: { is: { esInterno: true } }, saldo: { lt: 0 } },
+  };
 }
 
 export async function resumenCxp(corte: Date = new Date()): Promise<ResumenCxp> {
@@ -117,6 +124,7 @@ export interface FilaProveedorCxp {
   proveedorId: number;
   proveedor: string;
   nit: string | null;
+  interno: boolean;
   documentos: number;
   saldoNeto: number;
   porPagar: number;
@@ -125,13 +133,24 @@ export interface FilaProveedorCxp {
   diasMax: number;
 }
 
-/** Informe de CxP agrupado por proveedor (neto), con búsqueda opcional. */
-export async function cxpPorProveedor(q?: string, corte: Date = new Date()): Promise<FilaProveedorCxp[]> {
+export type TipoProveedorFiltro = "interno" | "externo";
+
+/** Informe de CxP agrupado por proveedor (neto), con búsqueda y filtro por tipo. */
+export async function cxpPorProveedor(
+  q?: string,
+  tipo?: TipoProveedorFiltro,
+  corte: Date = new Date(),
+): Promise<FilaProveedorCxp[]> {
+  const filtroTipo: Prisma.DocumentoCxpWhereInput =
+    tipo === "interno" ? { proveedor: { is: { esInterno: true } } }
+      : tipo === "externo" ? { proveedor: { is: { esInterno: false } } }
+      : {};
+
   const docs = await prisma.documentoCxp.findMany({
-    where: { ...whereConSaldo(), ...filtroBusqueda(q) },
+    where: { ...whereConSaldo(), ...filtroBusqueda(q), ...filtroTipo },
     select: {
       saldo: true, fechaVencimiento: true, proveedorId: true,
-      proveedor: { select: { nombre: true, nit: true } },
+      proveedor: { select: { nombre: true, nit: true, esInterno: true } },
     },
   });
 
@@ -141,6 +160,7 @@ export async function cxpPorProveedor(q?: string, corte: Date = new Date()): Pro
     const dias = diasVencido(d.fechaVencimiento, corte);
     const e = mapa.get(d.proveedorId) ?? {
       proveedorId: d.proveedorId, proveedor: d.proveedor.nombre, nit: d.proveedor.nit,
+      interno: d.proveedor.esInterno,
       documentos: 0, saldoNeto: 0, porPagar: 0, anticipos: 0, vencido: 0, diasMax: 0,
     };
     e.documentos += 1;
