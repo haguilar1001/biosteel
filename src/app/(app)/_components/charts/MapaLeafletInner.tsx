@@ -32,7 +32,7 @@ export default function MapaLeafletInner({ data }: { data: BurbujaCiudad[] }) {
   const radio = (v: number) => 10 + Math.sqrt(Math.abs(v) / max) * 38;
 
   return (
-    <MapContainer center={[7.2, -74.6]} zoom={6} scrollWheelZoom={false} style={{ height: 440, width: "100%", borderRadius: 10 }}>
+    <MapContainer center={[8.2, -74.4]} zoom={6} scrollWheelZoom={false} style={{ height: 460, width: "100%", borderRadius: 10 }}>
       <TileLayer
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         attribution='&copy; OpenStreetMap'
@@ -47,7 +47,7 @@ export default function MapaLeafletInner({ data }: { data: BurbujaCiudad[] }) {
             radius={radio(d.valor)}
             pathOptions={{ color: d.color, fillColor: d.color, fillOpacity: 0.55, weight: 1.6 }}
           >
-            <Tooltip direction="top" offset={[0, -4]}>
+            <Tooltip direction="auto" opacity={1}>
               <div style={{ minWidth: 190 }}>
                 <div style={{ fontWeight: 800, borderBottom: "1px solid #ddd", paddingBottom: 3, marginBottom: 4 }}>
                   📍 {d.ciudad} · {cop(d.valor)}
