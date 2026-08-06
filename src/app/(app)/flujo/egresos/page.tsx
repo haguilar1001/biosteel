@@ -42,8 +42,12 @@ export default async function EgresosPage({
           <a href="/flujo/egresos" className="btn">Limpiar</a>
         </form>
       </div>
-      <div className="tbl-wrap scroll-top">
-        <table>
+      <div className="tbl-wrap">
+        <table className="tabla-fit">
+          <colgroup>
+            <col style={{ width: "8%" }} /><col style={{ width: "15%" }} /><col style={{ width: "22%" }} />
+            <col style={{ width: "13%" }} /><col style={{ width: "28%" }} /><col style={{ width: "14%" }} />
+          </colgroup>
           <thead>
             <tr><th>Fecha</th><th>Grupo</th><th>Tercero</th><th>Detalle</th><th>Observación</th><th className="r">Valor</th></tr>
           </thead>
@@ -58,10 +62,10 @@ export default async function EgresosPage({
               filas.map((m) => (
                 <tr key={m.id}>
                   <td className="flag">{fmtFecha(m.fecha)}</td>
-                  <td>{m.categoria ?? "—"}</td>
-                  <td style={{ fontWeight: 600 }}>{m.terceroNombre}</td>
-                  <td className="flag">{m.detalle}</td>
-                  <td className="flag" style={{ maxWidth: 260, overflow: "hidden", textOverflow: "ellipsis" }} title={m.observacion ?? ""}>{m.observacion}</td>
+                  <td title={m.categoria ?? ""}>{m.categoria ?? "—"}</td>
+                  <td style={{ fontWeight: 600 }} title={m.terceroNombre}>{m.terceroNombre}</td>
+                  <td className="flag" title={m.detalle ?? ""}>{m.detalle}</td>
+                  <td className="flag" title={m.observacion ?? ""}>{m.observacion}</td>
                   <td className="r num" style={{ fontWeight: 700 }}>{formatCOP(m.valor)}</td>
                 </tr>
               ))

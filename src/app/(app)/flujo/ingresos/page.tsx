@@ -35,7 +35,11 @@ export default async function IngresosPage({
         </form>
       </div>
       <div className="tbl-wrap">
-        <table>
+        <table className="tabla-fit">
+          <colgroup>
+            <col style={{ width: "8%" }} /><col style={{ width: "26%" }} /><col style={{ width: "16%" }} />
+            <col style={{ width: "36%" }} /><col style={{ width: "14%" }} />
+          </colgroup>
           <thead>
             <tr><th>Fecha</th><th>Tercero</th><th>Detalle</th><th>Observación</th><th className="r">Valor</th></tr>
           </thead>
@@ -50,9 +54,9 @@ export default async function IngresosPage({
               filas.map((m) => (
                 <tr key={m.id}>
                   <td className="flag">{fmtFecha(m.fecha)}</td>
-                  <td style={{ fontWeight: 600 }}>{m.terceroNombre}</td>
-                  <td className="flag">{m.detalle}</td>
-                  <td className="flag" style={{ maxWidth: 320, overflow: "hidden", textOverflow: "ellipsis" }} title={m.observacion ?? ""}>{m.observacion}</td>
+                  <td style={{ fontWeight: 600 }} title={m.terceroNombre}>{m.terceroNombre}</td>
+                  <td className="flag" title={m.detalle ?? ""}>{m.detalle}</td>
+                  <td className="flag" title={m.observacion ?? ""}>{m.observacion}</td>
                   <td className="r num" style={{ fontWeight: 700, color: "var(--ingreso)" }}>{formatCOP(m.valor)}</td>
                 </tr>
               ))

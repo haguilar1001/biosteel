@@ -76,7 +76,11 @@ export default async function CxpPage({
           <Buscador action="/cxp" q={q} placeholder="Proveedor, N.º de documento o concepto…" />
         </div>
         <div className="tbl-wrap">
-          <table>
+          <table className="tabla-fit">
+            <colgroup>
+              <col style={{ width: "12%" }} /><col style={{ width: "19%" }} /><col style={{ width: "9%" }} />
+              <col style={{ width: "24%" }} /><col style={{ width: "12%" }} /><col style={{ width: "15%" }} /><col style={{ width: "9%" }} />
+            </colgroup>
             <thead>
               <tr>
                 <th>Documento</th><th>Proveedor</th><th>NIT</th><th>Concepto</th>
@@ -98,10 +102,10 @@ export default async function CxpPage({
                   const t = tagVencimiento(diasParaVencer(d.fechaVencimiento));
                   return (
                     <tr key={d.id}>
-                      <td style={{ fontWeight: 600 }}>{d.numero}</td>
-                      <td>{d.proveedor}</td>
+                      <td style={{ fontWeight: 600 }} title={d.numero}>{d.numero}</td>
+                      <td title={d.proveedor}>{d.proveedor}</td>
                       <td className="num flag">{d.nit}</td>
-                      <td className="flag" style={{ maxWidth: 280, overflow: "hidden", textOverflow: "ellipsis" }} title={d.concepto ?? ""}>{d.concepto}</td>
+                      <td className="flag" title={d.concepto ?? ""}>{d.concepto}</td>
                       <td className="r num" style={{ fontWeight: 700, color: d.saldo < 0 ? "var(--ok)" : undefined }}>{formatCOP(d.saldo)}</td>
                       <td>{fmtFecha(d.fechaVencimiento)} <span className={`tag ${t.clase}`}>{t.texto}</span></td>
                       <td>{d.estado}</td>

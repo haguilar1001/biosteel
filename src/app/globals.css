@@ -160,7 +160,7 @@ h1, h2, h3 { margin: 0; }
 .subnav a.active { color: var(--brand); border-bottom-color: var(--brand); }
 
 /* Contenido */
-.wrap { max-width: 1240px; margin: 0 auto; padding: 18px 16px 48px; }
+.wrap { max-width: 1440px; margin: 0 auto; padding: 18px 16px 48px; }
 .page-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
 .page-head h1 { font-size: 24px; margin-top: 2px; }
 .page-head p { margin: 3px 0 0; color: var(--muted); font-size: 12.5px; }
@@ -209,9 +209,9 @@ h1, h2, h3 { margin: 0; }
 
 /* Tablas */
 .tbl-wrap { overflow-x: auto; }
-/* Barra de desplazamiento horizontal ARRIBA (doble rotación) */
-.tbl-wrap.scroll-top { transform: rotateX(180deg); }
-.tbl-wrap.scroll-top > table { transform: rotateX(180deg); }
+/* Tabla de ancho fijo: una fila por registro, textos largos truncados con "…" */
+table.tabla-fit { table-layout: fixed; }
+table.tabla-fit th, table.tabla-fit td { overflow: hidden; text-overflow: ellipsis; }
 table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
 thead th {
   background: var(--brand-tint); color: var(--brand-700); text-align: left; font-size: 11px;
