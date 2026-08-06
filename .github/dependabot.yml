@@ -1,0 +1,15 @@
+# Actualización automática de dependencias y alertas de vulnerabilidades (BIO-SEC-009)
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencias"
+      - "seguridad"
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"

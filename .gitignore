@@ -1,0 +1,49 @@
+# Dependencias
+/node_modules
+/.pnp
+.pnp.js
+
+# Build / Next.js
+/.next/
+/out/
+/build
+next-env.d.ts
+
+# Producción
+/dist
+
+# ==========================================================
+# SECRETOS — NUNCA subir al repositorio (BIO-SEC-003)
+# ==========================================================
+.env
+.env.local
+.env.*.local
+.env.production
+.env.development
+*.pem
+*.key
+
+# Prisma
+/prisma/*.db
+/prisma/*.db-journal
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.log
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
+
+# Editores
+.vscode/*
+!.vscode/extensions.json
+.idea/
+
+# TypeScript
+*.tsbuildinfo
+
+# Cobertura de pruebas
+/coverage

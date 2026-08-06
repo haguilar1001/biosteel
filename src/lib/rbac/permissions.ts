@@ -1,0 +1,72 @@
+// ==========================================================
+// Catálogo de permisos y matriz de roles base (paramétrico)
+// Fuente única de verdad, usada por el seed y por la app.
+// alcance: "todos" | "propio" | "ninguno"  (BIO-SEC-001)
+// ==========================================================
+
+export type Alcance = "todos" | "propio" | "ninguno";
+
+export interface PermisoDef {
+  clave: string;
+  modulo: string;
+  descripcion: string;
+}
+
+/** Todas las acciones controladas del sistema. */
+export const PERMISOS = [
+  { clave: "dashboard.view", modulo: "Inicio", descripcion: "Ver dashboard y KPIs" },
+  { clave: "cartera.view", modulo: "Cartera", descripcion: "Consultar cuentas por cobrar" },
+  { clave: "recaudo.create", modulo: "Tesorería", descripcion: "Registrar recaudos" },
+  { clave: "cxp.view", modulo: "Cuentas por Pagar", descripcion: "Consultar cuentas por pagar" },
+  { clave: "pago.create", modulo: "Tesorería", descripcion: "Registrar pagos a proveedores" },
+  { clave: "nota.manage", modulo: "Cartera", descripcion: "Gestionar notas crédito/débito y glosas" },
+  { clave: "reporte.view", modulo: "Reportes", descripcion: "Ver reportes y análisis" },
+  { clave: "tercero.manage", modulo: "Administración", descripcion: "Crear y editar terceros" },
+  { clave: "usuario.manage", modulo: "Administración", descripcion: "Gestionar usuarios" },
+  { clave: "rol.manage", modulo: "Administración", descripcion: "Gestionar roles y permisos" },
+  { clave: "parametro.manage", modulo: "Administración", descripcion: "Gestionar parámetros del sistema" },
+  { clave: "auditoria.view", modulo: "Administración", descripcion: "Ver el registro de auditoría" },
+] as const satisfies readonly PermisoDef[];
+
+export type PermisoClave = (typeof PERMISOS)[number]["clave"];
+
+/** Roles base precargados (editables por el Administrador). */
+export const ROLES_BASE = [
+  { nombre: "Administrador", sistema: true },
+  { nombre: "Gerente", sistema: true },
+  { nombre: "Tesorería / Cartera", sistema: true },
+  { nombre: "Vendedor", sistema: true },
+] as const;
+
+export type RolNombre = (typeof ROLES_BASE)[number]["nombre"];
+
+const T: Alcance = "todos";
+const P: Alcance = "propio";
+const N: Alcance = "ninguno";
+
+/**
+ * Matriz de permisos por rol (alcance por defecto).
+ * Deny-by-default: cualquier permiso no listado se asume "ninguno".
+ */
+export const MATRIZ_ROLES: Record<RolNombre, Partial<Record<PermisoClave, Alcance>>> = {
+  Administrador: {
+    "dashboard.view": T, "cartera.view": T, "recaudo.create": T, "cxp.view": T,
+    "pago.create": T, "nota.manage": T, "reporte.view": T, "tercero.manage": T,
+    "usuario.manage": T, "rol.manage": T, "parametro.manage": T, "auditoria.view": T,
+  },
+  Gerente: {
+    "dashboard.view": T, "cartera.view": T, "recaudo.create": N, "cxp.view": T,
+    "pago.create": N, "nota.manage": N, "reporte.view": T, "tercero.manage": N,
+    "usuario.manage": N, "rol.manage": N, "parametro.manage": N, "auditoria.view": T,
+  },
+  "Tesorería / Cartera": {
+    "dashboard.view": T, "cartera.view": T, "recaudo.create": T, "cxp.view": T,
+    "pago.create": T, "nota.manage": T, "reporte.view": T, "tercero.manage": T,
+    "usuario.manage": N, "rol.manage": N, "parametro.manage": N, "auditoria.view": N,
+  },
+  Vendedor: {
+    "dashboard.view": T, "cartera.view": P, "recaudo.create": N, "cxp.view": N,
+    "pago.create": N, "nota.manage": N, "reporte.view": P, "tercero.manage": N,
+    "usuario.manage": N, "rol.manage": N, "parametro.manage": N, "auditoria.view": N,
+  },
+};

@@ -1,0 +1,768 @@
+<title>BioSteel — Prototipo Flujo de Caja</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root{
+    /* Marca BioSteel (extraída del logo) */
+    --brand:#2A4F98;          /* azul profundo */
+    --brand-600:#24468A;
+    --brand-700:#1D3A75;
+    --brand-2:#4078B8;        /* azul medio */
+    --brand-soft:#A8C6E6;
+    --brand-tint:#EAF1F9;
+    /* Neutros con sesgo azul */
+    --ink:#1B2434;
+    --muted:#5B6B82;
+    --line:#E3E9F1;
+    --surface:#FFFFFF;
+    --canvas:#F4F6FA;
+    --elev:0 1px 2px rgba(27,36,52,.06),0 8px 24px rgba(27,36,52,.06);
+    /* Semánticos (aging / estado) */
+    --ok:#2A9D6B; --w1:#E0A400; --w2:#E8833A; --bad:#D64545;
+    --ok-t:#E7F5EE; --w1-t:#FBF2DA; --w2-t:#FBEBDD; --bad-t:#FBE6E6;
+    /* Tipografía */
+    --sans:"Segoe UI",system-ui,-apple-system,"Helvetica Neue",Arial,sans-serif;
+    --fs-xs:11px; --fs-sm:12.5px; --fs-base:14px; --fs-lg:18px; --fs-xl:24px; --fs-2xl:30px;
+    --r:10px; --r-sm:7px;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --brand:#3E6BC0; --brand-600:#3E6BC0; --brand-700:#2A4F98; --brand-2:#5B8AD0;
+      --brand-soft:#294066; --brand-tint:#182338;
+      --ink:#E8EDF5; --muted:#94A3BC; --line:#26324A; --surface:#141C2E; --canvas:#0E1524;
+      --elev:0 1px 2px rgba(0,0,0,.3),0 10px 28px rgba(0,0,0,.35);
+      --ok-t:#12281E; --w1-t:#2A2410; --w2-t:#2A1D12; --bad-t:#2A1414;
+    }
+  }
+  :root[data-theme="dark"]{
+    --brand:#3E6BC0; --brand-600:#3E6BC0; --brand-700:#2A4F98; --brand-2:#5B8AD0;
+    --brand-soft:#294066; --brand-tint:#182338;
+    --ink:#E8EDF5; --muted:#94A3BC; --line:#26324A; --surface:#141C2E; --canvas:#0E1524;
+    --elev:0 1px 2px rgba(0,0,0,.3),0 10px 28px rgba(0,0,0,.35);
+    --ok-t:#12281E; --w1-t:#2A2410; --w2-t:#2A1D12; --bad-t:#2A1414;
+  }
+  :root[data-theme="light"]{
+    --brand:#2A4F98; --brand-600:#24468A; --brand-700:#1D3A75; --brand-2:#4078B8;
+    --brand-soft:#A8C6E6; --brand-tint:#EAF1F9;
+    --ink:#1B2434; --muted:#5B6B82; --line:#E3E9F1; --surface:#FFFFFF; --canvas:#F4F6FA;
+    --elev:0 1px 2px rgba(27,36,52,.06),0 8px 24px rgba(27,36,52,.06);
+    --ok-t:#E7F5EE; --w1-t:#FBF2DA; --w2-t:#FBEBDD; --bad-t:#FBE6E6;
+  }
+
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--canvas);color:var(--ink);font-family:var(--sans);font-size:var(--fs-base);line-height:1.45;-webkit-font-smoothing:antialiased}
+  h1,h2,h3,h4{margin:0;text-wrap:balance;font-weight:600}
+  .num{font-variant-numeric:tabular-nums}
+  button{font-family:inherit;cursor:pointer}
+  a{color:inherit}
+
+  /* ===== Barra de marca ===== */
+  .topbar{display:flex;align-items:center;gap:14px;background:var(--brand);color:#fff;padding:8px 16px}
+  .logo{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:.2px}
+  .logo .eye{width:34px;height:22px;flex:0 0 auto}
+  .logo small{font-weight:400;opacity:.8;letter-spacing:1px;font-size:9px;display:block;margin-top:-2px}
+  .topbar .sep{flex:1}
+  .topbar .ctx{display:flex;align-items:center;gap:8px;font-size:var(--fs-sm)}
+  .chip-ctx{background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.22);color:#fff;padding:4px 10px;border-radius:20px;font-size:var(--fs-sm);display:inline-flex;gap:6px;align-items:center}
+  .avatar{width:30px;height:30px;border-radius:50%;background:var(--brand-2);display:grid;place-items:center;font-size:12px;font-weight:700;border:2px solid rgba(255,255,255,.35)}
+  .icon-btn{background:transparent;border:0;color:#fff;opacity:.9;padding:4px;border-radius:6px;display:grid;place-items:center}
+  .icon-btn:hover{background:rgba(255,255,255,.15)}
+
+  /* ===== Ribbon estilo Office ===== */
+  .ribbon{background:var(--surface);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:40}
+  .rtabs{display:flex;gap:2px;padding:0 8px;overflow-x:auto}
+  .rtab{border:0;background:transparent;color:var(--muted);padding:10px 14px;font-size:var(--fs-sm);font-weight:600;border-bottom:2.5px solid transparent;white-space:nowrap}
+  .rtab:hover{color:var(--ink)}
+  .rtab.active{color:var(--brand);border-bottom-color:var(--brand)}
+  .rband{display:none;gap:4px;padding:8px 10px;background:linear-gradient(180deg,var(--brand-tint),var(--surface));border-bottom:1px solid var(--line);overflow-x:auto}
+  .rband.active{display:flex}
+  .rgroup{display:flex;flex-direction:column;align-items:center;padding:0 8px;border-right:1px solid var(--line);gap:4px}
+  .rgroup:last-child{border-right:0}
+  .rgroup .cmds{display:flex;gap:3px}
+  .rgroup .glabel{font-size:9px;letter-spacing:.4px;text-transform:uppercase;color:var(--muted)}
+  .rbtn{display:flex;flex-direction:column;align-items:center;gap:3px;background:transparent;border:1px solid transparent;border-radius:var(--r-sm);padding:5px 9px;color:var(--ink);font-size:var(--fs-xs);min-width:52px;position:relative}
+  .rbtn svg{width:18px;height:18px;stroke:var(--brand);stroke-width:1.7;fill:none}
+  .rbtn:hover{background:var(--brand-tint);border-color:var(--brand-soft)}
+  .rbtn.has-caret::after{content:"▾";font-size:8px;color:var(--muted);position:absolute;right:5px;bottom:4px}
+  .rbtn .cap{white-space:nowrap}
+  /* menús desplegables */
+  .dd{position:relative}
+  .dd-menu{position:absolute;top:100%;left:0;min-width:210px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--elev);padding:6px;z-index:60;display:none}
+  .dd.open .dd-menu{display:block}
+  .dd-menu button{display:flex;width:100%;gap:10px;align-items:center;background:transparent;border:0;border-radius:6px;padding:8px 10px;color:var(--ink);font-size:var(--fs-sm);text-align:left}
+  .dd-menu button:hover{background:var(--brand-tint)}
+  .dd-menu .hr{height:1px;background:var(--line);margin:5px 4px}
+  .dd-menu .mut{color:var(--muted);font-size:var(--fs-xs);padding:4px 10px}
+
+  /* ===== Layout de contenido ===== */
+  .wrap{max-width:1240px;margin:0 auto;padding:18px 16px 40px}
+  .screen{display:none;animation:fade .25s ease}
+  .screen.active{display:block}
+  @keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+  .page-head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-bottom:14px;flex-wrap:wrap}
+  .page-head .eyebrow{font-size:var(--fs-xs);letter-spacing:1.4px;text-transform:uppercase;color:var(--brand-2);font-weight:700}
+  .page-head h1{font-size:var(--fs-xl);margin-top:2px}
+  .page-head p{margin:2px 0 0;color:var(--muted);font-size:var(--fs-sm)}
+  .toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .btn{border:1px solid var(--line);background:var(--surface);color:var(--ink);padding:8px 14px;border-radius:var(--r-sm);font-size:var(--fs-sm);font-weight:600;display:inline-flex;gap:7px;align-items:center}
+  .btn:hover{border-color:var(--brand-soft);background:var(--brand-tint)}
+  .btn.primary{background:var(--brand);border-color:var(--brand);color:#fff}
+  .btn.primary:hover{background:var(--brand-600)}
+  .btn svg{width:15px;height:15px;stroke:currentColor;stroke-width:1.8;fill:none}
+  .select{border:1px solid var(--line);background:var(--surface);color:var(--ink);padding:8px 10px;border-radius:var(--r-sm);font-size:var(--fs-sm);font-weight:600}
+
+  /* ===== KPI cards ===== */
+  .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}
+  .kpi{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px;box-shadow:var(--elev);position:relative;overflow:hidden}
+  .kpi::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--brand)}
+  .kpi.k-ok::before{background:var(--ok)} .kpi.k-bad::before{background:var(--bad)} .kpi.k-w::before{background:var(--w1)}
+  .kpi .klabel{font-size:var(--fs-xs);text-transform:uppercase;letter-spacing:.6px;color:var(--muted);font-weight:700}
+  .kpi .kval{font-size:var(--fs-2xl);font-weight:700;margin-top:6px;letter-spacing:-.5px}
+  .kpi .ksub{display:flex;align-items:center;gap:8px;margin-top:6px;font-size:var(--fs-sm)}
+  .delta{display:inline-flex;align-items:center;gap:3px;font-weight:700;padding:2px 7px;border-radius:20px;font-size:var(--fs-xs)}
+  .delta.up{color:var(--ok);background:var(--ok-t)} .delta.down{color:var(--bad);background:var(--bad-t)}
+  .kpi .spark{position:absolute;right:12px;bottom:10px;opacity:.9}
+
+  /* ===== Cards / gráficas ===== */
+  .grid{display:grid;gap:12px}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--elev);overflow:hidden}
+  .chart-head{background:var(--brand);color:#fff;padding:9px 14px;font-size:var(--fs-sm);font-weight:600;display:flex;align-items:center;justify-content:space-between;letter-spacing:.2px}
+  .chart-head .hact{font-size:var(--fs-xs);font-weight:600;opacity:.85}
+  .card-body{padding:14px}
+  .legend{display:flex;gap:14px;flex-wrap:wrap;font-size:var(--fs-xs);color:var(--muted);margin-top:6px}
+  .legend i{width:10px;height:10px;border-radius:3px;display:inline-block;margin-right:5px;vertical-align:-1px}
+
+  /* ===== Tablas ===== */
+  .tbl-wrap{overflow-x:auto}
+  table{width:100%;border-collapse:collapse;font-size:var(--fs-sm)}
+  thead th{background:var(--brand-tint);color:var(--brand-700);text-align:left;font-size:var(--fs-xs);text-transform:uppercase;letter-spacing:.4px;padding:9px 12px;font-weight:700;white-space:nowrap;border-bottom:1px solid var(--line)}
+  tbody td{padding:9px 12px;border-bottom:1px solid var(--line);white-space:nowrap}
+  tbody tr:hover{background:var(--brand-tint)}
+  td.r,th.r{text-align:right}
+  .tag{display:inline-flex;align-items:center;gap:5px;padding:2px 9px;border-radius:20px;font-size:var(--fs-xs);font-weight:700}
+  .t-ok{background:var(--ok-t);color:var(--ok)} .t-w1{background:var(--w1-t);color:var(--w1)}
+  .t-w2{background:var(--w2-t);color:var(--w2)} .t-bad{background:var(--bad-t);color:var(--bad)}
+  .t-blue{background:var(--brand-tint);color:var(--brand)}
+  .dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+  .minibar{height:7px;border-radius:4px;background:var(--brand-tint);overflow:hidden;min-width:70px}
+  .minibar>span{display:block;height:100%;background:var(--brand-2)}
+  .flag{font-size:var(--fs-xs);color:var(--muted)}
+
+  .two{grid-template-columns:1.5fr 1fr}
+  .three{grid-template-columns:repeat(3,1fr)}
+  .demo-badge{position:fixed;right:12px;bottom:12px;background:var(--ink);color:var(--canvas);font-size:var(--fs-xs);padding:6px 12px;border-radius:20px;opacity:.85;z-index:80;font-weight:700;letter-spacing:.4px}
+
+  /* Forms */
+  .form-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+  .field{display:flex;flex-direction:column;gap:5px}
+  .field label{font-size:var(--fs-xs);text-transform:uppercase;letter-spacing:.4px;color:var(--muted);font-weight:700}
+  .field input,.field select{border:1px solid var(--line);background:var(--canvas);color:var(--ink);border-radius:var(--r-sm);padding:9px 11px;font-size:var(--fs-base);font-family:inherit}
+  .field input:focus,.field select:focus{outline:2px solid var(--brand-soft);border-color:var(--brand)}
+
+  /* Matriz de permisos */
+  .perm td{text-align:center}
+  .perm td:first-child{text-align:left;font-weight:600}
+  .check{color:var(--ok);font-weight:800}
+  .cross{color:var(--line)}
+
+  @media (max-width:900px){
+    .kpis{grid-template-columns:repeat(2,1fr)}
+    .two,.three{grid-template-columns:1fr}
+    .rgroup .glabel{display:none}
+  }
+  @media (max-width:560px){
+    .kpis{grid-template-columns:1fr 1fr}
+    .kpi .kval{font-size:var(--fs-xl)}
+    .logo small{display:none}
+  }
+</style>
+
+<!-- ===================== TOPBAR ===================== -->
+<div class="topbar">
+  <div class="logo">
+    <svg class="eye" viewBox="0 0 60 38" aria-hidden="true">
+      <path d="M2 19C14 4 46 4 58 19C46 34 14 34 2 19Z" fill="#fff" opacity=".16"/>
+      <path d="M6 19C16 7 44 7 54 19C44 31 16 31 6 19Z" fill="#fff" opacity=".28"/>
+      <circle cx="30" cy="19" r="7" fill="#fff"/>
+    </svg>
+    <div>BioSteel<small>DE COLOMBIA S.A.S</small></div>
+  </div>
+  <div class="sep"></div>
+  <div class="ctx">
+    <span class="chip-ctx">🏢 Sede: <b>Barranquilla</b></span>
+    <span class="chip-ctx">📅 Ago 2026</span>
+    <button class="icon-btn" id="themeBtn" title="Tema">
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#fff" stroke-width="1.7"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/></svg>
+    </button>
+    <div class="avatar">HA</div>
+  </div>
+</div>
+
+<!-- ===================== RIBBON ===================== -->
+<div class="ribbon">
+  <div class="rtabs" id="rtabs">
+    <button class="rtab active" data-tab="inicio">Inicio</button>
+    <button class="rtab" data-tab="cartera">Cartera</button>
+    <button class="rtab" data-tab="cxp">Cuentas por Pagar</button>
+    <button class="rtab" data-tab="tesoreria">Tesorería</button>
+    <button class="rtab" data-tab="reportes">Reportes</button>
+    <button class="rtab" data-tab="admin">Administración</button>
+  </div>
+
+  <!-- Bandas de comandos -->
+  <div class="rband active" data-band="inicio">
+    <div class="rgroup"><div class="cmds">
+      <button class="rbtn" data-go="dashboard"><svg viewBox="0 0 24 24"><path d="M4 13h6V4H4zM14 20h6V4h-6zM4 20h6v-4H4z"/></svg><span class="cap">Dashboard</span></button>
+      <button class="rbtn"><svg viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 1 3 6"/><path d="M4 20v-4h4"/></svg><span class="cap">Actualizar</span></button>
+    </div><div class="glabel">Vista</div></div>
+    <div class="rgroup"><div class="cmds">
+      <div class="dd"><button class="rbtn has-caret" data-dd><svg viewBox="0 0 24 24"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M4 21h16"/></svg><span class="cap">Importar</span></button>
+        <div class="dd-menu"><div class="mut">Desde Excel / ERP SIESA</div>
+          <button data-go="recaudos">📄 Importar cartera (facturas)</button>
+          <button data-go="cxp-view">📄 Importar cuentas por pagar</button>
+          <button>💵 Importar recaudos</button>
+          <div class="hr"></div><button>🔌 Conector SIESA (fase 2)</button>
+        </div>
+      </div>
+    </div><div class="glabel">Datos</div></div>
+    <div class="rgroup"><div class="cmds">
+      <div class="dd"><button class="rbtn has-caret" data-dd><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M8 2v4M16 2v4M3 10h18"/></svg><span class="cap">Periodo</span></button>
+        <div class="dd-menu"><button>Hoy</button><button>Este mes</button><button>Trimestre</button><button>Año corrido</button><div class="hr"></div><button>Rango personalizado…</button></div>
+      </div>
+      <div class="dd"><button class="rbtn has-caret" data-dd><svg viewBox="0 0 24 24"><path d="M3 21V8l9-5 9 5v13"/><path d="M9 21v-6h6v6"/></svg><span class="cap">Sede</span></button>
+        <div class="dd-menu"><button>Todas las sedes</button><div class="hr"></div><button>Barranquilla (admin.)</button><button>Bodega Cali</button><button>Bodega Santa Marta</button></div>
+      </div>
+    </div><div class="glabel">Filtros</div></div>
+  </div>
+
+  <div class="rband" data-band="cartera">
+    <div class="rgroup"><div class="cmds">
+      <button class="rbtn" data-go="cartera-view"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M9 20V9"/></svg><span class="cap">Ver cartera</span></button>
+      <button class="rbtn" data-go="cartera-view"><svg viewBox="0 0 24 24"><path d="M14 2v6h6"/><path d="M6 2h8l6 6v14H6z"/></svg><span class="cap">Estado cuenta</span></button>
+    </div><div class="glabel">Consultar</div></div>
+    <div class="rgroup"><div class="cmds">
+      <button class="rbtn"><svg viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 14l3-3 3 3 5-6"/></svg><span class="cap">Aging</span></button>
+      <button class="rbtn"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v10M9 12h6"/></svg><span class="cap">DSO</span></button>
+    </div><div class="glabel">Análisis</div></div>
+    <div class="rgroup"><div class="cmds">
+      <div class="dd"><button class="rbtn has-caret" data-dd><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg><span class="cap">Nota</span></button>
+        <div class="dd-menu"><button>➕ Nota crédito</button><button>➖ Nota débito</button><button>⚠️ Registrar glosa</button></div></div>
+      <button class="rbtn"><svg viewBox="0 0 24 24"><path d="M12 3v12m0 0 4-4m-4 4-4-4"/><path d="M4 21h16"/></svg><span class="cap">Exportar</span></button>
+    </div><div class="glabel">Acciones</div></div>
+  </div>
+
+  <div class="rband" data-band="cxp">
+    <div class="rgroup"><div class="cmds">
+      <button class="rbtn" data-go="cxp-view"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18"/></svg><span class="cap">Ver CxP</span></button>
+      <button class="rbtn" data-go="pagos"><svg viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M2 10h20"/></svg><span class="cap">Programar pago</span></button>
+    </div><div class="glabel">Gestión</div></div>
+    <div class="rgroup"><div class="cmds">
+      <button class="rbtn"><svg viewBox="0 0 24 24"><path d="M2 12h20M12 2a15 15 0 0 1 0 20M12 2a15 15 0 0 0 0 20"/><circle cx="12" cy="12" r="10"/></svg><span class="cap">Importaciones USD</span></button>
+      <button class="rbtn"><svg viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 4-6"/></svg><span class="cap">Vencimientos</span></button>
+    </div><div class="glabel">Moneda extranjera</div></div>
+  </div>
+
+  <div class="rband" data-band="tesoreria">
+    <div class="rgroup"><div class="cmds">
+      <button class="rbtn" data-go="recaudos"><svg viewBox="0 0 24 24"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg><span class="cap">Registrar recaudo</span></button>
+      <button class="rbtn" data-go="pagos"><svg viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20M6 15h4"/></svg><span class="cap">Registrar pago</span></button>
+    </div><div class="glabel">Movimientos</div></div>
+    <div class="rgroup"><div class="cmds">
+      <button class="rbtn"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg><span class="cap">Conciliación</span></button>
+      <button class="rbtn"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg><span class="cap">Anticipos</span></button>
+    </div><div class="glabel">Bancos</div></div>
+  </div>
+
+  <div class="rband" data-band="reportes">
+    <div class="rgroup"><div class="cmds">
+      <button class="rbtn" data-go="reportes"><svg viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 14l3-3 3 3 5-6"/></svg><span class="cap">Aging</span></button>
+      <button class="rbtn" data-go="reportes"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span class="cap">DSO</span></button>
+      <button class="rbtn" data-go="reportes"><svg viewBox="0 0 24 24"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg><span class="cap">Flujo de caja</span></button>
+      <button class="rbtn" data-go="reportes"><svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-8 0v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z"/></svg><span class="cap">Recaudo x vendedor</span></button>
+    </div><div class="glabel">Reportes</div></div>
+  </div>
+
+  <div class="rband" data-band="admin">
+    <div class="rgroup"><div class="cmds">
+      <button class="rbtn" data-go="admin-users"><svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-8 0v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z"/></svg><span class="cap">Usuarios</span></button>
+      <button class="rbtn" data-go="admin-roles"><svg viewBox="0 0 24 24"><path d="M12 2 4 6v6c0 5 8 8 8 8s8-3 8-8V6z"/></svg><span class="cap">Roles y permisos</span></button>
+    </div><div class="glabel">Seguridad</div></div>
+    <div class="rgroup"><div class="cmds">
+      <button class="rbtn" data-go="terceros"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-3-3.9M9 21v-2a4 4 0 0 1 3-3.9M12 7a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/></svg><span class="cap">Terceros</span></button>
+      <button class="rbtn"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1l2-1.5-2-3.5-2.4 1a7 7 0 0 0-1.7-1L16.5 3h-4l-.3 2.5a7 7 0 0 0-1.7 1l-2.4-1-2 3.5L4.1 11a7 7 0 0 0 0 2l-2 1.5 2 3.5 2.4-1a7 7 0 0 0 1.7 1l.3 2.5h4l.3-2.5a7 7 0 0 0 1.7-1l2.4 1 2-3.5-2-1.5a7 7 0 0 0 .1-1Z"/></svg><span class="cap">Parámetros</span></button>
+      <button class="rbtn"><svg viewBox="0 0 24 24"><path d="M14 2v6h6"/><path d="M6 2h8l6 6v14H6z"/><path d="M9 13h6M9 17h6"/></svg><span class="cap">Auditoría</span></button>
+    </div><div class="glabel">Configuración</div></div>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <!-- ===================== DASHBOARD ===================== -->
+  <section class="screen active" data-screen="dashboard">
+    <div class="page-head">
+      <div><div class="eyebrow">Inicio</div><h1>Panel de Flujo de Caja</h1><p>Corte a 06 ago 2026 · Todas las sedes · Datos de demostración</p></div>
+      <div class="toolbar">
+        <select class="select"><option>Todas las sedes</option><option>Barranquilla</option><option>Cali</option><option>Santa Marta</option></select>
+        <button class="btn"><svg viewBox="0 0 24 24"><path d="M12 3v12m0 0 4-4m-4 4-4-4"/><path d="M4 21h16"/></svg>Exportar</button>
+        <button class="btn primary"><svg viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 1 3 6"/><path d="M4 20v-4h4"/></svg>Actualizar</button>
+      </div>
+    </div>
+
+    <div class="kpis">
+      <div class="kpi k-bad">
+        <div class="klabel">Saldo cartera</div>
+        <div class="kval num">$ 2.847.350.000</div>
+        <div class="ksub"><span class="delta up">▲ 4,20 %</span><span class="flag">vs mes anterior</span></div>
+        <svg class="spark" width="70" height="26" viewBox="0 0 70 26"><polyline points="0,20 12,18 24,19 36,14 48,15 60,9 70,7" fill="none" stroke="var(--brand-2)" stroke-width="2"/></svg>
+      </div>
+      <div class="kpi k-w">
+        <div class="klabel">Cartera vencida</div>
+        <div class="kval num">38,42 %</div>
+        <div class="ksub"><span class="delta down">▲ 1,80 %</span><span class="flag">$ 1.092.350.000</span></div>
+        <svg class="spark" width="70" height="26" viewBox="0 0 70 26"><polyline points="0,10 12,12 24,11 36,15 48,14 60,17 70,19" fill="none" stroke="var(--w1)" stroke-width="2"/></svg>
+      </div>
+      <div class="kpi">
+        <div class="klabel">DSO · días de recaudo</div>
+        <div class="kval num">87</div>
+        <div class="ksub"><span class="delta up">▼ 3 días</span><span class="flag">meta ≤ 60</span></div>
+        <svg class="spark" width="70" height="26" viewBox="0 0 70 26"><polyline points="0,6 12,9 24,8 36,12 48,11 60,14 70,16" fill="none" stroke="var(--brand-2)" stroke-width="2"/></svg>
+      </div>
+      <div class="kpi k-ok">
+        <div class="klabel">Recaudo del mes</div>
+        <div class="kval num">$ 612.480.000</div>
+        <div class="ksub"><span class="delta up">76,56 %</span><span class="flag">de meta $ 800.000.000</span></div>
+        <svg class="spark" width="70" height="26" viewBox="0 0 70 26"><polyline points="0,20 12,17 24,15 36,14 48,10 60,8 70,6" fill="none" stroke="var(--ok)" stroke-width="2"/></svg>
+      </div>
+    </div>
+
+    <div class="grid two" style="margin-bottom:12px">
+      <div class="card">
+        <div class="chart-head">Cartera por edades (Aging) <span class="hact">Total $ 2.847.350.000</span></div>
+        <div class="card-body" id="agingChart"></div>
+      </div>
+      <div class="card">
+        <div class="chart-head">Recaudo vs Meta del mes</div>
+        <div class="card-body" id="gaugeChart" style="display:grid;place-items:center"></div>
+      </div>
+    </div>
+
+    <div class="grid two" style="margin-bottom:12px">
+      <div class="card">
+        <div class="chart-head">Flujo de caja proyectado · próximas 6 semanas <span class="hact">Entradas vs Salidas</span></div>
+        <div class="card-body" id="flowChart"></div>
+      </div>
+      <div class="card">
+        <div class="chart-head">Composición de clientes por tipo</div>
+        <div class="card-body" id="donutChart" style="display:grid;place-items:center"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="chart-head">Top clientes con mayor cartera <span class="hact">10 de 148 clientes</span></div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Cliente</th><th>Tipo</th><th class="r">Saldo total</th><th class="r">Vencido</th><th>% del total</th><th class="r">Días prom.</th><th>Estado</th></tr></thead>
+          <tbody id="topClients"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== CARTERA ===================== -->
+  <section class="screen" data-screen="cartera-view">
+    <div class="page-head">
+      <div><div class="eyebrow">Cartera</div><h1>Cuentas por Cobrar</h1><p>Facturas abiertas importadas del ERP · 06 ago 2026</p></div>
+      <div class="toolbar">
+        <select class="select"><option>Todos los tipos</option><option>Clínicas / IPS</option><option>EPS / Aseguradoras</option><option>Distribuidores</option><option>Cirujanos</option></select>
+        <select class="select"><option>Toda la edad</option><option>Corriente</option><option>31–60</option><option>61–90</option><option>+90</option></select>
+        <button class="btn primary"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Registrar recaudo</button>
+      </div>
+    </div>
+    <div class="kpis">
+      <div class="kpi"><div class="klabel">Corriente 0–30</div><div class="kval num" style="color:var(--ok)">$ 1.020.000.000</div><div class="ksub"><span class="flag">35,82 % · 61 facturas</span></div></div>
+      <div class="kpi"><div class="klabel">31–60 días</div><div class="kval num" style="color:var(--w1)">$ 735.000.000</div><div class="ksub"><span class="flag">25,81 % · 44 facturas</span></div></div>
+      <div class="kpi"><div class="klabel">61–90 días</div><div class="kval num" style="color:var(--w2)">$ 458.000.000</div><div class="ksub"><span class="flag">16,09 % · 27 facturas</span></div></div>
+      <div class="kpi"><div class="klabel">+90 días</div><div class="kval num" style="color:var(--bad)">$ 634.350.000</div><div class="ksub"><span class="flag">22,28 % · 39 facturas</span></div></div>
+    </div>
+    <div class="card">
+      <div class="chart-head">Detalle de facturas <span class="hact">171 facturas abiertas</span></div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Factura</th><th>Cliente</th><th>Sede</th><th>Emisión</th><th>Vence</th><th class="r">Valor</th><th class="r">Saldo</th><th>Edad</th><th>Estado</th></tr></thead>
+          <tbody id="carteraRows"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== CUENTAS POR PAGAR ===================== -->
+  <section class="screen" data-screen="cxp-view">
+    <div class="page-head">
+      <div><div class="eyebrow">Cuentas por Pagar</div><h1>Obligaciones con Proveedores</h1><p>Incluye importaciones en moneda extranjera · TRM 06 ago: $ 4.180,50 / USD</p></div>
+      <div class="toolbar">
+        <select class="select"><option>Todas las monedas</option><option>COP</option><option>USD</option><option>EUR</option></select>
+        <button class="btn primary"><svg viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M2 10h20"/></svg>Programar pago</button>
+      </div>
+    </div>
+    <div class="kpis">
+      <div class="kpi"><div class="klabel">CxP total (COP)</div><div class="kval num">$ 1.204.900.000</div><div class="ksub"><span class="flag">32 documentos</span></div></div>
+      <div class="kpi k-bad"><div class="klabel">Vencidas</div><div class="kval num">$ 214.300.000</div><div class="ksub"><span class="delta down">17,79 %</span></div></div>
+      <div class="kpi"><div class="klabel">En USD</div><div class="kval num">US$ 168.400</div><div class="ksub"><span class="flag">≈ $ 703.996.200</span></div></div>
+      <div class="kpi k-w"><div class="klabel">Vence ≤ 7 días</div><div class="kval num">$ 96.750.000</div><div class="ksub"><span class="flag">5 documentos</span></div></div>
+    </div>
+    <div class="card">
+      <div class="chart-head">Documentos por pagar</div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Documento</th><th>Proveedor</th><th>Moneda</th><th class="r">Valor orig.</th><th class="r">Valor COP</th><th>Vence</th><th>Estado</th></tr></thead>
+          <tbody id="cxpRows"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== RECAUDOS ===================== -->
+  <section class="screen" data-screen="recaudos">
+    <div class="page-head">
+      <div><div class="eyebrow">Tesorería</div><h1>Registrar Recaudo</h1><p>Un recaudo puede aplicarse a varias facturas, con retenciones y abonos parciales</p></div>
+    </div>
+    <div class="grid two">
+      <div class="card">
+        <div class="chart-head">Datos del recaudo</div>
+        <div class="card-body">
+          <div class="form-grid">
+            <div class="field"><label>Cliente</label><select><option>Clínica del Caribe S.A.S</option><option>Clínica Portoazul</option><option>Nueva EPS</option></select></div>
+            <div class="field"><label>Fecha</label><input type="date" value="2026-08-06"></div>
+            <div class="field"><label>Medio de pago</label><select><option>Transferencia</option><option>Consignación</option><option>Cheque</option><option>Efectivo</option></select></div>
+            <div class="field"><label>Banco / Cuenta</label><select><option>Bancolombia · Cta 4567</option><option>Davivienda · Cta 8890</option></select></div>
+            <div class="field"><label>Valor recibido</label><input value="$ 120.000.000"></div>
+            <div class="field"><label>Referencia</label><input placeholder="N.º comprobante"></div>
+          </div>
+          <div style="margin:14px 0 6px;font-size:var(--fs-xs);text-transform:uppercase;letter-spacing:.5px;color:var(--muted);font-weight:700">Retenciones aplicadas</div>
+          <div class="form-grid">
+            <div class="field"><label>ReteFuente (2,50 %)</label><input value="$ 3.000.000"></div>
+            <div class="field"><label>ReteICA (0,69 %)</label><input value="$ 828.000"></div>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="chart-head">Aplicar a facturas <span class="hact">Saldo por aplicar $ 0</span></div>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Factura</th><th class="r">Saldo</th><th class="r">Aplicar</th></tr></thead>
+            <tbody>
+              <tr><td>FV-2026-0412</td><td class="r num">$ 45.000.000</td><td class="r num" style="color:var(--brand);font-weight:700">$ 45.000.000</td></tr>
+              <tr><td>FV-2026-0388</td><td class="r num">$ 52.500.000</td><td class="r num" style="color:var(--brand);font-weight:700">$ 52.500.000</td></tr>
+              <tr><td>FV-2026-0355</td><td class="r num">$ 30.200.000</td><td class="r num" style="color:var(--brand);font-weight:700">$ 26.328.000</td></tr>
+            </tbody>
+            <tfoot><tr style="border-top:2px solid var(--line)"><td style="padding:10px 12px;font-weight:700">Total aplicado</td><td></td><td class="r num" style="padding:10px 12px;font-weight:800;color:var(--ok)">$ 123.828.000</td></tr></tfoot>
+          </table>
+        </div>
+        <div class="card-body" style="display:flex;gap:8px;justify-content:flex-end">
+          <button class="btn">Cancelar</button>
+          <button class="btn primary"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>Guardar recaudo</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== PAGOS ===================== -->
+  <section class="screen" data-screen="pagos">
+    <div class="page-head">
+      <div><div class="eyebrow">Tesorería</div><h1>Registrar Pago a Proveedor</h1><p>Aplica a documentos por pagar, con manejo de moneda extranjera</p></div>
+    </div>
+    <div class="card" style="max-width:640px">
+      <div class="chart-head">Datos del pago</div>
+      <div class="card-body">
+        <div class="form-grid">
+          <div class="field"><label>Proveedor</label><select><option>Synthes GmbH (USD)</option><option>Stryker Corp (USD)</option><option>Instrumental Andino (COP)</option></select></div>
+          <div class="field"><label>Fecha</label><input type="date" value="2026-08-06"></div>
+          <div class="field"><label>Moneda</label><select><option>USD</option><option>COP</option><option>EUR</option></select></div>
+          <div class="field"><label>TRM del día</label><input value="$ 4.180,50"></div>
+          <div class="field"><label>Valor (USD)</label><input value="US$ 42.000"></div>
+          <div class="field"><label>Equivalente (COP)</label><input value="$ 175.581.000" disabled></div>
+        </div>
+        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">
+          <button class="btn">Cancelar</button>
+          <button class="btn primary">Guardar pago</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== TERCEROS ===================== -->
+  <section class="screen" data-screen="terceros">
+    <div class="page-head">
+      <div><div class="eyebrow">Administración</div><h1>Terceros</h1><p>Clientes y proveedores · datos maestros</p></div>
+      <div class="toolbar"><button class="btn primary"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Nuevo tercero</button></div>
+    </div>
+    <div class="card">
+      <div class="chart-head">Listado de terceros</div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>NIT</th><th>Nombre</th><th>Clase</th><th>Tipo</th><th>Ciudad</th><th class="r">Cupo crédito</th><th class="r">Días</th><th>Estado</th></tr></thead>
+          <tbody id="tercerosRows"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== REPORTES ===================== -->
+  <section class="screen" data-screen="reportes">
+    <div class="page-head">
+      <div><div class="eyebrow">Reportes</div><h1>Centro de Reportes</h1><p>Análisis de cartera, recaudo y flujo de caja</p></div>
+    </div>
+    <div class="grid two" style="margin-bottom:12px">
+      <div class="card"><div class="chart-head">DSO por tipo de cliente</div><div class="card-body" id="dsoChart"></div></div>
+      <div class="card"><div class="chart-head">Efectividad de recaudo mensual</div><div class="card-body" id="recChart"></div></div>
+    </div>
+    <div class="card">
+      <div class="chart-head">Recaudo por vendedor <span class="hact">Agosto 2026</span></div>
+      <div class="tbl-wrap"><table>
+        <thead><tr><th>Vendedor</th><th class="r">Cartera asignada</th><th class="r">Recaudado</th><th>Efectividad</th><th class="r">Comisión (pend.)</th></tr></thead>
+        <tbody id="vendRows"></tbody>
+      </table></div>
+    </div>
+  </section>
+
+  <!-- ===================== ADMIN · USUARIOS ===================== -->
+  <section class="screen" data-screen="admin-users">
+    <div class="page-head">
+      <div><div class="eyebrow">Administración · Seguridad</div><h1>Usuarios</h1><p>Creación y gestión paramétrica de usuarios</p></div>
+      <div class="toolbar"><button class="btn primary"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Nuevo usuario</button></div>
+    </div>
+    <div class="card">
+      <div class="chart-head">Usuarios activos</div>
+      <div class="tbl-wrap"><table>
+        <thead><tr><th>Usuario</th><th>Correo</th><th>Rol</th><th>Sede</th><th>Último acceso</th><th>2FA</th><th>Estado</th></tr></thead>
+        <tbody id="usersRows"></tbody>
+      </table></div>
+    </div>
+  </section>
+
+  <!-- ===================== ADMIN · ROLES ===================== -->
+  <section class="screen" data-screen="admin-roles">
+    <div class="page-head">
+      <div><div class="eyebrow">Administración · Seguridad</div><h1>Roles y Permisos</h1><p>Matriz paramétrica · tú defines qué puede hacer cada rol</p></div>
+      <div class="toolbar"><button class="btn"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Nuevo rol</button><button class="btn primary">Guardar cambios</button></div>
+    </div>
+    <div class="card">
+      <div class="chart-head">Matriz de permisos por módulo</div>
+      <div class="tbl-wrap"><table class="perm">
+        <thead><tr><th>Módulo / Acción</th><th>Administrador</th><th>Gerente</th><th>Tesorería</th><th>Vendedor</th></tr></thead>
+        <tbody id="permRows"></tbody>
+      </table></div>
+    </div>
+  </section>
+
+</div>
+
+<div class="demo-badge">● PROTOTIPO · datos de demostración</div>
+
+<script>
+const COP = n => "$ " + n.toLocaleString("es-CO");
+const $ = s => document.querySelector(s);
+
+/* ---------- Navegación ribbon + pantallas ---------- */
+document.querySelectorAll(".rtab").forEach(t=>t.addEventListener("click",()=>{
+  document.querySelectorAll(".rtab").forEach(x=>x.classList.remove("active"));
+  t.classList.add("active");
+  const b=t.dataset.tab;
+  document.querySelectorAll(".rband").forEach(x=>x.classList.toggle("active",x.dataset.band===b));
+  const first={inicio:"dashboard",cartera:"cartera-view",cxp:"cxp-view",tesoreria:"recaudos",reportes:"reportes",admin:"admin-users"};
+  go(first[b]);
+}));
+function go(screen){
+  document.querySelectorAll(".screen").forEach(s=>s.classList.toggle("active",s.dataset.screen===screen));
+  document.querySelectorAll(".dd").forEach(d=>d.classList.remove("open"));
+  window.scrollTo({top:0,behavior:"smooth"});
+}
+document.querySelectorAll("[data-go]").forEach(b=>b.addEventListener("click",()=>go(b.dataset.go)));
+
+/* ---------- Dropdowns ---------- */
+document.querySelectorAll("[data-dd]").forEach(b=>b.addEventListener("click",e=>{
+  e.stopPropagation();const dd=b.closest(".dd");const open=dd.classList.contains("open");
+  document.querySelectorAll(".dd").forEach(d=>d.classList.remove("open"));
+  dd.classList.toggle("open",!open);
+}));
+document.addEventListener("click",()=>document.querySelectorAll(".dd").forEach(d=>d.classList.remove("open")));
+
+/* ---------- Tema ---------- */
+$("#themeBtn").addEventListener("click",()=>{
+  const r=document.documentElement;
+  const cur=r.getAttribute("data-theme")|| (matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light");
+  r.setAttribute("data-theme",cur==="dark"?"light":"dark");
+});
+const css=v=>getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+
+/* ---------- Gráfica Aging (barras horizontales) ---------- */
+(function(){
+  const data=[["Corriente 0–30",1020,css("--ok")],["31–60",735,css("--w1")],["61–90",458,css("--w2")],["+90",634.35,css("--bad")]];
+  const max=1100, W=480,H=170,pad=110;
+  let svg=`<svg viewBox="0 0 ${W} ${H}" width="100%" style="max-height:190px">`;
+  data.forEach((d,i)=>{
+    const y=14+i*38, w=(d[1]/max)*(W-pad-16);
+    svg+=`<text x="0" y="${y+15}" font-size="11" fill="${css("--muted")}">${d[0]}</text>`;
+    svg+=`<rect x="${pad}" y="${y}" width="${W-pad-16}" height="20" rx="5" fill="${css("--brand-tint")}"/>`;
+    svg+=`<rect x="${pad}" y="${y}" width="${w}" height="20" rx="5" fill="${d[2]}"/>`;
+    svg+=`<text x="${pad+w+6}" y="${y+15}" font-size="11" font-weight="700" fill="${css("--ink")}">$ ${(d[1]*1e6).toLocaleString("es-CO")}</text>`;
+  });
+  svg+=`</svg><div class="legend"><span><i style="background:${css("--ok")}"></i>Corriente</span><span><i style="background:${css("--w1")}"></i>31–60</span><span><i style="background:${css("--w2")}"></i>61–90</span><span><i style="background:${css("--bad")}"></i>+90</span></div>`;
+  $("#agingChart").innerHTML=svg;
+})();
+
+/* ---------- Gauge Recaudo vs Meta ---------- */
+(function(){
+  const pct=76.56, r=62, c=2*Math.PI*r, off=c*(1-pct/100);
+  $("#gaugeChart").innerHTML=`<svg viewBox="0 0 160 160" width="180" height="180">
+    <circle cx="80" cy="80" r="${r}" fill="none" stroke="${css("--brand-tint")}" stroke-width="16"/>
+    <circle cx="80" cy="80" r="${r}" fill="none" stroke="${css("--brand")}" stroke-width="16" stroke-linecap="round"
+      stroke-dasharray="${c}" stroke-dashoffset="${off}" transform="rotate(-90 80 80)"/>
+    <text x="80" y="74" text-anchor="middle" font-size="30" font-weight="800" fill="${css("--ink")}">76,56%</text>
+    <text x="80" y="96" text-anchor="middle" font-size="11" fill="${css("--muted")}">de la meta</text>
+  </svg><div class="legend" style="justify-content:center"><span>Recaudado <b>$ 612.480.000</b> · Meta <b>$ 800.000.000</b></span></div>`;
+})();
+
+/* ---------- Flujo proyectado (barras agrupadas) ---------- */
+(function(){
+  const weeks=["Sem 32","Sem 33","Sem 34","Sem 35","Sem 36","Sem 37"];
+  const inflow=[180,240,160,300,210,260], outflow=[140,120,220,90,180,110];
+  const W=500,H=190,pad=28,max=320,bw=26,gap=64;
+  let svg=`<svg viewBox="0 0 ${W} ${H}" width="100%" style="max-height:210px">`;
+  [0,80,160,240,320].forEach(v=>{const y=H-pad-(v/max)*(H-pad-16);svg+=`<line x1="34" x2="${W}" y1="${y}" y2="${y}" stroke="${css("--line")}"/><text x="0" y="${y+3}" font-size="9" fill="${css("--muted")}">${v}M</text>`;});
+  weeks.forEach((w,i)=>{
+    const x=44+i*gap;
+    const hi=(inflow[i]/max)*(H-pad-16), ho=(outflow[i]/max)*(H-pad-16);
+    svg+=`<rect x="${x}" y="${H-pad-hi}" width="${bw}" height="${hi}" rx="3" fill="${css("--brand")}"/>`;
+    svg+=`<rect x="${x+bw+3}" y="${H-pad-ho}" width="${bw}" height="${ho}" rx="3" fill="${css("--brand-soft")}"/>`;
+    svg+=`<text x="${x+bw}" y="${H-pad+13}" text-anchor="middle" font-size="9" fill="${css("--muted")}">${w}</text>`;
+  });
+  svg+=`</svg><div class="legend"><span><i style="background:${css("--brand")}"></i>Entradas (recaudos)</span><span><i style="background:${css("--brand-soft")}"></i>Salidas (pagos)</span></div>`;
+  $("#flowChart").innerHTML=svg;
+})();
+
+/* ---------- Donut composición clientes ---------- */
+(function(){
+  const data=[["Clínicas / IPS",44,css("--brand")],["EPS / Aseguradoras",31,css("--brand-2")],["Distribuidores",17,css("--brand-soft")],["Cirujanos",8,css("--w1")]];
+  let a=-Math.PI/2, cx=80,cy=80,r=62,ir=38;
+  let svg=`<svg viewBox="0 0 160 160" width="180" height="180">`;
+  data.forEach(d=>{
+    const ang=d[1]/100*2*Math.PI, a2=a+ang;
+    const x1=cx+r*Math.cos(a),y1=cy+r*Math.sin(a),x2=cx+r*Math.cos(a2),y2=cy+r*Math.sin(a2);
+    const xi1=cx+ir*Math.cos(a2),yi1=cy+ir*Math.sin(a2),xi2=cx+ir*Math.cos(a),yi2=cy+ir*Math.sin(a);
+    const large=ang>Math.PI?1:0;
+    svg+=`<path d="M${x1} ${y1} A${r} ${r} 0 ${large} 1 ${x2} ${y2} L${xi1} ${yi1} A${ir} ${ir} 0 ${large} 0 ${xi2} ${yi2} Z" fill="${d[2]}"/>`;
+    a=a2;
+  });
+  svg+=`<text x="80" y="78" text-anchor="middle" font-size="20" font-weight="800" fill="${css("--ink")}">148</text><text x="80" y="94" text-anchor="middle" font-size="10" fill="${css("--muted")}">clientes</text></svg>`;
+  svg+=`<div class="legend" style="justify-content:center">`+data.map(d=>`<span><i style="background:${d[2]}"></i>${d[0]} ${d[1].toLocaleString("es-CO",{minimumFractionDigits:2})} %</span>`).join("")+`</div>`;
+  $("#donutChart").innerHTML=svg;
+})();
+
+/* ---------- Tablas dinámicas ---------- */
+const tag=(t,c)=>`<span class="tag ${c}">${t}</span>`;
+const topClients=[
+  ["Nueva EPS","EPS",412000000,268000000,14.5,112,"bad"],
+  ["Clínica del Caribe","Clínica",298500000,64000000,10.5,58,"ok"],
+  ["Coosalud EPS","EPS",254300000,141000000,8.9,98,"w2"],
+  ["Clínica Portoazul","Clínica",198700000,22000000,7.0,44,"ok"],
+  ["Distri. Ortopédica Norte","Distribuidor",176400000,88000000,6.2,76,"w1"],
+  ["Hospital Universidad Norte","IPS",154200000,61000000,5.4,71,"w1"],
+  ["Clínica La Merced","Clínica",132900000,12000000,4.7,39,"ok"],
+  ["Sura EPS","EPS",121500000,44000000,4.3,67,"w1"],
+  ["Clínica Iberoamérica","Clínica",98600000,51000000,3.5,84,"w2"],
+  ["Dr. Restrepo Ortopedia","Cirujano",76300000,3000000,2.7,28,"ok"],
+];
+$("#topClients").innerHTML=topClients.map(c=>`<tr>
+  <td><b>${c[0]}</b></td><td><span class="tag t-blue">${c[1]}</span></td>
+  <td class="r num">${COP(c[2])}</td><td class="r num" style="color:var(--bad)">${COP(c[3])}</td>
+  <td><div class="minibar"><span style="width:${c[4]*6}%"></span></div><span class="flag">${c[4].toFixed(2).replace(".",",")} %</span></td>
+  <td class="r num">${c[5]}</td>
+  <td>${tag(c[6]==="ok"?"Al día":c[6]==="bad"?"Crítico":"En mora","t-"+c[6])}</td></tr>`).join("");
+
+const carteraRows=[
+  ["FV-2026-0512","Nueva EPS","Barranquilla","10 may","09 jun",88000000,88000000,"+90","bad"],
+  ["FV-2026-0498","Clínica del Caribe","Barranquilla","02 jul","01 ago","45000000",21000000,"31–60","w1"],
+  ["FV-2026-0487","Coosalud EPS","Cali","18 abr","18 may",64300000,64300000,"+90","bad"],
+  ["FV-2026-0475","Clínica Portoazul","Barranquilla","20 jul","19 ago",52500000,52500000,"Corriente","ok"],
+  ["FV-2026-0461","Distri. Ortopédica Norte","Santa Marta","28 jun","28 jul",38400000,38400000,"31–60","w1"],
+  ["FV-2026-0450","Hospital Uninorte","Barranquilla","12 jun","12 jul",41200000,18000000,"61–90","w2"],
+  ["FV-2026-0442","Clínica La Merced","Cali","25 jul","24 ago",29900000,29900000,"Corriente","ok"],
+  ["FV-2026-0433","Sura EPS","Barranquilla","30 may","29 jun",44500000,44500000,"+90","bad"],
+];
+const money=v=>typeof v==="number"?COP(v):v;
+$("#carteraRows").innerHTML=carteraRows.map(r=>`<tr>
+  <td><b>${r[0]}</b></td><td>${r[1]}</td><td class="flag">${r[2]}</td><td>${r[3]}</td><td>${r[4]}</td>
+  <td class="r num">${money(r[5])}</td><td class="r num"><b>${money(r[6])}</b></td>
+  <td>${r[7]}</td><td>${tag(r[8]==="ok"?"Corriente":r[8]==="bad"?"Vencida +90":"En mora","t-"+r[8])}</td></tr>`).join("");
+
+const cxpRows=[
+  ["FC-8842","Synthes GmbH","USD","US$ 68.000","$ 284.274.000","22 ago","t-w1","Próximo"],
+  ["FC-8830","Stryker Corp","USD","US$ 42.000","$ 175.581.000","05 ago","t-bad","Vencida"],
+  ["FC-8815","Instrumental Andino","COP","$ 96.750.000","$ 96.750.000","11 ago","t-w1","Próximo"],
+  ["FC-8801","Importaciones Médicas","EUR","€ 24.500","$ 116.918.000","30 ago","t-ok","Vigente"],
+  ["FC-8790","Logística Aduanera SAS","COP","$ 38.200.000","$ 38.200.000","01 ago","t-bad","Vencida"],
+];
+$("#cxpRows").innerHTML=cxpRows.map(r=>`<tr>
+  <td><b>${r[0]}</b></td><td>${r[1]}</td><td><span class="tag t-blue">${r[2]}</span></td>
+  <td class="r num">${r[3]}</td><td class="r num"><b>${r[4]}</b></td><td>${r[5]}</td>
+  <td>${tag(r[7],r[6])}</td></tr>`).join("");
+
+const terceros=[
+  ["901.234.567-1","Clínica del Caribe S.A.S","Cliente","Clínica / IPS","Barranquilla","$ 400.000.000",60,"ok"],
+  ["800.111.222-3","Nueva EPS S.A.","Cliente","EPS","Bogotá","$ 600.000.000",90,"ok"],
+  ["DE-4455 (ext.)","Synthes GmbH","Proveedor","Importado","Suiza","—",45,"ok"],
+  ["901.888.777-4","Distri. Ortopédica Norte","Ambos","Distribuidor","Cali","$ 250.000.000",30,"ok"],
+  ["79.555.444-2","Dr. J. Restrepo","Cliente","Cirujano","Barranquilla","$ 50.000.000",30,"w1"],
+];
+$("#tercerosRows").innerHTML=terceros.map(r=>`<tr>
+  <td class="num">${r[0]}</td><td><b>${r[1]}</b></td><td><span class="tag t-blue">${r[2]}</span></td>
+  <td>${r[3]}</td><td>${r[4]}</td><td class="r num">${r[5]}</td><td class="r num">${r[6]}</td>
+  <td>${tag(r[7]==="ok"?"Activo":"Revisar","t-"+r[7])}</td></tr>`).join("");
+
+const users=[
+  ["Héctor Aguilar","hectoralonsoaguilar@gmail.com","Administrador","Todas","Hoy 05:12","Sí","ok"],
+  ["María Torres","mtorres@biosteel.co","Tesorería / Cartera","Barranquilla","Ayer 18:40","Sí","ok"],
+  ["Carlos Vega","cvega@biosteel.co","Vendedor","Cali","05 ago 16:20","No","w1"],
+  ["Ana Ruiz","aruiz@biosteel.co","Gerente","Todas","Hoy 04:50","Sí","ok"],
+];
+$("#usersRows").innerHTML=users.map(u=>`<tr>
+  <td><b>${u[0]}</b></td><td class="flag">${u[1]}</td><td><span class="tag t-blue">${u[2]}</span></td>
+  <td>${u[3]}</td><td class="flag">${u[4]}</td><td>${u[5]==="Sí"?'<span class="check">✔</span>':'<span class="tag t-w1">Pendiente</span>'}</td>
+  <td>${tag(u[6]==="ok"?"Activo":"Sin 2FA","t-"+u[6])}</td></tr>`).join("");
+
+const perms=[
+  ["Dashboard / KPIs",1,1,1,1],["Ver cartera",1,1,1,"self"],["Registrar recaudo",1,0,1,0],
+  ["Cuentas por pagar",1,1,1,0],["Registrar pago",1,0,1,0],["Notas crédito/débito",1,0,1,0],
+  ["Reportes",1,1,1,"self"],["Crear/editar terceros",1,0,1,0],["Gestionar usuarios",1,0,0,0],
+  ["Roles y permisos",1,0,0,0],["Parámetros del sistema",1,0,0,0],["Auditoría",1,1,0,0],
+];
+const cell=v=>v===1?'<span class="check">✔</span>':v==="self"?'<span class="tag t-w1">Propia</span>':'<span class="cross">—</span>';
+$("#permRows").innerHTML=perms.map(p=>`<tr><td>${p[0]}</td><td>${cell(p[1])}</td><td>${cell(p[2])}</td><td>${cell(p[3])}</td><td>${cell(p[4])}</td></tr>`).join("");
+
+/* Reportes charts */
+(function(){
+  const data=[["Clínicas / IPS",52],["EPS / Aseguradoras",118],["Distribuidores",63],["Cirujanos",34]];
+  const max=130,W=460,H=160,pad=120;
+  let svg=`<svg viewBox="0 0 ${W} ${H}" width="100%">`;
+  data.forEach((d,i)=>{const y=14+i*35,w=(d[1]/max)*(W-pad-40);
+    svg+=`<text x="0" y="${y+14}" font-size="11" fill="${css("--muted")}">${d[0]}</text>`;
+    svg+=`<rect x="${pad}" y="${y}" width="${w}" height="18" rx="4" fill="${css("--brand-2")}"/>`;
+    svg+=`<text x="${pad+w+6}" y="${y+14}" font-size="11" font-weight="700" fill="${css("--ink")}">${d[1]} días</text>`;});
+  svg+=`</svg>`;$("#dsoChart").innerHTML=svg;
+})();
+(function(){
+  const vals=[62,58,71,66,74,76.56],labels=["Mar","Abr","May","Jun","Jul","Ago"];
+  const W=460,H=170,pad=28,max=100;
+  let svg=`<svg viewBox="0 0 ${W} ${H}" width="100%">`;
+  [0,50,100].forEach(v=>{const y=H-pad-(v/max)*(H-pad-16);svg+=`<line x1="30" x2="${W}" y1="${y}" y2="${y}" stroke="${css("--line")}"/><text x="2" y="${y+3}" font-size="9" fill="${css("--muted")}">${v}%</text>`;});
+  const pts=vals.map((v,i)=>[40+i*((W-60)/5),H-pad-(v/max)*(H-pad-16)]);
+  svg+=`<polyline points="${pts.map(p=>p.join(",")).join(" ")}" fill="none" stroke="${css("--brand")}" stroke-width="2.5"/>`;
+  pts.forEach((p,i)=>{svg+=`<circle cx="${p[0]}" cy="${p[1]}" r="${i===5?5:3}" fill="${css("--brand")}"/><text x="${p[0]}" y="${H-8}" text-anchor="middle" font-size="9" fill="${css("--muted")}">${labels[i]}</text>`;});
+  svg+=`<text x="${pts[5][0]}" y="${pts[5][1]-10}" text-anchor="middle" font-size="10" font-weight="700" fill="${css("--brand")}">76,56%</text>`;
+  svg+=`</svg>`;$("#recChart").innerHTML=svg;
+})();
+const vend=[["Carlos Vega",640000000,412000000,64.4],["Laura Díaz",520000000,398000000,76.5],["Andrés Mejía",410000000,214000000,52.2]];
+$("#vendRows").innerHTML=vend.map(v=>`<tr><td><b>${v[0]}</b></td><td class="r num">${COP(v[1])}</td><td class="r num">${COP(v[2])}</td>
+  <td><div class="minibar"><span style="width:${v[3]}%"></span></div><span class="flag">${v[3].toFixed(2).replace(".",",")} %</span></td>
+  <td class="r num flag">por definir</td></tr>`).join("");
+</script>

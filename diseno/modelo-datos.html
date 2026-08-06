@@ -1,0 +1,474 @@
+<title>BioSteel — Modelo de Datos (Fase 1)</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root{
+    --brand:#2A4F98; --brand-600:#24468A; --brand-700:#1D3A75; --brand-2:#4078B8;
+    --brand-soft:#A8C6E6; --brand-tint:#EAF1F9;
+    --ink:#1B2434; --muted:#5B6B82; --line:#E3E9F1; --surface:#FFFFFF; --canvas:#F4F6FA;
+    --elev:0 1px 2px rgba(27,36,52,.06),0 8px 24px rgba(27,36,52,.06);
+    --ok:#2A9D6B; --w1:#E0A400; --w2:#E8833A; --bad:#D64545;
+    --ok-t:#E7F5EE; --w1-t:#FBF2DA; --bad-t:#FBE6E6;
+    /* colores por dominio */
+    --d-org:#2A4F98; --d-sec:#7A5AC2; --d-ter:#0E8A8A; --d-car:#C2571E; --d-rec:#2A9D6B; --d-pag:#B0384F;
+    --sans:"Segoe UI",system-ui,-apple-system,"Helvetica Neue",Arial,sans-serif;
+    --mono:"Cascadia Code",Consolas,"SF Mono",Menlo,monospace;
+    --fs-xs:11px; --fs-sm:12.5px; --fs-base:14px; --fs-lg:18px; --fs-xl:24px; --fs-2xl:30px;
+    --r:12px; --r-sm:7px;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{--ink:#E8EDF5;--muted:#94A3BC;--line:#26324A;--surface:#141C2E;--canvas:#0E1524;
+      --brand:#3E6BC0;--brand-2:#5B8AD0;--brand-soft:#294066;--brand-tint:#182338;
+      --elev:0 1px 2px rgba(0,0,0,.3),0 10px 28px rgba(0,0,0,.35);--ok-t:#12281E;--w1-t:#2A2410;--bad-t:#2A1414;}
+  }
+  :root[data-theme="dark"]{--ink:#E8EDF5;--muted:#94A3BC;--line:#26324A;--surface:#141C2E;--canvas:#0E1524;
+    --brand:#3E6BC0;--brand-2:#5B8AD0;--brand-soft:#294066;--brand-tint:#182338;
+    --elev:0 1px 2px rgba(0,0,0,.3),0 10px 28px rgba(0,0,0,.35);--ok-t:#12281E;--w1-t:#2A2410;--bad-t:#2A1414;}
+  :root[data-theme="light"]{--ink:#1B2434;--muted:#5B6B82;--line:#E3E9F1;--surface:#FFFFFF;--canvas:#F4F6FA;
+    --brand:#2A4F98;--brand-2:#4078B8;--brand-soft:#A8C6E6;--brand-tint:#EAF1F9;
+    --elev:0 1px 2px rgba(27,36,52,.06),0 8px 24px rgba(27,36,52,.06);--ok-t:#E7F5EE;--w1-t:#FBF2DA;--bad-t:#FBE6E6;}
+
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--canvas);color:var(--ink);font-family:var(--sans);font-size:var(--fs-base);line-height:1.55}
+  h1,h2,h3,h4{margin:0;font-weight:600;text-wrap:balance}
+  code{font-family:var(--mono);font-size:.9em;background:var(--brand-tint);color:var(--brand-700);padding:1px 6px;border-radius:5px}
+  .topbar{display:flex;align-items:center;gap:12px;background:var(--brand);color:#fff;padding:9px 16px;position:sticky;top:0;z-index:50}
+  .logo{display:flex;align-items:center;gap:10px;font-weight:700}
+  .logo small{font-weight:400;opacity:.8;letter-spacing:1px;font-size:9px;display:block;margin-top:-2px}
+  .logo svg{width:34px;height:22px}
+  .topbar .sep{flex:1}
+  .pill{background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.22);padding:4px 11px;border-radius:20px;font-size:var(--fs-sm)}
+  .icon-btn{background:transparent;border:0;color:#fff;padding:5px;border-radius:6px;display:grid;place-items:center}
+  .icon-btn:hover{background:rgba(255,255,255,.15)}
+
+  .wrap{max-width:1080px;margin:0 auto;padding:26px 18px 70px}
+  .hero{margin-bottom:22px}
+  .eyebrow{font-size:var(--fs-xs);letter-spacing:1.6px;text-transform:uppercase;color:var(--brand-2);font-weight:700}
+  .hero h1{font-size:var(--fs-2xl);margin:4px 0 6px;letter-spacing:-.5px}
+  .hero p{color:var(--muted);margin:0;max-width:70ch}
+  .meta-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+  .badge{font-size:var(--fs-xs);font-weight:700;padding:4px 10px;border-radius:20px;background:var(--brand-tint);color:var(--brand-700);border:1px solid var(--brand-soft)}
+
+  section{margin-top:34px}
+  .sec-head{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+  .sec-head .n{width:26px;height:26px;border-radius:7px;background:var(--brand);color:#fff;display:grid;place-items:center;font-size:var(--fs-sm);font-weight:700;flex:0 0 auto}
+  .sec-head h2{font-size:var(--fs-xl)}
+  .sec-head p{color:var(--muted);font-size:var(--fs-sm);margin:2px 0 0}
+
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--elev);overflow:hidden;margin-bottom:14px}
+  .card-head{background:var(--brand);color:#fff;padding:9px 14px;font-size:var(--fs-sm);font-weight:600;display:flex;justify-content:space-between;align-items:center}
+  .card-head.dom{background:var(--dom,var(--brand))}
+  .card-body{padding:14px 16px}
+
+  /* Mapa de módulos */
+  .modmap{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+  .mod{border:1px solid var(--line);border-radius:var(--r);padding:14px;background:var(--surface);box-shadow:var(--elev);border-top:3px solid var(--mc,var(--brand))}
+  .mod h3{font-size:var(--fs-base);display:flex;align-items:center;gap:8px}
+  .mod .tagn{margin-left:auto;font-size:var(--fs-xs);color:var(--muted);font-weight:700}
+  .mod ul{margin:8px 0 0;padding-left:16px;color:var(--muted);font-size:var(--fs-sm)}
+  .mod li{margin:2px 0}
+  .mc-org{--mc:var(--d-org)} .mc-sec{--mc:var(--d-sec)} .mc-ter{--mc:var(--d-ter)}
+  .mc-car{--mc:var(--d-car)} .mc-rec{--mc:var(--d-rec)} .mc-pag{--mc:var(--d-pag)}
+
+  /* Diagrama (figura en fondo claro, legible en ambos temas) */
+  .diagram{background:#FBFCFE;border:1px solid var(--line);border-radius:0;padding:12px;overflow-x:auto}
+  .mermaid{min-width:520px}
+
+  /* Tablas de especificación */
+  .tbl-wrap{overflow-x:auto}
+  table{width:100%;border-collapse:collapse;font-size:var(--fs-sm)}
+  thead th{background:var(--brand-tint);color:var(--brand-700);text-align:left;font-size:var(--fs-xs);text-transform:uppercase;letter-spacing:.4px;padding:8px 12px;font-weight:700;border-bottom:1px solid var(--line);white-space:nowrap}
+  tbody td{padding:8px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+  tbody tr:hover{background:var(--brand-tint)}
+  td code{white-space:nowrap}
+  .pk{color:var(--brand);font-weight:800;font-size:9px;border:1px solid var(--brand-soft);border-radius:4px;padding:0 4px;margin-left:5px}
+  .fk{color:var(--d-ter);font-weight:800;font-size:9px;border:1px solid var(--d-ter);border-radius:4px;padding:0 4px;margin-left:5px;opacity:.8}
+  .req{color:var(--bad);font-weight:800;margin-left:3px}
+
+  /* Reglas de negocio */
+  .rules{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .rule{border:1px solid var(--line);border-left:4px solid var(--brand);border-radius:var(--r-sm);padding:12px 14px;background:var(--surface)}
+  .rule h4{font-size:var(--fs-base);margin-bottom:5px}
+  .rule p{margin:0;color:var(--muted);font-size:var(--fs-sm)}
+  .rule.crit{border-left-color:var(--bad)} .rule.money{border-left-color:var(--d-pag)} .rule.calc{border-left-color:var(--d-rec)}
+  .formula{font-family:var(--mono);font-size:var(--fs-sm);background:var(--canvas);border:1px dashed var(--line);border-radius:6px;padding:8px 10px;margin-top:8px;color:var(--ink);overflow-x:auto}
+
+  .enum{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
+  .estado{font-size:var(--fs-xs);font-weight:700;padding:3px 9px;border-radius:20px;border:1px solid var(--line)}
+  .e-ok{background:var(--ok-t);color:var(--ok)} .e-w{background:var(--w1-t);color:var(--w1)} .e-bad{background:var(--bad-t);color:var(--bad)} .e-b{background:var(--brand-tint);color:var(--brand)}
+
+  .note{background:var(--brand-tint);border:1px solid var(--brand-soft);border-radius:var(--r-sm);padding:11px 14px;font-size:var(--fs-sm);color:var(--brand-700);margin-top:8px}
+  .foot{margin-top:40px;padding-top:16px;border-top:1px solid var(--line);color:var(--muted);font-size:var(--fs-sm)}
+  @media (max-width:760px){.modmap{grid-template-columns:1fr}.rules{grid-template-columns:1fr}}
+</style>
+
+<div class="topbar">
+  <div class="logo">
+    <svg viewBox="0 0 60 38"><path d="M2 19C14 4 46 4 58 19C46 34 14 34 2 19Z" fill="#fff" opacity=".16"/><path d="M6 19C16 7 44 7 54 19C44 31 16 31 6 19Z" fill="#fff" opacity=".28"/><circle cx="30" cy="19" r="7" fill="#fff"/></svg>
+    <div>BioSteel<small>DE COLOMBIA S.A.S</small></div>
+  </div>
+  <div class="sep"></div>
+  <span class="pill">Modelo de Datos · Fase 1</span>
+  <button class="icon-btn" id="themeBtn" title="Tema"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#fff" stroke-width="1.7"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/></svg></button>
+</div>
+
+<div class="wrap">
+  <div class="hero">
+    <div class="eyebrow">Documento de arquitectura de datos</div>
+    <h1>Modelo de Datos — Flujo de Caja</h1>
+    <p>Cartera (CxC), Cuentas por Pagar (CxP), recaudos, pagos y retenciones. Diseñado sobre PostgreSQL, alimentado por importación desde el ERP (SIESA) y preparado para multi-sede, multimoneda y consignación en Fase 2.</p>
+    <div class="meta-row">
+      <span class="badge">PostgreSQL + Prisma</span>
+      <span class="badge">Multi-sede</span>
+      <span class="badge">Multimoneda</span>
+      <span class="badge">Retenciones COL</span>
+      <span class="badge">Auditoría inmutable</span>
+      <span class="badge">v0.1 · borrador para validar</span>
+    </div>
+  </div>
+
+  <!-- ============ 1. MAPA DE MÓDULOS ============ -->
+  <section>
+    <div class="sec-head"><div class="n">1</div><div><h2>Mapa de módulos</h2><p>Seis dominios de datos. Cada color se reutiliza en los diagramas y tablas.</p></div></div>
+    <div class="modmap">
+      <div class="mod mc-org"><h3>🏢 Organización <span class="tagn">6 tablas</span></h3><ul><li>Empresa</li><li>Sede / Bodega</li><li>Cuenta bancaria</li><li>Moneda</li><li>Tasa de cambio (TRM)</li><li>Parámetros</li></ul></div>
+      <div class="mod mc-sec"><h3>🔐 Seguridad <span class="tagn">5 tablas</span></h3><ul><li>Usuario</li><li>Rol</li><li>Permiso</li><li>Rol–Permiso (matriz)</li><li>Log de auditoría</li></ul></div>
+      <div class="mod mc-ter"><h3>👥 Terceros <span class="tagn">5 tablas</span></h3><ul><li>Tercero</li><li>Perfil cliente</li><li>Perfil proveedor</li><li>Vendedor</li><li>Contacto</li></ul></div>
+      <div class="mod mc-car"><h3>📄 Cartera (CxC) <span class="tagn">4 tablas</span></h3><ul><li>Factura de venta</li><li>Nota crédito / débito</li><li>Glosa</li><li>Concepto de retención</li></ul></div>
+      <div class="mod mc-rec"><h3>💵 Recaudos <span class="tagn">4 tablas</span></h3><ul><li>Recaudo</li><li>Aplicación de recaudo</li><li>Retención de recaudo</li><li>Anticipo</li></ul></div>
+      <div class="mod mc-pag"><h3>🏭 CxP &amp; Pagos <span class="tagn">5 tablas</span></h3><ul><li>Documento por pagar</li><li>Costo de importación</li><li>Pago</li><li>Aplicación de pago</li><li>Diferencia en cambio</li></ul></div>
+    </div>
+    <div class="note">La app <b>no factura</b>: las facturas de venta y los documentos por pagar se <b>importan del ERP</b> (Excel al inicio, conector SIESA después). BioSteel es la fuente de verdad de <b>recaudos, pagos, aplicaciones, retenciones, notas, glosas y flujo proyectado</b>.</div>
+  </section>
+
+  <!-- ============ 2. DER: ORGANIZACIÓN & SEGURIDAD ============ -->
+  <section>
+    <div class="sec-head"><div class="n">2</div><div><h2>Organización y Seguridad</h2><p>Estructura de la empresa, sedes/bodegas, cuentas bancarias y control de acceso paramétrico.</p></div></div>
+    <div class="card"><div class="card-head dom" style="--dom:var(--d-sec)">Diagrama entidad–relación</div>
+      <div class="diagram"><pre class="mermaid">
+%%{init:{'theme':'base','themeVariables':{'primaryColor':'#EAF1F9','primaryBorderColor':'#2A4F98','primaryTextColor':'#1B2434','lineColor':'#4078B8','fontFamily':'Segoe UI','fontSize':'13px'}}}%%
+erDiagram
+  EMPRESA ||--o{ SEDE : tiene
+  SEDE ||--o{ CUENTA_BANCARIA : administra
+  SEDE ||--o{ USUARIO : "asigna (opcional)"
+  ROL ||--o{ USUARIO : clasifica
+  ROL ||--o{ ROL_PERMISO : otorga
+  PERMISO ||--o{ ROL_PERMISO : "se asigna en"
+  USUARIO ||--o{ LOG_AUDITORIA : genera
+  MONEDA ||--o{ TASA_CAMBIO : "cotiza en"
+  EMPRESA {
+    int id PK
+    string razon_social
+    string nit
+  }
+  SEDE {
+    int id PK
+    string nombre
+    string tipo "administrativa|bodega"
+    string ciudad
+  }
+  USUARIO {
+    int id PK
+    int rol_id FK
+    int sede_id FK
+    string email
+    bool doble_factor
+    bool activo
+  }
+  ROL {
+    int id PK
+    string nombre
+    bool sistema
+  }
+  ROL_PERMISO {
+    int rol_id FK
+    int permiso_id FK
+    string alcance "todos|propio|ninguno"
+  }
+  TASA_CAMBIO {
+    int id PK
+    string moneda_codigo FK
+    date fecha
+    decimal valor_cop
+  }
+      </pre></div>
+    </div>
+    <div class="card"><div class="card-head">Entidad · <code>Usuario</code> y control de acceso</div>
+      <div class="tbl-wrap"><table>
+        <thead><tr><th>Campo</th><th>Tipo</th><th>Descripción</th></tr></thead>
+        <tbody>
+          <tr><td><code>id</code><span class="pk">PK</span></td><td>int</td><td>Identificador</td></tr>
+          <tr><td><code>nombre</code><span class="req">*</span></td><td>string</td><td>Nombre completo</td></tr>
+          <tr><td><code>email</code><span class="req">*</span></td><td>string · único</td><td>Usuario de acceso</td></tr>
+          <tr><td><code>password_hash</code><span class="req">*</span></td><td>string</td><td>Hash Argon2id (nunca texto plano)</td></tr>
+          <tr><td><code>rol_id</code><span class="fk">FK</span></td><td>→ Rol</td><td>Rol asignado (paramétrico)</td></tr>
+          <tr><td><code>sede_id</code><span class="fk">FK</span></td><td>→ Sede</td><td>Sede/alcance; null = todas</td></tr>
+          <tr><td><code>doble_factor</code></td><td>bool</td><td>2FA (TOTP) activo</td></tr>
+          <tr><td><code>ultimo_acceso</code></td><td>datetime</td><td>Auditoría de sesión</td></tr>
+          <tr><td><code>activo</code></td><td>bool</td><td>Habilitado / bloqueado</td></tr>
+        </tbody>
+      </table></div>
+      <div class="note"><b>Permisos paramétricos:</b> la matriz <code>ROL_PERMISO</code> guarda por cada par (rol, permiso) un <b>alcance</b>: <span class="estado e-ok">todos</span> <span class="estado e-w">propio</span> (solo sus registros, p. ej. vendedor) <span class="estado e-bad">ninguno</span>. Tú creas roles y ajustas la matriz desde Administración sin tocar código.</div>
+    </div>
+  </section>
+
+  <!-- ============ 3. DER: TERCEROS ============ -->
+  <section>
+    <div class="sec-head"><div class="n">3</div><div><h2>Terceros</h2><p>Un mismo tercero puede ser cliente, proveedor o ambos. Perfiles separados por rol comercial.</p></div></div>
+    <div class="card"><div class="card-head dom" style="--dom:var(--d-ter)">Diagrama entidad–relación</div>
+      <div class="diagram"><pre class="mermaid">
+%%{init:{'theme':'base','themeVariables':{'primaryColor':'#E6F3F3','primaryBorderColor':'#0E8A8A','primaryTextColor':'#1B2434','lineColor':'#0E8A8A','fontFamily':'Segoe UI','fontSize':'13px'}}}%%
+erDiagram
+  TERCERO ||--o| CLIENTE_PERFIL : "es cliente"
+  TERCERO ||--o| PROVEEDOR_PERFIL : "es proveedor"
+  TERCERO ||--o{ CONTACTO : tiene
+  VENDEDOR ||--o{ CLIENTE_PERFIL : atiende
+  USUARIO ||--o| VENDEDOR : "es (opcional)"
+  TERCERO {
+    int id PK
+    string nit UK
+    string nombre
+    string tipo_persona "natural|juridica"
+    string ciudad
+    bool es_cliente
+    bool es_proveedor
+  }
+  CLIENTE_PERFIL {
+    int tercero_id FK
+    string categoria "clinica|eps|distribuidor|cirujano"
+    int vendedor_id FK
+    decimal cupo_credito
+    int dias_credito
+  }
+  PROVEEDOR_PERFIL {
+    int tercero_id FK
+    string tipo "nacional|importado"
+    string moneda_default FK
+    int dias_credito
+  }
+      </pre></div>
+    </div>
+    <div class="card"><div class="card-head">Entidad · <code>ClientePerfil</code></div>
+      <div class="tbl-wrap"><table>
+        <thead><tr><th>Campo</th><th>Tipo</th><th>Descripción</th></tr></thead>
+        <tbody>
+          <tr><td><code>tercero_id</code><span class="pk">PK</span><span class="fk">FK</span></td><td>→ Tercero</td><td>1:1 con Tercero</td></tr>
+          <tr><td><code>categoria</code><span class="req">*</span></td><td>enum</td><td>Clínica/IPS · EPS/Aseguradora · Distribuidor · Cirujano/Particular</td></tr>
+          <tr><td><code>vendedor_id</code><span class="fk">FK</span></td><td>→ Vendedor</td><td>Vendedor asignado (comisión / cartera)</td></tr>
+          <tr><td><code>cupo_credito</code></td><td>decimal</td><td>Límite de crédito en COP</td></tr>
+          <tr><td><code>dias_credito</code></td><td>int</td><td>Plazo estándar (define vencimiento)</td></tr>
+          <tr><td><code>bloqueado</code></td><td>bool</td><td>Suspender ventas/crédito</td></tr>
+        </tbody>
+      </table></div>
+    </div>
+  </section>
+
+  <!-- ============ 4. DER: CARTERA ============ -->
+  <section>
+    <div class="sec-head"><div class="n">4</div><div><h2>Cartera — Cuentas por Cobrar</h2><p>La factura es el eje. Su saldo se reduce con aplicaciones de recaudo, retenciones y notas; las glosas lo congelan.</p></div></div>
+    <div class="card"><div class="card-head dom" style="--dom:var(--d-car)">Diagrama entidad–relación</div>
+      <div class="diagram"><pre class="mermaid">
+%%{init:{'theme':'base','themeVariables':{'primaryColor':'#FBEEE3','primaryBorderColor':'#C2571E','primaryTextColor':'#1B2434','lineColor':'#C2571E','fontFamily':'Segoe UI','fontSize':'13px'}}}%%
+erDiagram
+  TERCERO ||--o{ FACTURA_VENTA : "debe"
+  SEDE ||--o{ FACTURA_VENTA : "registra"
+  VENDEDOR ||--o{ FACTURA_VENTA : "vende"
+  FACTURA_VENTA ||--o{ NOTA_CD : "ajustada por"
+  FACTURA_VENTA ||--o{ GLOSA : "objetada por"
+  FACTURA_VENTA ||--o{ RECAUDO_APLICACION : "abonada por"
+  FACTURA_VENTA {
+    int id PK
+    string numero UK
+    int tercero_id FK
+    int sede_id FK
+    int vendedor_id FK
+    string origen "directa|consignacion"
+    date fecha_emision
+    date fecha_vencimiento
+    string moneda FK
+    decimal valor_total
+    decimal iva
+    decimal saldo
+    string estado
+  }
+  NOTA_CD {
+    int id PK
+    int factura_id FK
+    string tipo "credito|debito"
+    decimal valor
+    string motivo
+  }
+  GLOSA {
+    int id PK
+    int factura_id FK
+    decimal valor
+    string estado "abierta|conciliada|aceptada"
+  }
+      </pre></div>
+    </div>
+    <div class="card"><div class="card-head">Entidad · <code>FacturaVenta</code> <span style="opacity:.8;font-weight:400">(importada del ERP)</span></div>
+      <div class="tbl-wrap"><table>
+        <thead><tr><th>Campo</th><th>Tipo</th><th>Descripción</th></tr></thead>
+        <tbody>
+          <tr><td><code>id</code><span class="pk">PK</span></td><td>int</td><td>Identificador interno</td></tr>
+          <tr><td><code>numero</code><span class="req">*</span></td><td>string · único</td><td>N.º de factura del ERP (FV-…)</td></tr>
+          <tr><td><code>tercero_id</code><span class="fk">FK</span></td><td>→ Tercero</td><td>Cliente deudor</td></tr>
+          <tr><td><code>sede_id</code><span class="fk">FK</span></td><td>→ Sede</td><td>Sede/bodega de origen</td></tr>
+          <tr><td><code>vendedor_id</code><span class="fk">FK</span></td><td>→ Vendedor</td><td>Para comisión y reportes</td></tr>
+          <tr><td><code>origen</code></td><td>enum</td><td><code>directa</code> · <code>consignacion</code> (marca para Fase 2)</td></tr>
+          <tr><td><code>fecha_emision</code> / <code>fecha_vencimiento</code></td><td>date</td><td>Base del aging y del flujo proyectado</td></tr>
+          <tr><td><code>moneda</code><span class="fk">FK</span></td><td>→ Moneda</td><td>Normalmente COP</td></tr>
+          <tr><td><code>valor_total</code> · <code>iva</code></td><td>decimal</td><td>Valor facturado (IVA puede ser 0 si excluido)</td></tr>
+          <tr><td><code>saldo</code><span class="req">*</span></td><td>decimal</td><td><b>Derivado</b>, ver reglas §7</td></tr>
+          <tr><td><code>estado</code></td><td>enum</td><td>ver §8</td></tr>
+        </tbody>
+      </table></div>
+    </div>
+  </section>
+
+  <!-- ============ 5. DER: RECAUDOS ============ -->
+  <section>
+    <div class="sec-head"><div class="n">5</div><div><h2>Recaudos</h2><p>Un recaudo se distribuye entre varias facturas (aplicaciones), registra sus retenciones y puede dejar saldo a favor (anticipo).</p></div></div>
+    <div class="card"><div class="card-head dom" style="--dom:var(--d-rec)">Diagrama entidad–relación</div>
+      <div class="diagram"><pre class="mermaid">
+%%{init:{'theme':'base','themeVariables':{'primaryColor':'#E7F5EE','primaryBorderColor':'#2A9D6B','primaryTextColor':'#1B2434','lineColor':'#2A9D6B','fontFamily':'Segoe UI','fontSize':'13px'}}}%%
+erDiagram
+  TERCERO ||--o{ RECAUDO : "paga"
+  CUENTA_BANCARIA ||--o{ RECAUDO : "recibe en"
+  RECAUDO ||--o{ RECAUDO_APLICACION : "distribuye"
+  RECAUDO ||--o{ RECAUDO_RETENCION : "descuenta"
+  CONCEPTO_RETENCION ||--o{ RECAUDO_RETENCION : "define"
+  FACTURA_VENTA ||--o{ RECAUDO_APLICACION : "recibe abono"
+  RECAUDO ||--o| ANTICIPO : "genera saldo a favor"
+  RECAUDO {
+    int id PK
+    int tercero_id FK
+    int cuenta_id FK
+    date fecha
+    string medio "transf|cheque|efectivo|consig"
+    decimal valor_recibido
+    decimal total_retenciones
+    string referencia
+  }
+  RECAUDO_APLICACION {
+    int id PK
+    int recaudo_id FK
+    int factura_id FK
+    decimal valor_aplicado
+  }
+  RECAUDO_RETENCION {
+    int id PK
+    int recaudo_id FK
+    int concepto_id FK
+    decimal base
+    decimal valor
+  }
+      </pre></div>
+    </div>
+    <div class="note">Un mismo <code>Recaudo</code> puede tener N <code>RECAUDO_APLICACION</code> (varias facturas) + N <code>RECAUDO_RETENCION</code>. Si <code>valor_recibido + retenciones &gt; suma aplicada</code>, el excedente crea un <b>Anticipo</b> (saldo a favor del cliente) que se cruza en recaudos futuros.</div>
+  </section>
+
+  <!-- ============ 6. DER: CxP & PAGOS ============ -->
+  <section>
+    <div class="sec-head"><div class="n">6</div><div><h2>Cuentas por Pagar y Pagos</h2><p>Documentos por pagar en cualquier moneda; el pago aplica a documentos y registra la diferencia en cambio.</p></div></div>
+    <div class="card"><div class="card-head dom" style="--dom:var(--d-pag)">Diagrama entidad–relación</div>
+      <div class="diagram"><pre class="mermaid">
+%%{init:{'theme':'base','themeVariables':{'primaryColor':'#FBE9EC','primaryBorderColor':'#B0384F','primaryTextColor':'#1B2434','lineColor':'#B0384F','fontFamily':'Segoe UI','fontSize':'13px'}}}%%
+erDiagram
+  TERCERO ||--o{ DOCUMENTO_CXP : "se debe a"
+  MONEDA ||--o{ DOCUMENTO_CXP : "denominado en"
+  DOCUMENTO_CXP ||--o{ COSTO_IMPORTACION : "acumula"
+  DOCUMENTO_CXP ||--o{ PAGO_APLICACION : "pagado por"
+  TERCERO ||--o{ PAGO : "recibe"
+  CUENTA_BANCARIA ||--o{ PAGO : "sale de"
+  PAGO ||--o{ PAGO_APLICACION : "distribuye"
+  PAGO ||--o| DIFERENCIA_CAMBIO : "genera"
+  DOCUMENTO_CXP {
+    int id PK
+    string numero
+    int proveedor_id FK
+    string moneda FK
+    decimal valor_origen
+    decimal trm_causacion
+    decimal valor_cop
+    decimal saldo
+    date fecha_vencimiento
+    string tipo "nacional|importacion"
+  }
+  PAGO {
+    int id PK
+    int proveedor_id FK
+    int cuenta_id FK
+    string moneda FK
+    decimal trm_pago
+    decimal valor_origen
+    decimal valor_cop
+    date fecha
+  }
+      </pre></div>
+    </div>
+  </section>
+
+  <!-- ============ 7. REGLAS DE NEGOCIO ============ -->
+  <section>
+    <div class="sec-head"><div class="n">7</div><div><h2>Reglas de negocio y fórmulas</h2><p>La lógica que garantiza que la cartera y el flujo cuadren.</p></div></div>
+    <div class="rules">
+      <div class="rule calc"><h4>Saldo de una factura</h4><p>El saldo nunca se edita a mano: se recalcula.</p>
+        <div class="formula">saldo = valor_total<br>&nbsp;&nbsp;− Σ aplicaciones_recaudo<br>&nbsp;&nbsp;− Σ retenciones (de sus recaudos)<br>&nbsp;&nbsp;− Σ notas_credito + Σ notas_debito</div></div>
+      <div class="rule money"><h4>Multimoneda (CxP)</h4><p>Todo se guarda en moneda origen y su equivalente en COP.</p>
+        <div class="formula">valor_cop = valor_origen × trm_causacion</div>
+        <p style="margin-top:6px">Al pagar con TRM distinta se registra la <b>diferencia en cambio</b> (gasto/ingreso).</p>
+        <div class="formula">dif_cambio = valor_origen × (trm_pago − trm_causacion)</div></div>
+      <div class="rule calc"><h4>Aging (edades de cartera)</h4><p>Días vencidos al corte, por factura.</p>
+        <div class="formula">dias = fecha_corte − fecha_vencimiento<br>0–30 · 31–60 · 61–90 · +90</div></div>
+      <div class="rule calc"><h4>DSO — días de recaudo</h4><p>Indicador de liquidez del periodo.</p>
+        <div class="formula">DSO = (cartera_promedio / ventas_periodo) × días</div></div>
+      <div class="rule crit"><h4>Integridad de aplicaciones</h4><p>Una aplicación <b>nunca</b> puede exceder el saldo de la factura ni el disponible del recaudo. Validado en transacción; todo abono es reversible con trazabilidad.</p></div>
+      <div class="rule crit"><h4>Glosas congelan saldo</h4><p>El valor glosado se marca <b>en objeción</b> y se excluye del recaudable hasta conciliarse o aceptarse (nota crédito).</p></div>
+      <div class="rule money"><h4>Retenciones</h4><p>ReteFuente/ReteIVA/ReteICA se registran por concepto paramétrico (% y base). Reducen el saldo de la factura como parte del recaudo, no son efectivo recibido.</p></div>
+      <div class="rule"><h4>Flujo de caja proyectado</h4><p>Vista derivada (no tabla): entradas = vencimientos de cartera; salidas = vencimientos de CxP, agrupados por semana/mes.</p></div>
+    </div>
+  </section>
+
+  <!-- ============ 8. ESTADOS ============ -->
+  <section>
+    <div class="sec-head"><div class="n">8</div><div><h2>Estados (máquinas de estado)</h2><p>Enumeraciones controladas por reglas, no editables libremente.</p></div></div>
+    <div class="card"><div class="card-body">
+      <p style="margin:0 0 4px;font-weight:600">Factura de venta</p>
+      <div class="enum"><span class="estado e-ok">Corriente</span><span class="estado e-w">En mora</span><span class="estado e-bad">Vencida +90</span><span class="estado e-b">Abonada parcial</span><span class="estado e-ok">Cancelada</span><span class="estado e-w">En glosa</span></div>
+      <p style="margin:14px 0 4px;font-weight:600">Documento por pagar</p>
+      <div class="enum"><span class="estado e-b">Vigente</span><span class="estado e-w">Próximo a vencer</span><span class="estado e-bad">Vencido</span><span class="estado e-b">Pagado parcial</span><span class="estado e-ok">Pagado</span></div>
+      <p style="margin:14px 0 4px;font-weight:600">Glosa</p>
+      <div class="enum"><span class="estado e-bad">Abierta</span><span class="estado e-w">En conciliación</span><span class="estado e-ok">Conciliada</span><span class="estado e-b">Aceptada (nota crédito)</span></div>
+    </div></div>
+  </section>
+
+  <!-- ============ 9. IMPORTACIÓN ERP ============ -->
+  <section>
+    <div class="sec-head"><div class="n">9</div><div><h2>Importación desde el ERP</h2><p>Mapeo mínimo del Excel/SIESA a las tablas de BioSteel. Se valida y previsualiza antes de cargar.</p></div></div>
+    <div class="card"><div class="tbl-wrap"><table>
+      <thead><tr><th>Origen (ERP)</th><th>Destino</th><th>Regla</th></tr></thead>
+      <tbody>
+        <tr><td>NIT / Nombre cliente</td><td><code>Tercero</code> + <code>ClientePerfil</code></td><td>Crea si no existe (match por NIT)</td></tr>
+        <tr><td>N.º factura, fechas, valor, IVA</td><td><code>FacturaVenta</code></td><td>Upsert por <code>numero</code>; recalcula saldo</td></tr>
+        <tr><td>Saldo abierto inicial</td><td><code>FacturaVenta.saldo</code></td><td>Solo en carga inicial de migración</td></tr>
+        <tr><td>Proveedor, factura compra, moneda</td><td><code>Tercero</code> + <code>DocumentoCxp</code></td><td>Convierte a COP con TRM del día</td></tr>
+        <tr><td>Vendedor</td><td><code>Vendedor</code></td><td>Vincula a factura para comisión</td></tr>
+      </tbody>
+    </table></div>
+      <div class="note"><b>Pendiente para modelar con datos reales:</b> las columnas exactas del Excel de cartera del gerente, la regla de comisión y el tratamiento de IVA del material. El importador se diseña genérico (Excel/CSV) y luego se enchufa el conector SIESA.</div>
+    </div>
+  </section>
+
+  <div class="foot">
+    <b>BioSteel de Colombia S.A.S</b> · Modelo de datos Fase 1 — Flujo de caja · Borrador v0.1 para validación.<br>
+    Siguiente paso sugerido: <b>documento de seguridad</b> (análisis de vulnerabilidades + PRD de mejoras) y luego el esquema Prisma inicial.
+  </div>
+</div>
+
+<script>
+  document.getElementById("themeBtn").addEventListener("click",()=>{
+    const r=document.documentElement;
+    const cur=r.getAttribute("data-theme")||(matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light");
+    r.setAttribute("data-theme",cur==="dark"?"light":"dark");
+  });
+</script>

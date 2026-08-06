@@ -1,0 +1,512 @@
+// ==========================================================
+// BioSteel de Colombia S.A.S — Modelo de datos (Fase 1)
+// Flujo de caja: Cartera, CxP, Recaudos, Pagos, Retenciones
+// ==========================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// =============== ENUMS ===============
+
+enum TipoSede {
+  administrativa
+  bodega
+}
+
+enum TipoPersona {
+  natural
+  juridica
+}
+
+enum CategoriaCliente {
+  clinica_ips
+  eps_aseguradora
+  distribuidor
+  cirujano_particular
+}
+
+enum TipoProveedor {
+  nacional
+  importado
+}
+
+enum OrigenFactura {
+  directa
+  consignacion
+}
+
+enum EstadoFactura {
+  corriente
+  abonada_parcial
+  en_mora
+  vencida
+  en_glosa
+  cancelada
+}
+
+enum EstadoDocumento {
+  vigente
+  proximo_vencer
+  vencido
+  pagado_parcial
+  pagado
+}
+
+enum EstadoGlosa {
+  abierta
+  en_conciliacion
+  conciliada
+  aceptada
+}
+
+enum TipoNota {
+  credito
+  debito
+}
+
+enum MedioPago {
+  transferencia
+  cheque
+  efectivo
+  consignacion
+}
+
+enum TipoRetencion {
+  retefuente
+  reteiva
+  reteica
+}
+
+enum AlcancePermiso {
+  todos
+  propio
+  ninguno
+}
+
+// =============== 1. ORGANIZACIÓN ===============
+
+model Empresa {
+  id          Int     @id @default(autoincrement())
+  razonSocial String
+  nit         String  @unique
+  sedes       Sede[]
+  createdAt   DateTime @default(now())
+}
+
+model Sede {
+  id        Int      @id @default(autoincrement())
+  nombre    String
+  tipo      TipoSede
+  ciudad    String
+  empresa   Empresa  @relation(fields: [empresaId], references: [id])
+  empresaId Int
+  activo    Boolean  @default(true)
+
+  usuarios  Usuario[]
+  cuentas   CuentaBancaria[]
+  facturas  FacturaVenta[]
+
+  @@index([empresaId])
+}
+
+model CuentaBancaria {
+  id       Int      @id @default(autoincrement())
+  banco    String
+  numero   String
+  moneda   String   @default("COP")
+  sede     Sede     @relation(fields: [sedeId], references: [id])
+  sedeId   Int
+  activo   Boolean  @default(true)
+
+  recaudos Recaudo[]
+  pagos    Pago[]
+
+  @@index([sedeId])
+}
+
+model Moneda {
+  codigo  String  @id // COP, USD, EUR
+  nombre  String
+  simbolo String
+  tasas   TasaCambio[]
+}
+
+model TasaCambio {
+  id            Int      @id @default(autoincrement())
+  moneda        Moneda   @relation(fields: [monedaCodigo], references: [codigo])
+  monedaCodigo  String
+  fecha         DateTime @db.Date
+  valorCop      Decimal  @db.Decimal(18, 4)
+
+  @@unique([monedaCodigo, fecha])
+  @@index([fecha])
+}
+
+model ConceptoRetencion {
+  id          Int           @id @default(autoincrement())
+  nombre      String
+  tipo        TipoRetencion
+  porcentaje  Decimal       @db.Decimal(7, 4)
+  activo      Boolean       @default(true)
+  retenciones RecaudoRetencion[]
+}
+
+// =============== 2. SEGURIDAD ===============
+
+model Usuario {
+  id              Int       @id @default(autoincrement())
+  nombre          String
+  email           String    @unique
+  passwordHash    String
+  rol             Rol       @relation(fields: [rolId], references: [id])
+  rolId           Int
+  sede            Sede?     @relation(fields: [sedeId], references: [id])
+  sedeId          Int?      // null = todas las sedes (alcance global)
+  dobleFactor     Boolean   @default(false)
+  totpSecret      String?   // cifrado a nivel de app (ver BIO-SEC-013)
+  intentosFallidos Int      @default(0)
+  bloqueadoHasta  DateTime?
+  ultimoAcceso    DateTime?
+  activo          Boolean   @default(true)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  sesiones        Sesion[]
+  logs            LogAuditoria[]
+  vendedor        Vendedor?
+  recaudosCreados Recaudo[]
+  pagosCreados    Pago[]
+
+  @@index([rolId])
+}
+
+model Rol {
+  id        Int      @id @default(autoincrement())
+  nombre    String   @unique
+  sistema   Boolean  @default(false) // roles base no eliminables
+  usuarios  Usuario[]
+  permisos  RolPermiso[]
+  createdAt DateTime @default(now())
+}
+
+model Permiso {
+  id          Int      @id @default(autoincrement())
+  clave       String   @unique // p. ej. "recaudo.create"
+  modulo      String
+  descripcion String
+  roles       RolPermiso[]
+}
+
+model RolPermiso {
+  id        Int            @id @default(autoincrement())
+  rol       Rol            @relation(fields: [rolId], references: [id], onDelete: Cascade)
+  rolId     Int
+  permiso   Permiso        @relation(fields: [permisoId], references: [id], onDelete: Cascade)
+  permisoId Int
+  alcance   AlcancePermiso @default(ninguno)
+
+  @@unique([rolId, permisoId])
+  @@index([rolId])
+}
+
+// Sesión: token opaco; en la BD solo se guarda su hash (BIO-SEC-015)
+model Sesion {
+  id        String   @id // hash SHA-256 del token de sesión
+  usuario   Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  usuarioId Int
+  expiresAt DateTime
+  ip        String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  @@index([usuarioId])
+  @@index([expiresAt])
+}
+
+// Auditoría inmutable de operaciones sensibles (BIO-SEC-007)
+model LogAuditoria {
+  id             BigInt   @id @default(autoincrement())
+  usuario        Usuario? @relation(fields: [usuarioId], references: [id])
+  usuarioId      Int?
+  accion         String   // "recaudo.crear", "usuario.login", ...
+  entidad        String?
+  entidadId      String?
+  valorAnterior  Json?
+  valorNuevo     Json?
+  ip             String?
+  createdAt      DateTime @default(now())
+
+  @@index([usuarioId])
+  @@index([entidad, entidadId])
+  @@index([createdAt])
+}
+
+// =============== 3. TERCEROS ===============
+
+model Tercero {
+  id           Int      @id @default(autoincrement())
+  nit          String   @unique
+  nombre       String
+  tipoPersona  TipoPersona @default(juridica)
+  ciudad       String?
+  esCliente    Boolean  @default(false)
+  esProveedor  Boolean  @default(false)
+  createdAt    DateTime @default(now())
+
+  clientePerfil   ClientePerfil?
+  proveedorPerfil ProveedorPerfil?
+  contactos       Contacto[]
+  facturas        FacturaVenta[]
+  recaudos        Recaudo[]
+  documentosCxp   DocumentoCxp[]
+  pagos           Pago[]
+  anticipos       Anticipo[]
+
+  @@index([nombre])
+}
+
+model ClientePerfil {
+  tercero      Tercero          @relation(fields: [terceroId], references: [id], onDelete: Cascade)
+  terceroId    Int              @id
+  categoria    CategoriaCliente
+  vendedor     Vendedor?        @relation(fields: [vendedorId], references: [id])
+  vendedorId   Int?
+  cupoCredito  Decimal          @default(0) @db.Decimal(18, 2)
+  diasCredito  Int              @default(30)
+  bloqueado    Boolean          @default(false)
+
+  @@index([vendedorId])
+}
+
+model ProveedorPerfil {
+  tercero        Tercero       @relation(fields: [terceroId], references: [id], onDelete: Cascade)
+  terceroId      Int           @id
+  tipo           TipoProveedor @default(nacional)
+  monedaDefault  String        @default("COP")
+  diasCredito    Int           @default(30)
+}
+
+model Vendedor {
+  id         Int      @id @default(autoincrement())
+  nombre     String
+  usuario    Usuario? @relation(fields: [usuarioId], references: [id])
+  usuarioId  Int?     @unique
+  activo     Boolean  @default(true)
+
+  clientes   ClientePerfil[]
+  facturas   FacturaVenta[]
+}
+
+model Contacto {
+  id        Int     @id @default(autoincrement())
+  tercero   Tercero @relation(fields: [terceroId], references: [id], onDelete: Cascade)
+  terceroId Int
+  nombre    String
+  email     String?
+  telefono  String?
+  cargo     String?
+
+  @@index([terceroId])
+}
+
+// =============== 4. CARTERA (CxC) ===============
+
+model FacturaVenta {
+  id               Int           @id @default(autoincrement())
+  numero           String        @unique
+  tercero          Tercero       @relation(fields: [terceroId], references: [id])
+  terceroId        Int
+  sede             Sede          @relation(fields: [sedeId], references: [id])
+  sedeId           Int
+  vendedor         Vendedor?     @relation(fields: [vendedorId], references: [id])
+  vendedorId       Int?
+  origen           OrigenFactura @default(directa)
+  fechaEmision     DateTime      @db.Date
+  fechaVencimiento DateTime      @db.Date
+  moneda           String        @default("COP")
+  valorTotal       Decimal       @db.Decimal(18, 2)
+  iva              Decimal       @default(0) @db.Decimal(18, 2)
+  saldo            Decimal       @db.Decimal(18, 2) // derivado, ver lib de negocio
+  estado           EstadoFactura @default(corriente)
+  createdAt        DateTime      @default(now())
+
+  aplicaciones RecaudoAplicacion[]
+  notas        NotaCd[]
+  glosas       Glosa[]
+
+  @@index([terceroId])
+  @@index([sedeId])
+  @@index([vendedorId])
+  @@index([estado])
+  @@index([fechaVencimiento])
+}
+
+model NotaCd {
+  id        Int          @id @default(autoincrement())
+  factura   FacturaVenta @relation(fields: [facturaId], references: [id])
+  facturaId Int
+  tipo      TipoNota
+  valor     Decimal      @db.Decimal(18, 2)
+  motivo    String
+  fecha     DateTime     @default(now()) @db.Date
+
+  @@index([facturaId])
+}
+
+model Glosa {
+  id          Int          @id @default(autoincrement())
+  factura     FacturaVenta @relation(fields: [facturaId], references: [id])
+  facturaId   Int
+  valor       Decimal      @db.Decimal(18, 2)
+  estado      EstadoGlosa  @default(abierta)
+  descripcion String?
+  fecha       DateTime     @default(now()) @db.Date
+
+  @@index([facturaId])
+  @@index([estado])
+}
+
+// =============== 5. RECAUDOS ===============
+
+model Recaudo {
+  id               Int             @id @default(autoincrement())
+  tercero          Tercero         @relation(fields: [terceroId], references: [id])
+  terceroId        Int
+  cuenta           CuentaBancaria? @relation(fields: [cuentaId], references: [id])
+  cuentaId         Int?
+  fecha            DateTime        @default(now()) @db.Date
+  medio            MedioPago
+  valorRecibido    Decimal         @db.Decimal(18, 2)
+  totalRetenciones Decimal         @default(0) @db.Decimal(18, 2)
+  referencia       String?
+  createdBy        Usuario         @relation(fields: [createdById], references: [id])
+  createdById      Int
+  createdAt        DateTime        @default(now())
+
+  aplicaciones RecaudoAplicacion[]
+  retenciones  RecaudoRetencion[]
+  anticipo     Anticipo?
+
+  @@index([terceroId])
+  @@index([fecha])
+}
+
+model RecaudoAplicacion {
+  id            Int          @id @default(autoincrement())
+  recaudo       Recaudo      @relation(fields: [recaudoId], references: [id], onDelete: Cascade)
+  recaudoId     Int
+  factura       FacturaVenta @relation(fields: [facturaId], references: [id])
+  facturaId     Int
+  valorAplicado Decimal      @db.Decimal(18, 2)
+
+  @@index([recaudoId])
+  @@index([facturaId])
+}
+
+model RecaudoRetencion {
+  id         Int               @id @default(autoincrement())
+  recaudo    Recaudo           @relation(fields: [recaudoId], references: [id], onDelete: Cascade)
+  recaudoId  Int
+  concepto   ConceptoRetencion @relation(fields: [conceptoId], references: [id])
+  conceptoId Int
+  base       Decimal           @db.Decimal(18, 2)
+  valor      Decimal           @db.Decimal(18, 2)
+
+  @@index([recaudoId])
+}
+
+model Anticipo {
+  id        Int      @id @default(autoincrement())
+  tercero   Tercero  @relation(fields: [terceroId], references: [id])
+  terceroId Int
+  recaudo   Recaudo? @relation(fields: [recaudoId], references: [id])
+  recaudoId Int?     @unique
+  saldo     Decimal  @db.Decimal(18, 2)
+  createdAt DateTime @default(now())
+
+  @@index([terceroId])
+}
+
+// =============== 6. CUENTAS POR PAGAR & PAGOS ===============
+
+model DocumentoCxp {
+  id               Int             @id @default(autoincrement())
+  numero           String
+  proveedor        Tercero         @relation(fields: [proveedorId], references: [id])
+  proveedorId      Int
+  moneda           String          @default("COP")
+  valorOrigen      Decimal         @db.Decimal(18, 2)
+  trmCausacion     Decimal         @default(1) @db.Decimal(18, 4)
+  valorCop         Decimal         @db.Decimal(18, 2)
+  saldo            Decimal         @db.Decimal(18, 2)
+  fechaEmision     DateTime        @db.Date
+  fechaVencimiento DateTime        @db.Date
+  tipo             TipoProveedor   @default(nacional)
+  estado           EstadoDocumento @default(vigente)
+  createdAt        DateTime        @default(now())
+
+  costos       CostoImportacion[]
+  aplicaciones PagoAplicacion[]
+
+  @@unique([numero, proveedorId])
+  @@index([proveedorId])
+  @@index([estado])
+  @@index([fechaVencimiento])
+}
+
+model CostoImportacion {
+  id          Int          @id @default(autoincrement())
+  documento   DocumentoCxp @relation(fields: [documentoId], references: [id], onDelete: Cascade)
+  documentoId Int
+  concepto    String // flete, arancel, nacionalización...
+  valor       Decimal      @db.Decimal(18, 2)
+
+  @@index([documentoId])
+}
+
+model Pago {
+  id           Int             @id @default(autoincrement())
+  proveedor    Tercero         @relation(fields: [proveedorId], references: [id])
+  proveedorId  Int
+  cuenta       CuentaBancaria? @relation(fields: [cuentaId], references: [id])
+  cuentaId     Int?
+  moneda       String          @default("COP")
+  trmPago      Decimal         @default(1) @db.Decimal(18, 4)
+  valorOrigen  Decimal         @db.Decimal(18, 2)
+  valorCop     Decimal         @db.Decimal(18, 2)
+  fecha        DateTime        @default(now()) @db.Date
+  createdBy    Usuario         @relation(fields: [createdById], references: [id])
+  createdById  Int
+  createdAt    DateTime        @default(now())
+
+  aplicaciones     PagoAplicacion[]
+  diferenciaCambio DiferenciaCambio?
+
+  @@index([proveedorId])
+  @@index([fecha])
+}
+
+model PagoAplicacion {
+  id            Int          @id @default(autoincrement())
+  pago          Pago         @relation(fields: [pagoId], references: [id], onDelete: Cascade)
+  pagoId        Int
+  documento     DocumentoCxp @relation(fields: [documentoId], references: [id])
+  documentoId   Int
+  valorAplicado Decimal      @db.Decimal(18, 2)
+
+  @@index([pagoId])
+  @@index([documentoId])
+}
+
+model DiferenciaCambio {
+  id     Int     @id @default(autoincrement())
+  pago   Pago    @relation(fields: [pagoId], references: [id], onDelete: Cascade)
+  pagoId Int     @unique
+  valor  Decimal @db.Decimal(18, 2) // + ingreso / - gasto
+}
