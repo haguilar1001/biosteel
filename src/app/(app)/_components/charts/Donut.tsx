@@ -22,7 +22,7 @@ function arco(cx: number, cy: number, r: number, ir: number, s: number, e: numbe
 export function Donut({
   data,
   centro,
-  size = 190,
+  size = 300,
 }: {
   data: SegmentoDonut[];
   centro?: { valor: string; etiqueta: string };
@@ -34,8 +34,8 @@ export function Donut({
   const gap = 2; // grados de separación
 
   return (
-    <div style={{ display: "flex", gap: 18, alignItems: "center", flexWrap: "wrap" }}>
-      <svg viewBox={`0 0 ${size} ${size}`} width={size} height={size} style={{ flex: "0 0 auto" }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 16, alignItems: "center" }}>
+      <svg viewBox={`0 0 ${size} ${size}`} width={size} height={size} style={{ maxWidth: "100%", flex: "0 0 auto" }}>
         {data.map((d) => {
           const frac = Math.abs(d.valor) / total;
           const s = ang + gap / 2;
@@ -55,13 +55,13 @@ export function Donut({
           </>
         )}
       </svg>
-      <div style={{ flex: 1, minWidth: 160, display: "flex", flexDirection: "column", gap: 6 }}>
+      <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: 2 }}>
         {data.map((d) => (
-          <div key={d.label} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12.5 }}>
-            <i style={{ width: 11, height: 11, borderRadius: 3, background: d.color, flex: "0 0 auto" }} />
-            <span style={{ flex: 1, color: "var(--muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{d.label}</span>
+          <div key={d.label} style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13, padding: "6px 4px", borderTop: "1px solid var(--line)" }}>
+            <i style={{ width: 12, height: 12, borderRadius: 3, background: d.color, flex: "0 0 auto" }} />
+            <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{d.label}</span>
             <span className="num" style={{ fontWeight: 700 }}>{formatCOP(d.valor)}</span>
-            <span className="num" style={{ color: "var(--muted)", minWidth: 52, textAlign: "right" }}>{formatPorcentaje((Math.abs(d.valor) / total) * 100)}</span>
+            <span className="num" style={{ color: "var(--muted)", minWidth: 58, textAlign: "right" }}>{formatPorcentaje((Math.abs(d.valor) / total) * 100)}</span>
           </div>
         ))}
       </div>

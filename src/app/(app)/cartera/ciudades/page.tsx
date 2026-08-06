@@ -28,7 +28,10 @@ export default async function CarteraPorCiudadPage({
   for (const c of ciudades) color.set(c.ciudad, c.ciudad === "Sin ciudad" ? "var(--muted)" : CATS[idx++ % CATS.length]!);
 
   const donutData = ciudades.map((c) => ({ label: c.ciudad, valor: c.saldo, color: color.get(c.ciudad)! }));
-  const mapaData = ciudades.map((c) => ({ ciudad: c.ciudad, valor: c.saldo, color: color.get(c.ciudad)! }));
+  const mapaData = ciudades.map((c) => ({
+    ciudad: c.ciudad, valor: c.saldo, color: color.get(c.ciudad)!,
+    ips: c.ips.map((i) => ({ cliente: i.cliente, saldo: i.saldo })),
+  }));
 
   return (
     <>

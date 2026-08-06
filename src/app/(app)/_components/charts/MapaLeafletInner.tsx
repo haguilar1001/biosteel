@@ -23,6 +23,7 @@ export interface BurbujaCiudad {
   ciudad: string;
   valor: number;
   color: string;
+  ips?: { cliente: string; saldo: number }[];
 }
 
 export default function MapaLeafletInner({ data }: { data: BurbujaCiudad[] }) {
@@ -47,7 +48,17 @@ export default function MapaLeafletInner({ data }: { data: BurbujaCiudad[] }) {
             pathOptions={{ color: d.color, fillColor: d.color, fillOpacity: 0.55, weight: 1.6 }}
           >
             <Tooltip direction="top" offset={[0, -4]}>
-              <span><strong>{d.ciudad}</strong><br />{cop(d.valor)}</span>
+              <div style={{ minWidth: 190 }}>
+                <div style={{ fontWeight: 800, borderBottom: "1px solid #ddd", paddingBottom: 3, marginBottom: 4 }}>
+                  📍 {d.ciudad} · {cop(d.valor)}
+                </div>
+                {d.ips?.map((x) => (
+                  <div key={x.cliente} style={{ display: "flex", justifyContent: "space-between", gap: 14, fontSize: 11.5, padding: "1px 0" }}>
+                    <span style={{ maxWidth: 210, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{x.cliente}</span>
+                    <span style={{ fontWeight: 700, whiteSpace: "nowrap" }}>{cop(x.saldo)}</span>
+                  </div>
+                ))}
+              </div>
             </Tooltip>
           </CircleMarker>
         ))}
