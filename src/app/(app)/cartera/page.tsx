@@ -45,6 +45,8 @@ export default async function CarteraPage({
 
   const resumen = await resumenCartera(usuario, alcance);
   const filas = await listarFacturas(usuario, alcance, { cubeta: cubetaFiltro, q });
+  const totalValor = filas.reduce((s, f) => s + f.valorTotal, 0);
+  const totalSaldo = filas.reduce((s, f) => s + f.saldo, 0);
 
   return (
     <>
@@ -94,6 +96,14 @@ export default async function CarteraPage({
               </tr>
             </thead>
             <tbody>
+              {filas.length > 0 && (
+                <tr className="fila-total">
+                  <td colSpan={5} style={{ fontWeight: 800 }}>Total · {filas.length} facturas</td>
+                  <td className="r num" style={{ fontWeight: 800 }}>{formatCOP(totalValor)}</td>
+                  <td className="r num" style={{ fontWeight: 800 }}>{formatCOP(totalSaldo)}</td>
+                  <td colSpan={2}></td>
+                </tr>
+              )}
               {filas.length === 0 ? (
                 <tr><td colSpan={9} className="empty">No hay facturas en tu alcance{cubetaFiltro ? " para este filtro" : ""}.</td></tr>
               ) : (

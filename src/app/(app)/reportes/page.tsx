@@ -22,6 +22,10 @@ export default async function ReportesPage() {
   const maxDias = Math.max(1, ...categorias.map((c) => c.diasPromedio));
   const maxMes = Math.max(1, ...meses.map((m) => m.monto));
 
+  const totCartera = vendedores.reduce((s, v) => s + v.carteraAsignada, 0);
+  const totRecaudo = vendedores.reduce((s, v) => s + v.recaudado, 0);
+  const efecTotal = totCartera + totRecaudo > 0 ? (totRecaudo / (totCartera + totRecaudo)) * 100 : 0;
+
   return (
     <>
       <div className="page-head">
@@ -83,6 +87,14 @@ export default async function ReportesPage() {
               </tr>
             </thead>
             <tbody>
+              {vendedores.length > 0 && (
+                <tr className="fila-total">
+                  <td style={{ fontWeight: 800 }}>Total · {vendedores.length} vendedores</td>
+                  <td className="r num" style={{ fontWeight: 800 }}>{formatCOP(totCartera)}</td>
+                  <td className="r num" style={{ fontWeight: 800 }}>{formatCOP(totRecaudo)}</td>
+                  <td className="num" style={{ fontWeight: 800 }}>{formatPorcentaje(efecTotal)}</td>
+                </tr>
+              )}
               {vendedores.length === 0 ? (
                 <tr><td colSpan={4} className="empty">Sin datos de vendedores en tu alcance.</td></tr>
               ) : (

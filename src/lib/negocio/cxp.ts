@@ -80,9 +80,13 @@ function filtroBusqueda(q?: string): Prisma.DocumentoCxpWhereInput {
 export async function listarDocumentosCxp(
   q?: string,
   corte: Date = new Date(),
-): Promise<{ filas: FilaCxp[]; total: number }> {
+): Promise<{ filas: FilaCxp[]; total: number; suma: number }> {
   const where: Prisma.DocumentoCxpWhereInput = { ...whereConSaldo(), ...filtroBusqueda(q) };
-  const total = await prisma.documentoCxp.count({ where });
+  const [total, agg] = await Promise.all([
+    prisma.documentoCxp.count({ where }),
+    prisma.documentoCxp.aggregate({ where, _sum: { saldo: true } }),
+  ]);
+  const suma = agg._sum.saldo?.toNumber() ?? 0;
   const docs = await prisma.documentoCxp.findMany({
     where,
     select: {
@@ -106,7 +110,7 @@ export async function listarDocumentosCxp(
     dias: diasVencido(d.fechaVencimiento, corte),
     estado: d.estado,
   }));
-  return { filas, total };
+  return { filas, total, suma };
 }
 
 export interface FilaProveedorCxp {

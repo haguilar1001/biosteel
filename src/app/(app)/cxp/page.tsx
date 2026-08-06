@@ -25,7 +25,7 @@ export default async function CxpPage({
   const { q } = await searchParams;
 
   const resumen = await resumenCxp();
-  const { filas, total } = await listarDocumentosCxp(q);
+  const { filas, total, suma } = await listarDocumentosCxp(q);
 
   return (
     <>
@@ -83,6 +83,13 @@ export default async function CxpPage({
               </tr>
             </thead>
             <tbody>
+              {filas.length > 0 && (
+                <tr className="fila-total">
+                  <td colSpan={4} style={{ fontWeight: 800 }}>Total neto · {total} documento{total === 1 ? "" : "s"}</td>
+                  <td className="r num" style={{ fontWeight: 800 }}>{formatCOP(suma)}</td>
+                  <td colSpan={2}></td>
+                </tr>
+              )}
               {filas.length === 0 ? (
                 <tr><td colSpan={7} className="empty">Sin resultados{q ? ` para "${q}"` : ""}.</td></tr>
               ) : (
