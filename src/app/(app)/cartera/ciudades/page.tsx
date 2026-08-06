@@ -6,7 +6,7 @@ import { requirePermiso } from "@/server/auth-context";
 import { formatCOP, formatPorcentaje } from "@/lib/format";
 import { carteraPorCiudad } from "@/lib/negocio/cartera";
 import { Donut } from "../../_components/charts/Donut";
-import { MapaColombia } from "../../_components/charts/MapaColombia";
+import { MapaCartera } from "../../_components/charts/MapaCartera";
 
 const CATS = ["var(--cat-1)", "var(--cat-2)", "var(--cat-3)", "var(--cat-4)", "var(--cat-5)", "var(--cat-6)", "var(--cat-7)", "var(--cat-8)"];
 
@@ -49,8 +49,8 @@ export default async function CarteraPorCiudadPage({
       <div className="grid two" style={{ marginBottom: 12, gridTemplateColumns: "1fr 1.4fr" }}>
         <div className="card">
           <div className="chart-head">Mapa de cartera</div>
-          <div className="card-body" style={{ display: "grid", placeItems: "center" }}>
-            <MapaColombia data={mapaData} size={300} />
+          <div className="card-body">
+            <MapaCartera data={mapaData} />
           </div>
         </div>
         <div className="card">

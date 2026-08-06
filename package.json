@@ -29,15 +29,18 @@
   "dependencies": {
     "@node-rs/argon2": "^2.0.2",
     "@prisma/client": "^6.2.1",
+    "leaflet": "^1.9.4",
     "next": "^15.1.4",
     "nodemailer": "^9.0.4",
     "otpauth": "^9.3.6",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "react-leaflet": "^5.0.0",
     "server-only": "^0.0.1",
     "zod": "^3.24.1"
   },
   "devDependencies": {
+    "@types/leaflet": "^1.9.22",
     "@types/node": "^22.10.5",
     "@types/nodemailer": "^8.0.1",
     "@types/react": "^19.0.6",

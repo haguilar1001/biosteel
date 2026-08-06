@@ -39,7 +39,7 @@ export function middleware(request: NextRequest) {
     `default-src 'self'`,
     `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${scriptExtra}`,
     `style-src 'self' 'unsafe-inline'`,
-    `img-src 'self' data: blob:`,
+    `img-src 'self' data: blob: https://*.tile.openstreetmap.org https://tile.openstreetmap.org`,
     `font-src 'self'`,
     `connect-src 'self'${connectExtra}`,
     `object-src 'none'`,
