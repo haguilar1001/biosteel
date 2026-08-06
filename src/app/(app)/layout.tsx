@@ -11,16 +11,18 @@ import { logoutAction } from "../login/actions";
 import { Nav, type ItemNav } from "./_components/Nav";
 
 const MODULOS: { href: string; label: string; permiso: PermisoClave }[] = [
-  { href: "/dashboard", label: "Inicio", permiso: "dashboard.view" },
-  { href: "/flujo", label: "Flujo de Caja", permiso: "cxp.view" },
-  { href: "/cartera", label: "Cartera", permiso: "cartera.view" },
-  { href: "/recaudos", label: "Recaudos", permiso: "recaudo.create" },
-  { href: "/cxp", label: "Cuentas por Pagar", permiso: "cxp.view" },
-  { href: "/pagos", label: "Pagos", permiso: "pago.create" },
-  { href: "/obligaciones", label: "Obligaciones", permiso: "cxp.view" },
-  { href: "/impuestos", label: "Impuestos", permiso: "cxp.view" },
-  { href: "/reportes", label: "Reportes", permiso: "reporte.view" },
-  { href: "/indicadores", label: "Indicadores", permiso: "cxp.view" },
+  { href: "/dashboard", label: "🏠 Inicio", permiso: "dashboard.view" },
+  { href: "/flujo", label: "💵 Flujo de Caja", permiso: "cxp.view" },
+  { href: "/cartera", label: "📥 Cartera", permiso: "cartera.view" },
+  // Ocultos del menú hasta que se necesiten (recaudos/pagos manuales).
+  // Las páginas siguen existiendo; para reactivarlas, descomentar:
+  // { href: "/recaudos", label: "💰 Recaudos", permiso: "recaudo.create" },
+  { href: "/cxp", label: "📤 Cuentas por Pagar", permiso: "cxp.view" },
+  // { href: "/pagos", label: "💸 Pagos", permiso: "pago.create" },
+  { href: "/obligaciones", label: "🏦 Obligaciones", permiso: "cxp.view" },
+  { href: "/impuestos", label: "🧾 Impuestos", permiso: "cxp.view" },
+  { href: "/reportes", label: "📊 Reportes", permiso: "reporte.view" },
+  { href: "/indicadores", label: "📈 Indicadores", permiso: "cxp.view" },
 ];
 
 // La pestaña Administración aparece si el usuario tiene CUALQUIER permiso de admin.
@@ -44,7 +46,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   // Administración: visible con cualquier permiso de admin.
   for (const p of PERMISOS_ADMIN) {
     if (await puede(usuario, p)) {
-      items.push({ href: "/admin", label: "Administración" });
+      items.push({ href: "/admin", label: "⚙️ Administración" });
       break;
     }
   }
@@ -55,7 +57,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     <>
       <header className="appbar">
         <div className="logo">
-          🦴 <div>BioSteel<small>DE COLOMBIA S.A.S</small></div>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/BIOSTEEL.png" alt="BioSteel de Colombia S.A.S" className="logo-img" />
         </div>
         <div className="sep" />
         <div className="ctx">

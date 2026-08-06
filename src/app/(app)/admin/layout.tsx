@@ -8,10 +8,10 @@ import type { PermisoClave } from "@/lib/rbac/permissions";
 import { AdminNav, type ItemSub } from "./_components/AdminNav";
 
 const SUB: { href: string; label: string; permiso: PermisoClave }[] = [
-  { href: "/admin/usuarios", label: "Usuarios", permiso: "usuario.manage" },
-  { href: "/admin/roles", label: "Roles y permisos", permiso: "rol.manage" },
-  { href: "/admin/terceros", label: "Terceros", permiso: "tercero.manage" },
-  { href: "/admin/auditoria", label: "Auditoría", permiso: "auditoria.view" },
+  { href: "/admin/usuarios", label: "👥 Usuarios", permiso: "usuario.manage" },
+  { href: "/admin/roles", label: "🔐 Roles y permisos", permiso: "rol.manage" },
+  { href: "/admin/terceros", label: "🧑‍💼 Terceros", permiso: "tercero.manage" },
+  { href: "/admin/auditoria", label: "📜 Auditoría", permiso: "auditoria.view" },
 ];
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {

@@ -34,7 +34,11 @@ export interface IndicadorCalc extends Indicador {
 
 const ANIO = 2026;
 
-export async function calcularIndicadores(usuario: UsuarioConRol, alcance: Alcance): Promise<IndicadorCalc[]> {
+export async function calcularIndicadores(
+  usuario: UsuarioConRol,
+  alcance: Alcance,
+  mesesSel?: number[],
+): Promise<IndicadorCalc[]> {
   const [meses, cartera, cxp, comprasAgg] = await Promise.all([
     flujoMensual(ANIO),
     resumenCartera(usuario, alcance),
@@ -45,9 +49,14 @@ export async function calcularIndicadores(usuario: UsuarioConRol, alcance: Alcan
     }),
   ]);
 
-  const ultimo = meses[meses.length - 1];
-  const utilidadMes = ultimo ? ultimo.ingresos - ultimo.egresos : null;
-  const ventasMes = ultimo?.ingresos ?? 0; // proxy
+  // Meses seleccionados para los indicadores mensuales. "Sumar el período":
+  // Utilidad y ventas = suma de los meses elegidos. Default: último mes con datos.
+  const sel = mesesSel && mesesSel.length > 0
+    ? meses.filter((m) => mesesSel.includes(m.mes))
+    : (meses.length ? [meses[meses.length - 1]!] : []);
+  const nSel = sel.length || 1;
+  const utilidadMes = sel.length ? sel.reduce((s, m) => s + (m.ingresos - m.egresos), 0) : null;
+  const ventasMes = sel.reduce((s, m) => s + m.ingresos, 0); // proxy: ventas del período
 
   // Cartera positiva (por edades) y vencida > 90
   const cub = cartera.porCubeta;
@@ -55,8 +64,8 @@ export async function calcularIndicadores(usuario: UsuarioConRol, alcance: Alcan
   const vencida90 = cub.d91_120.monto + cub.mas120.monto;
   const pctVencida90 = carteraPositiva > 0 ? (vencida90 / carteraPositiva) * 100 : 0;
 
-  // DSO ≈ CxC / ventas del mes × 30 (proxy de ventas = ingresos del mes)
-  const dso = ventasMes > 0 ? (cartera.total / ventasMes) * 30 : null;
+  // DSO ≈ CxC / ventas del período × (30 × nMeses). Proxy de ventas = ingresos.
+  const dso = ventasMes > 0 ? (cartera.total / ventasMes) * (30 * nSel) : null;
 
   // Rotación CxP ≈ compras anualizadas / CxP (compras YTD proveedores × 12/nMeses)
   const nMeses = meses.filter((m) => m.egresos > 0).length || 1;
@@ -67,9 +76,10 @@ export async function calcularIndicadores(usuario: UsuarioConRol, alcance: Alcan
   const base: Indicador[] = [
     {
       num: 26, nombre: "Utilidad mensual", formula: "Ventas − Cuentas por pagar − Gastos",
-      metaTexto: "> $1.000M COP", frecuencia: "Mensual", real: utilidadMes, unidad: "cop",
-      metaValor: 1_000_000_000, metaDir: "mayor",
-      nota: "Aprox: Ingresos − Egresos del mes (flujo de caja). Confirmar mapeo de Ventas/Gastos.",
+      metaTexto: nSel === 1 ? "> $1.000M COP" : `> $1.000M/mes × ${nSel} = $${nSel}.000M`,
+      frecuencia: "Mensual", real: utilidadMes, unidad: "cop",
+      metaValor: 1_000_000_000 * nSel, metaDir: "mayor",
+      nota: "Aprox: Ingresos − Egresos del período (flujo de caja). Confirmar mapeo de Ventas/Gastos.",
     },
     {
       num: 31, nombre: "Días de cartera — DSO", formula: "(Cuentas por cobrar / Ventas del período) × 30",
@@ -87,12 +97,13 @@ export async function calcularIndicadores(usuario: UsuarioConRol, alcance: Alcan
       num: 33, nombre: "Rotación de cuentas por pagar", formula: "Compras / Promedio de Cuentas por Pagar",
       metaTexto: "≥ 6 veces/año", frecuencia: "Mensual", real: rotacionCxp, unidad: "veces",
       metaValor: 6, metaDir: "mayor",
-      nota: "Aprox: compras = egresos a proveedores (anualizados); CxP = saldo actual (sin promedio histórico).",
+      nota: "Aprox: compras = egresos a proveedores (anualizados); CxP = saldo actual (sin promedio histórico). No depende del mes seleccionado.",
     },
     {
       num: 34, nombre: "% Cartera vencida (> 90 días)", formula: "(Cartera > 90 días / Total cartera) × 100",
       metaTexto: "< 15%", frecuencia: "Mensual", real: pctVencida90, unidad: "pct",
       metaValor: 15, metaDir: "menor",
+      nota: "Sobre el saldo actual de cartera. No depende del mes seleccionado.",
     },
   ];
 

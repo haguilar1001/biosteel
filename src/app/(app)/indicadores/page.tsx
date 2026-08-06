@@ -1,11 +1,17 @@
 // ==========================================================
 // Indicadores Financieros (Contabilidad) — medidores y semáforos.
+// Filtro por mes con selección múltiple (suma el período) para los
+// indicadores mensuales; los de saldo actual son foto de hoy.
 // ==========================================================
 import { requirePermiso } from "@/server/auth-context";
 import { alcanceDe } from "@/lib/rbac/authorize";
 import { formatCOP, formatPorcentaje, formatNumero } from "@/lib/format";
 import { calcularIndicadores, type IndicadorCalc } from "@/lib/negocio/indicadores";
+import { flujoMensual } from "@/lib/negocio/flujo";
 import { Medidor } from "../_components/charts/Medidor";
+
+const ANIO = 2026;
+const MES_ABBR = ["", "ENE", "FEB", "MAR", "ABR", "MAY", "JUN", "JUL", "AGO", "SEP", "OCT", "NOV", "DIC"];
 
 function fmtValor(v: number, unidad: IndicadorCalc["unidad"]): string {
   switch (unidad) {
@@ -16,13 +22,42 @@ function fmtValor(v: number, unidad: IndicadorCalc["unidad"]): string {
   }
 }
 
-export default async function IndicadoresPage() {
+export default async function IndicadoresPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ meses?: string }>;
+}) {
   const { usuario } = await requirePermiso("cxp.view");
   const alcanceCartera = await alcanceDe(usuario, "cartera.view");
-  const indicadores = await calcularIndicadores(usuario, alcanceCartera === "ninguno" ? "todos" : alcanceCartera);
+  const alcInd = alcanceCartera === "ninguno" ? "todos" : alcanceCartera;
+
+  // Meses con datos (para habilitar chips) y último con datos (default).
+  const meses = await flujoMensual(ANIO);
+  const conDatos = meses.filter((m) => m.ingresos > 0 || m.egresos > 0).map((m) => m.mes);
+  const ultimo = conDatos.length ? conDatos[conDatos.length - 1]! : null;
+
+  // Selección desde la URL (?meses=1,2,3); default = último mes con datos.
+  const sp = await searchParams;
+  const pedidos = (sp.meses ?? "")
+    .split(",")
+    .map((s) => Number(s.trim()))
+    .filter((n) => Number.isInteger(n) && conDatos.includes(n));
+  const seleccion = pedidos.length ? [...new Set(pedidos)].sort((a, b) => a - b)
+    : (ultimo ? [ultimo] : []);
+
+  const indicadores = await calcularIndicadores(usuario, alcInd, seleccion);
 
   const cumplen = indicadores.filter((i) => i.cumple === true).length;
   const conDato = indicadores.filter((i) => i.cumple != null).length;
+
+  // Construye el href al alternar (toggle) un mes en la selección.
+  const hrefToggle = (m: number) => {
+    const set = new Set(seleccion);
+    if (set.has(m)) set.delete(m); else set.add(m);
+    const arr = [...set].sort((a, b) => a - b);
+    return arr.length ? `/indicadores?meses=${arr.join(",")}` : "/indicadores";
+  };
+  const periodoLabel = seleccion.map((m) => MES_ABBR[m]).join(" · ");
 
   return (
     <>
@@ -30,7 +65,36 @@ export default async function IndicadoresPage() {
         <div>
           <div className="eyebrow">Contabilidad</div>
           <h1>Indicadores Financieros</h1>
-          <p>{cumplen} de {conDato} indicadores en meta · corte {ANIO_LABEL()}</p>
+          <p>{formatNumero(cumplen)} de {formatNumero(conDato)} indicadores en meta · corte {ANIO_LABEL()}</p>
+        </div>
+      </div>
+
+      {/* Filtro por mes (multi-selección) */}
+      <div className="card" style={{ marginBottom: 12 }}>
+        <div className="chart-head">
+          Período de los indicadores mensuales
+          <span className="hact">{periodoLabel || "sin datos"}{seleccion.length > 1 ? ` · ${seleccion.length} meses (suma)` : ""}</span>
+        </div>
+        <div className="card-body" style={{ paddingTop: 12 }}>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+            {MES_ABBR.slice(1).map((lbl, i) => {
+              const m = i + 1;
+              const hayDatos = conDatos.includes(m);
+              const activo = seleccion.includes(m);
+              if (!hayDatos) {
+                return (
+                  <span key={m} className="mes-chip off" aria-disabled title="Sin movimientos">{lbl}</span>
+                );
+              }
+              return (
+                <a key={m} href={hrefToggle(m)} className={`mes-chip${activo ? " on" : ""}`}>{lbl}</a>
+              );
+            })}
+          </div>
+          <p className="flag" style={{ marginTop: 10 }}>
+            Utilidad (#26) y DSO (#31) se calculan sobre el período seleccionado (suma). Los de saldo actual
+            (% cartera vencida, rotación CxP) son foto de hoy y no cambian con el mes.
+          </p>
         </div>
       </div>
 
