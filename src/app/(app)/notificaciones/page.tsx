@@ -1,25 +1,29 @@
 // ==========================================================
 // Notificaciones: recordatorios de pago de obligaciones (correo N días
-// antes). Muestra configuración, próximos recordatorios y bitácora.
+// antes). Configuración editable desde la app, próximos recordatorios,
+// bitácora y correo de anuncio.
 // ==========================================================
 import { requirePermiso } from "@/server/auth-context";
+import { puede } from "@/lib/rbac/authorize";
 import { prisma } from "@/lib/db";
-import { env } from "@/lib/env";
 import { formatCOP, formatNumero } from "@/lib/format";
 import { listarObligaciones, tipoLabel } from "@/lib/negocio/obligaciones";
-import { destinatarios } from "@/lib/notificaciones/recordatorios";
+import { obtenerConfig } from "@/lib/notificaciones/config";
 import { correoConfigurado } from "@/lib/notificaciones/mailer";
 import { EjecutarBtn } from "./EjecutarBtn";
+import { AnuncioBtn } from "./AnuncioBtn";
+import { ConfigForm } from "./ConfigForm";
 
 const fmtFecha = (d: Date) => new Intl.DateTimeFormat("es-CO", { day: "2-digit", month: "short", year: "2-digit" }).format(d);
 const fmtHora = (d: Date) => new Intl.DateTimeFormat("es-CO", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }).format(d);
 
 export default async function NotificacionesPage() {
-  await requirePermiso("cxp.view");
+  const { usuario } = await requirePermiso("cxp.view");
+  const puedeEditar = await puede(usuario, "parametro.manage");
 
-  const diasAntes = env.NOTIF_DIAS_ANTES;
+  const cfg = await obtenerConfig();
+  const diasAntes = cfg.diasAntes;
   const smtpOk = correoConfigurado();
-  const to = destinatarios();
 
   const obligaciones = await listarObligaciones();
   const proximos = obligaciones
@@ -36,22 +40,34 @@ export default async function NotificacionesPage() {
           <h1>Notificaciones</h1>
           <p>Recordatorios de pago por correo, {diasAntes} días antes del vencimiento</p>
         </div>
-        <div className="toolbar"><EjecutarBtn /></div>
+        <div className="toolbar" style={{ gap: 8 }}>
+          <AnuncioBtn />
+          <EjecutarBtn />
+        </div>
       </div>
 
       <div className="card" style={{ marginBottom: 12 }}>
         <div className="chart-head">Configuración</div>
         <div className="card-body">
-          <p style={{ margin: "0 0 6px" }}><strong>Destinatarios:</strong> {to.join(" · ")}</p>
-          <p style={{ margin: "0 0 6px" }}><strong>Anticipación:</strong> {diasAntes} días antes de cada cuota</p>
           <p style={{ margin: 0 }}>
             <strong>Correo:</strong>{" "}
             {smtpOk
               ? <span className="tag t-ok">Configurado</span>
               : <span className="tag t-w1">Sin configurar — falta SMTP en variables de entorno</span>}
+            {cfg.origen === "entorno" && (
+              <span className="flag" style={{ marginLeft: 10 }}>Usando valores por defecto (aún no se ha guardado config)</span>
+            )}
+            {cfg.origen === "bd" && cfg.actualizadoEn && (
+              <span className="flag" style={{ marginLeft: 10 }}>
+                Últ. cambio {fmtHora(cfg.actualizadoEn)}{cfg.actualizadoPor ? ` · ${cfg.actualizadoPor}` : ""}
+              </span>
+            )}
           </p>
+
+          <ConfigForm diasAntes={diasAntes} destinatariosRaw={cfg.destinatariosRaw} puedeEditar={puedeEditar} />
+
           {!smtpOk && (
-            <p style={{ margin: "10px 0 0", color: "var(--muted)", fontSize: 13 }}>
+            <p style={{ margin: "12px 0 0", color: "var(--muted)", fontSize: 13 }}>
               Para activar el envío, configura en Railway: <code>SMTP_HOST</code>, <code>SMTP_PORT</code>, <code>SMTP_USER</code>,
               <code>SMTP_PASS</code>, <code>SMTP_FROM</code> y <code>CRON_SECRET</code>. Luego programa un cron diario que llame
               a <code>/api/notificaciones/run?secret=…</code>.

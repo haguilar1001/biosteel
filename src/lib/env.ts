@@ -18,6 +18,9 @@ const schema = z.object({
 
   // --- Notificaciones ---
   CRON_SECRET: z.string().optional(), // protege el endpoint /api/notificaciones/run
+  // Destinatarios de los recordatorios de vencimientos financieros:
+  //   Alejandro Aguilar        -> alejandro.aguilar@biosteeldecolombia.com
+  //   María Angélica Parejo     -> cooradministrativa@biosteeldecolombia.com (coordinación administrativa)
   NOTIF_EMAILS: z.string().default("alejandro.aguilar@biosteeldecolombia.com,cooradministrativa@biosteeldecolombia.com"),
   NOTIF_DIAS_ANTES: z.coerce.number().default(5),
 });

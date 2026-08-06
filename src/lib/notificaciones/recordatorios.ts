@@ -5,14 +5,10 @@
 // ==========================================================
 import "server-only";
 import { prisma } from "@/lib/db";
-import { env } from "@/lib/env";
 import { formatCOP, formatPorcentaje } from "@/lib/format";
 import { listarObligaciones, tipoLabel, type FilaObligacion } from "@/lib/negocio/obligaciones";
+import { obtenerConfig } from "./config";
 import { enviarCorreo, correoConfigurado } from "./mailer";
-
-export function destinatarios(): string[] {
-  return env.NOTIF_EMAILS.split(",").map((s) => s.trim()).filter(Boolean);
-}
 
 export interface ResultadoRecordatorios {
   configurado: boolean;
@@ -45,8 +41,9 @@ function plantilla(o: FilaObligacion, fechaISO: string, dias: number): string {
 }
 
 export async function ejecutarRecordatorios(hoy: Date = new Date()): Promise<ResultadoRecordatorios> {
-  const diasAntes = env.NOTIF_DIAS_ANTES;
-  const to = destinatarios();
+  const cfg = await obtenerConfig();
+  const diasAntes = cfg.diasAntes;
+  const to = cfg.destinatarios;
   const obligaciones = await listarObligaciones(hoy);
 
   // Ventana: próximo pago dentro de los próximos `diasAntes` días (inclusive).

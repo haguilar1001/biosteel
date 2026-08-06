@@ -27,7 +27,18 @@ function getTransport(): Transporter | null {
   return transporter;
 }
 
-export async function enviarCorreo(to: string[], asunto: string, html: string): Promise<void> {
+export interface Adjunto {
+  filename: string;
+  content: Buffer;
+  cid?: string; // para incrustar imágenes en el HTML con src="cid:..."
+}
+
+export async function enviarCorreo(
+  to: string[],
+  asunto: string,
+  html: string,
+  adjuntos?: Adjunto[],
+): Promise<void> {
   const t = getTransport();
   if (!t) throw new Error("Correo no configurado (faltan SMTP_HOST/USER/PASS).");
   await t.sendMail({
@@ -35,5 +46,6 @@ export async function enviarCorreo(to: string[], asunto: string, html: string): 
     to: to.join(", "),
     subject: asunto,
     html,
+    attachments: adjuntos,
   });
 }

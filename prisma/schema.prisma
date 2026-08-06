@@ -578,6 +578,16 @@ model NotificacionEnviada {
   @@index([enviadaEn])
 }
 
+// Configuración editable (desde la app) de los recordatorios de pago.
+// Fila única (id = 1). Si no existe, se usan los valores de entorno como respaldo.
+model ConfigNotificaciones {
+  id             Int      @id @default(1)
+  diasAntes      Int      @default(5)
+  destinatarios  String // correos separados por coma
+  actualizadoEn  DateTime @updatedAt
+  actualizadoPor String?
+}
+
 // =============== 7. FLUJO DE CAJA & PRESUPUESTO ===============
 // Modelo de flujo por movimientos + presupuesto mensual por grupo.
 // (Alimentado desde el Excel "PRESUPUESTO 2026": TBFlujo, TBRecaudos,
