@@ -1,14 +1,15 @@
 // ==========================================================
 // Lógica de negocio: cartera (cuentas por cobrar)
-// Todas las consultas reciben el filtro anti-IDOR (BIO-SEC-001):
-// nunca se consulta cartera sin el `where` del alcance del usuario.
+// Trabaja en NETO (como CxP). Todas las consultas reciben el filtro
+// anti-IDOR (BIO-SEC-001): nunca se consulta cartera sin el alcance.
 // ==========================================================
 import "server-only";
+import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import type { UsuarioConRol } from "@/lib/auth/session";
 import type { Alcance } from "@/lib/rbac/permissions";
 import { filtroFacturas } from "@/lib/rbac/authorize";
-import { cubetaDe, cubetaFactura, diasVencido, estaVencida, type CubetaAging } from "./aging";
+import { cubetaDe, diasVencido, type CubetaAging } from "./aging";
 
 export interface CeldaCubeta {
   monto: number;
@@ -16,21 +17,23 @@ export interface CeldaCubeta {
 }
 
 export interface ResumenCartera {
-  total: number;
-  vencido: number;
+  total: number;            // NETO
   cantidadFacturas: number;
-  /** Cartera por cubeta de antigüedad, en el orden de CUBETAS. */
-  porCubeta: Record<CubetaAging, CeldaCubeta>;
+  vencido: number;          // neto de facturas positivas vencidas
+  alDia: number;            // neto de positivas al día / por vencer
+  anticipos: number;        // saldos a favor de clientes (negativo)
+  anticiposCantidad: number;
+  porCubeta: Record<CubetaAging, CeldaCubeta>; // aging de facturas positivas
 }
 
 export interface FilaCartera {
   id: number;
   numero: string;
   cliente: string;
-  sede: string;
+  nit: string | null;
+  concepto: string | null;
   fechaEmision: Date;
   fechaVencimiento: Date;
-  moneda: string;
   valorTotal: number;
   saldo: number;
   dias: number;
@@ -38,175 +41,139 @@ export interface FilaCartera {
   estado: string;
 }
 
-/** Facturas "abiertas": con saldo pendiente y no canceladas. */
-function whereAbiertas(usuario: UsuarioConRol, alcance: Alcance) {
-  return {
-    ...filtroFacturas(usuario, alcance),
-    estado: { not: "cancelada" as const },
-    saldo: { gt: 0 },
-  };
+/** Facturas con saldo (positivo o negativo); excluye canceladas y saldo 0. */
+function whereConSaldo(usuario: UsuarioConRol, alcance: Alcance): Prisma.FacturaVentaWhereInput {
+  return { ...filtroFacturas(usuario, alcance), estado: { not: "cancelada" }, saldo: { not: 0 } };
 }
 
 function celdasVacias(): Record<CubetaAging, CeldaCubeta> {
   return {
-    d1_30: { monto: 0, cantidad: 0 },
-    d31_60: { monto: 0, cantidad: 0 },
-    d61_90: { monto: 0, cantidad: 0 },
-    d91_120: { monto: 0, cantidad: 0 },
-    mas120: { monto: 0, cantidad: 0 },
+    d1_30: { monto: 0, cantidad: 0 }, d31_60: { monto: 0, cantidad: 0 },
+    d61_90: { monto: 0, cantidad: 0 }, d91_120: { monto: 0, cantidad: 0 }, mas120: { monto: 0, cantidad: 0 },
   };
 }
 
-/**
- * Resumen de cartera (totales + aging) respetando el alcance.
- * El aging se calcula en la app porque depende de la fecha de corte.
- */
 export async function resumenCartera(
   usuario: UsuarioConRol,
   alcance: Alcance,
   corte: Date = new Date(),
 ): Promise<ResumenCartera> {
   const facturas = await prisma.facturaVenta.findMany({
-    where: whereAbiertas(usuario, alcance),
+    where: whereConSaldo(usuario, alcance),
     select: { saldo: true, fechaVencimiento: true },
   });
 
   const porCubeta = celdasVacias();
-  let total = 0;
-  let vencido = 0;
+  const r: ResumenCartera = {
+    total: 0, cantidadFacturas: facturas.length, vencido: 0, alDia: 0,
+    anticipos: 0, anticiposCantidad: 0, porCubeta,
+  };
 
   for (const f of facturas) {
     const saldo = f.saldo.toNumber();
-    total += saldo;
-    if (estaVencida(f.fechaVencimiento, corte)) vencido += saldo;
-    const cubeta = cubetaFactura(f.fechaVencimiento, corte);
-    porCubeta[cubeta].monto += saldo;
-    porCubeta[cubeta].cantidad += 1;
+    const dias = diasVencido(f.fechaVencimiento, corte);
+    r.total += saldo;
+    // Vencida/al día en NETO (incluye notas), como CxP.
+    if (dias > 0) r.vencido += saldo; else r.alDia += saldo;
+    if (saldo < 0) {
+      r.anticipos += saldo;
+      r.anticiposCantidad += 1;
+    } else {
+      // Aging por edades: solo facturas positivas (por cobrar).
+      const cubeta = cubetaDe(dias);
+      porCubeta[cubeta].monto += saldo;
+      porCubeta[cubeta].cantidad += 1;
+    }
   }
+  return r;
+}
 
-  return { total, vencido, cantidadFacturas: facturas.length, porCubeta };
+function filtroBusqueda(q?: string): Prisma.FacturaVentaWhereInput {
+  const t = q?.trim();
+  if (!t) return {};
+  return {
+    OR: [
+      { numero: { contains: t, mode: "insensitive" } },
+      { concepto: { contains: t, mode: "insensitive" } },
+      { tercero: { is: { nombre: { contains: t, mode: "insensitive" } } } },
+      { tercero: { is: { nit: { contains: t, mode: "insensitive" } } } },
+    ],
+  };
 }
 
 export interface FiltrosCartera {
   cubeta?: CubetaAging;
-  categoria?: string;
   q?: string;
-  limite?: number;
 }
 
-/** Listado detallado de facturas abiertas (para la pantalla de cartera). */
 export async function listarFacturas(
   usuario: UsuarioConRol,
   alcance: Alcance,
   filtros: FiltrosCartera = {},
   corte: Date = new Date(),
-): Promise<FilaCartera[]> {
-  const busqueda = filtros.q?.trim();
-  const facturas = await prisma.facturaVenta.findMany({
-    where: {
-      ...whereAbiertas(usuario, alcance),
-      ...(busqueda
-        ? {
-            OR: [
-              { numero: { contains: busqueda, mode: "insensitive" } },
-              { tercero: { is: { nombre: { contains: busqueda, mode: "insensitive" } } } },
-            ],
-          }
-        : {}),
-    },
-    select: {
-      id: true,
-      numero: true,
-      moneda: true,
-      valorTotal: true,
-      saldo: true,
-      fechaEmision: true,
-      fechaVencimiento: true,
-      estado: true,
-      tercero: { select: { nombre: true } },
-      sede: { select: { nombre: true } },
-    },
-    orderBy: { fechaVencimiento: "asc" },
-    take: filtros.limite ?? 500,
-  });
+): Promise<{ filas: FilaCartera[]; total: number; suma: number }> {
+  const where: Prisma.FacturaVentaWhereInput = { ...whereConSaldo(usuario, alcance), ...filtroBusqueda(filtros.q) };
+  const [total, agg, facturas] = await Promise.all([
+    prisma.facturaVenta.count({ where }),
+    prisma.facturaVenta.aggregate({ where, _sum: { saldo: true } }),
+    prisma.facturaVenta.findMany({
+      where,
+      select: {
+        id: true, numero: true, valorTotal: true, saldo: true, fechaEmision: true,
+        fechaVencimiento: true, estado: true, concepto: true,
+        tercero: { select: { nombre: true, nit: true } },
+      },
+      orderBy: { saldo: "desc" },
+      take: 300,
+    }),
+  ]);
 
-  const filas = facturas.map((f): FilaCartera => {
+  let filas = facturas.map((f): FilaCartera => {
     const dias = diasVencido(f.fechaVencimiento, corte);
     return {
-      id: f.id,
-      numero: f.numero,
-      cliente: f.tercero.nombre,
-      sede: f.sede.nombre,
-      fechaEmision: f.fechaEmision,
-      fechaVencimiento: f.fechaVencimiento,
-      moneda: f.moneda,
-      valorTotal: f.valorTotal.toNumber(),
-      saldo: f.saldo.toNumber(),
-      dias,
-      cubeta: cubetaDe(dias),
+      id: f.id, numero: f.numero, cliente: f.tercero.nombre, nit: f.tercero.nit,
+      concepto: f.concepto, fechaEmision: f.fechaEmision, fechaVencimiento: f.fechaVencimiento,
+      valorTotal: f.valorTotal.toNumber(), saldo: f.saldo.toNumber(), dias, cubeta: cubetaDe(dias),
       estado: f.estado,
     };
   });
-
-  return filtros.cubeta ? filas.filter((f) => f.cubeta === filtros.cubeta) : filas;
+  if (filtros.cubeta) filas = filas.filter((f) => f.cubeta === filtros.cubeta && f.saldo > 0);
+  return { filas, total, suma: agg._sum.saldo?.toNumber() ?? 0 };
 }
 
-/** Top clientes por saldo de cartera (para el dashboard). */
-export interface FilaTopCliente {
+// ---------- Informe por cliente (neto) ----------
+export interface FilaClienteCartera {
+  clienteId: number;
   cliente: string;
-  categoria: string | null;
-  saldo: number;
+  nit: string | null;
+  documentos: number;
+  saldoNeto: number;
   vencido: number;
-  diasPromedio: number;
+  diasMax: number;
 }
 
-export async function topClientes(
+export async function carteraPorCliente(
   usuario: UsuarioConRol,
   alcance: Alcance,
-  limite = 10,
+  q?: string,
   corte: Date = new Date(),
-): Promise<FilaTopCliente[]> {
+): Promise<FilaClienteCartera[]> {
   const facturas = await prisma.facturaVenta.findMany({
-    where: whereAbiertas(usuario, alcance),
-    select: {
-      saldo: true,
-      fechaVencimiento: true,
-      terceroId: true,
-      tercero: {
-        select: { nombre: true, clientePerfil: { select: { categoria: true } } },
-      },
-    },
+    where: { ...whereConSaldo(usuario, alcance), ...filtroBusqueda(q) },
+    select: { saldo: true, fechaVencimiento: true, terceroId: true, tercero: { select: { nombre: true, nit: true } } },
   });
-
-  const mapa = new Map<
-    number,
-    { cliente: string; categoria: string | null; saldo: number; vencido: number; diasPonderados: number }
-  >();
-
+  const mapa = new Map<number, FilaClienteCartera>();
   for (const f of facturas) {
-    const saldo = f.saldo.toNumber();
-    const dias = Math.max(0, diasVencido(f.fechaVencimiento, corte));
-    const actual = mapa.get(f.terceroId) ?? {
-      cliente: f.tercero.nombre,
-      categoria: f.tercero.clientePerfil?.categoria ?? null,
-      saldo: 0,
-      vencido: 0,
-      diasPonderados: 0,
+    const s = f.saldo.toNumber();
+    const dias = diasVencido(f.fechaVencimiento, corte);
+    const e = mapa.get(f.terceroId) ?? {
+      clienteId: f.terceroId, cliente: f.tercero.nombre, nit: f.tercero.nit,
+      documentos: 0, saldoNeto: 0, vencido: 0, diasMax: 0,
     };
-    actual.saldo += saldo;
-    if (estaVencida(f.fechaVencimiento, corte)) actual.vencido += saldo;
-    actual.diasPonderados += dias * saldo;
-    mapa.set(f.terceroId, actual);
+    e.documentos += 1;
+    e.saldoNeto += s;
+    if (s > 0 && dias > 0) { e.vencido += s; e.diasMax = Math.max(e.diasMax, dias); }
+    mapa.set(f.terceroId, e);
   }
-
-  return [...mapa.values()]
-    .map((c) => ({
-      cliente: c.cliente,
-      categoria: c.categoria,
-      saldo: c.saldo,
-      vencido: c.vencido,
-      diasPromedio: c.saldo > 0 ? Math.round(c.diasPonderados / c.saldo) : 0,
-    }))
-    .sort((a, b) => b.saldo - a.saldo)
-    .slice(0, limite);
+  return [...mapa.values()].sort((a, b) => b.saldoNeto - a.saldoNeto);
 }

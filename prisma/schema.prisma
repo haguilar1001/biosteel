@@ -340,6 +340,8 @@ model FacturaVenta {
   iva              Decimal       @default(0) @db.Decimal(18, 2)
   saldo            Decimal       @db.Decimal(18, 2) // derivado, ver lib de negocio
   estado           EstadoFactura @default(corriente)
+  concepto         String?       // "Notas" del reporte SIESA
+  plazo            Int?          // días de plazo pactado
   createdAt        DateTime      @default(now())
 
   aplicaciones RecaudoAplicacion[]
