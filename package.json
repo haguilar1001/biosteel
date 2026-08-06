@@ -29,6 +29,7 @@
     "@node-rs/argon2": "^2.0.2",
     "@prisma/client": "^6.2.1",
     "next": "^15.1.4",
+    "nodemailer": "^9.0.4",
     "otpauth": "^9.3.6",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
@@ -37,6 +38,7 @@
   },
   "devDependencies": {
     "@types/node": "^22.10.5",
+    "@types/nodemailer": "^8.0.1",
     "@types/react": "^19.0.6",
     "@types/react-dom": "^19.0.3",
     "eslint": "^9.18.0",

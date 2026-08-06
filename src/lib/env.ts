@@ -8,6 +8,18 @@ const schema = z.object({
   DATABASE_URL: z.string().url("DATABASE_URL debe ser una URL válida de PostgreSQL"),
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   APP_URL: z.string().url().default("http://localhost:3000"),
+
+  // --- Correo (opcional; si falta, las notificaciones no se envían) ---
+  SMTP_HOST: z.string().optional(),
+  SMTP_PORT: z.coerce.number().optional(),
+  SMTP_USER: z.string().optional(),
+  SMTP_PASS: z.string().optional(),
+  SMTP_FROM: z.string().optional(), // "BioSteel <no-reply@biosteeldecolombia.com>"
+
+  // --- Notificaciones ---
+  CRON_SECRET: z.string().optional(), // protege el endpoint /api/notificaciones/run
+  NOTIF_EMAILS: z.string().default("alejandro.aguilar@biosteeldecolombia.com,cooradministrativa@biosteeldecolombia.com"),
+  NOTIF_DIAS_ANTES: z.coerce.number().default(5),
 });
 
 const parsed = schema.safeParse(process.env);

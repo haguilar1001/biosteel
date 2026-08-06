@@ -543,6 +543,22 @@ model ObligacionFinanciera {
   createdAt        DateTime  @default(now())
 }
 
+// Bitácora de notificaciones enviadas (evita duplicados).
+model NotificacionEnviada {
+  id            Int      @id @default(autoincrement())
+  clave         String   @unique // p.ej. "obligacion:296446:2026-09-19"
+  tipo          String
+  referencia    String
+  fechaEvento   DateTime @db.Date
+  destinatarios String
+  asunto        String
+  estado        String   @default("enviada") // enviada | error
+  error         String?
+  enviadaEn     DateTime @default(now())
+
+  @@index([enviadaEn])
+}
+
 // =============== 7. FLUJO DE CAJA & PRESUPUESTO ===============
 // Modelo de flujo por movimientos + presupuesto mensual por grupo.
 // (Alimentado desde el Excel "PRESUPUESTO 2026": TBFlujo, TBRecaudos,
