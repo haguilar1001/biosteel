@@ -90,6 +90,7 @@ export async function resumenCartera(
 export interface FiltrosCartera {
   cubeta?: CubetaAging;
   categoria?: string;
+  q?: string;
   limite?: number;
 }
 
@@ -100,8 +101,19 @@ export async function listarFacturas(
   filtros: FiltrosCartera = {},
   corte: Date = new Date(),
 ): Promise<FilaCartera[]> {
+  const busqueda = filtros.q?.trim();
   const facturas = await prisma.facturaVenta.findMany({
-    where: whereAbiertas(usuario, alcance),
+    where: {
+      ...whereAbiertas(usuario, alcance),
+      ...(busqueda
+        ? {
+            OR: [
+              { numero: { contains: busqueda, mode: "insensitive" } },
+              { tercero: { is: { nombre: { contains: busqueda, mode: "insensitive" } } } },
+            ],
+          }
+        : {}),
+    },
     select: {
       id: true,
       numero: true,

@@ -7,6 +7,7 @@ import { requirePermiso } from "@/server/auth-context";
 import { formatCOP } from "@/lib/format";
 import { resumenCartera, listarFacturas } from "@/lib/negocio/cartera";
 import { CUBETAS, type CubetaAging } from "@/lib/negocio/aging";
+import { Buscador } from "../_components/Buscador";
 
 const CUBETA_TAG: Record<CubetaAging, string> = {
   d1_30: "t-ok",
@@ -36,14 +37,14 @@ const fmtFecha = (d: Date) => new Intl.DateTimeFormat("es-CO", { day: "2-digit",
 export default async function CarteraPage({
   searchParams,
 }: {
-  searchParams: Promise<{ edad?: string }>;
+  searchParams: Promise<{ edad?: string; q?: string }>;
 }) {
   const { usuario, alcance } = await requirePermiso("cartera.view");
-  const { edad } = await searchParams;
+  const { edad, q } = await searchParams;
   const cubetaFiltro = CUBETAS.some((c) => c.clave === edad) ? (edad as CubetaAging) : undefined;
 
   const resumen = await resumenCartera(usuario, alcance);
-  const filas = await listarFacturas(usuario, alcance, { cubeta: cubetaFiltro });
+  const filas = await listarFacturas(usuario, alcance, { cubeta: cubetaFiltro, q });
 
   return (
     <>
@@ -80,6 +81,9 @@ export default async function CarteraPage({
           <span className="hact">
             {filas.length} facturas{cubetaFiltro ? ` · filtro: ${CUBETA_LABEL[cubetaFiltro]}` : ""}
           </span>
+        </div>
+        <div className="card-body" style={{ paddingBottom: 0 }}>
+          <Buscador action="/cartera" q={q} placeholder="Cliente o N.º de factura…" />
         </div>
         <div className="tbl-wrap">
           <table>

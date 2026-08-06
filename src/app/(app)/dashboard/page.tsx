@@ -71,8 +71,8 @@ export default async function DashboardPage() {
         </div>
         <div className="kpi">
           <div className="klabel">Cuentas por pagar</div>
-          <div className="kval num">{cxp ? formatCOP(cxp.totalCop) : "—"}</div>
-          <div className="ksub"><span className="flag">{cxp ? `${cxp.cantidad} documentos · vencido ${formatCOP(cxp.vencidoCop)}` : "Sin acceso"}</span></div>
+          <div className="kval num">{cxp ? formatCOP(cxp.totalNeto) : "—"}</div>
+          <div className="ksub"><span className="flag">{cxp ? `${cxp.cantidad} documentos · vencido ${formatCOP(cxp.vencidoNeto)}` : "Sin acceso"}</span></div>
         </div>
         <div className="kpi k-ok">
           <div className="klabel">Recaudo del mes</div>
