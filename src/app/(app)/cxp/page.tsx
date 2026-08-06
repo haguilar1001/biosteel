@@ -60,7 +60,7 @@ export default async function CxpPage({
         <a href="/cxp/anticipos" className="kpi k-w" style={{ textDecoration: "none" }}>
           <div className="klabel">Anticipos (incluidos)</div>
           <div className="kval num">{formatCOP(resumen.anticipos)}</div>
-          <div className="ksub"><span className="flag">{resumen.anticiposCantidad} docs · ver detalle →</span></div>
+          <div className="ksub"><span className="flag">{formatNumero(resumen.anticiposCantidad)} docs · ver detalle →</span></div>
         </a>
       </div>
 
@@ -68,8 +68,8 @@ export default async function CxpPage({
         <div className="chart-head">
           Documentos por pagar
           <span className="hact">
-            {q ? `${total} coincidencias` : `${resumen.cantidad} documentos`}
-            {filas.length < total ? ` · mostrando ${filas.length}` : ""}
+            {q ? `${formatNumero(total)} coincidencias` : `${formatNumero(resumen.cantidad)} documentos`}
+            {filas.length < total ? ` · mostrando ${formatNumero(filas.length)}` : ""}
           </span>
         </div>
         <div className="card-body" style={{ paddingBottom: 0 }}>
@@ -90,7 +90,7 @@ export default async function CxpPage({
             <tbody>
               {filas.length > 0 && (
                 <tr className="fila-total">
-                  <td colSpan={4} style={{ fontWeight: 800 }}>Total neto · {total} documento{total === 1 ? "" : "s"}</td>
+                  <td colSpan={4} style={{ fontWeight: 800 }}>Total neto · {formatNumero(total)} documento{total === 1 ? "" : "s"}</td>
                   <td className="r num" style={{ fontWeight: 800 }}>{formatCOP(suma)}</td>
                   <td colSpan={2}></td>
                 </tr>

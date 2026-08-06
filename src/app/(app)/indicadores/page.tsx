@@ -3,14 +3,14 @@
 // ==========================================================
 import { requirePermiso } from "@/server/auth-context";
 import { alcanceDe } from "@/lib/rbac/authorize";
-import { formatCOP, formatPorcentaje } from "@/lib/format";
+import { formatCOP, formatPorcentaje, formatNumero } from "@/lib/format";
 import { calcularIndicadores, type IndicadorCalc } from "@/lib/negocio/indicadores";
 import { Medidor } from "../_components/charts/Medidor";
 
 function fmtValor(v: number, unidad: IndicadorCalc["unidad"]): string {
   switch (unidad) {
     case "cop": return formatCOP(v);
-    case "dias": return `${Math.round(v)} días`;
+    case "dias": return `${formatNumero(Math.round(v))} días`;
     case "pct": return formatPorcentaje(v);
     case "veces": return `${v.toFixed(1).replace(".", ",")} veces`;
   }

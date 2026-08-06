@@ -1,6 +1,7 @@
 // Administración · Auditoría (registro inmutable · BIO-SEC-007).
 import { requirePermiso } from "@/server/auth-context";
 import { prisma } from "@/lib/db";
+import { formatNumero } from "@/lib/format";
 
 const fmtFechaHora = (d: Date) =>
   new Intl.DateTimeFormat("es-CO", { day: "2-digit", month: "short", year: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit" }).format(d);
@@ -24,7 +25,7 @@ export default async function AuditoriaPage() {
   return (
     <div className="card">
       <div className="chart-head">
-        Registro de auditoría <span className="hact">últimos {eventos.length} eventos</span>
+        Registro de auditoría <span className="hact">últimos {formatNumero(eventos.length)} eventos</span>
       </div>
       <div className="tbl-wrap">
         <table>

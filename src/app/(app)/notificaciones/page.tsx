@@ -5,7 +5,7 @@
 import { requirePermiso } from "@/server/auth-context";
 import { prisma } from "@/lib/db";
 import { env } from "@/lib/env";
-import { formatCOP } from "@/lib/format";
+import { formatCOP, formatNumero } from "@/lib/format";
 import { listarObligaciones, tipoLabel } from "@/lib/negocio/obligaciones";
 import { destinatarios } from "@/lib/notificaciones/recordatorios";
 import { correoConfigurado } from "@/lib/notificaciones/mailer";
@@ -88,7 +88,7 @@ export default async function NotificacionesPage() {
         </div>
 
         <div className="card">
-          <div className="chart-head">Bitácora de envíos <span className="hact">últimos {historial.length}</span></div>
+          <div className="chart-head">Bitácora de envíos <span className="hact">últimos {formatNumero(historial.length)}</span></div>
           <div className="tbl-wrap">
             <table>
               <thead><tr><th>Enviado</th><th>Asunto</th><th>Estado</th></tr></thead>

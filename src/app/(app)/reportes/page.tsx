@@ -3,7 +3,7 @@
 // Respeta el alcance del usuario (vendedor ve solo lo propio).
 // ==========================================================
 import { requirePermiso } from "@/server/auth-context";
-import { formatCOP, formatPorcentaje } from "@/lib/format";
+import { formatCOP, formatPorcentaje, formatNumero } from "@/lib/format";
 import { recaudoPorVendedor, diasPromedioPorCategoria, recaudoMensual } from "@/lib/negocio/reportes";
 
 export default async function ReportesPage() {
@@ -48,7 +48,7 @@ export default async function ReportesPage() {
                   <div key={c.categoria}>
                     <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 4 }}>
                       <span style={{ color: "var(--muted)" }}>{c.categoria}</span>
-                      <span style={{ fontWeight: 700 }}>{c.diasPromedio} días · {formatCOP(c.saldo)}</span>
+                      <span style={{ fontWeight: 700 }}>{formatNumero(c.diasPromedio)} días · {formatCOP(c.saldo)}</span>
                     </div>
                     <div style={{ height: 10, borderRadius: 6, background: "var(--brand-tint)", overflow: "hidden" }}>
                       <div style={{ width: `${Math.round((c.diasPromedio / maxDias) * 100)}%`, height: "100%", background: "var(--brand-2)" }} />
@@ -89,7 +89,7 @@ export default async function ReportesPage() {
             <tbody>
               {vendedores.length > 0 && (
                 <tr className="fila-total">
-                  <td style={{ fontWeight: 800 }}>Total · {vendedores.length} vendedores</td>
+                  <td style={{ fontWeight: 800 }}>Total · {formatNumero(vendedores.length)} vendedores</td>
                   <td className="r num" style={{ fontWeight: 800 }}>{formatCOP(totCartera)}</td>
                   <td className="r num" style={{ fontWeight: 800 }}>{formatCOP(totRecaudo)}</td>
                   <td className="num" style={{ fontWeight: 800 }}>{formatPorcentaje(efecTotal)}</td>

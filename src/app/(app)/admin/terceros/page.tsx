@@ -1,7 +1,7 @@
 // Administración · Terceros (clientes y proveedores · solo lectura en esta fase).
 import { requirePermiso } from "@/server/auth-context";
 import { prisma } from "@/lib/db";
-import { formatCOP } from "@/lib/format";
+import { formatCOP, formatNumero } from "@/lib/format";
 
 const CAT_LABEL: Record<string, string> = {
   clinica_ips: "Clínica / IPS",
@@ -21,7 +21,7 @@ export default async function TercerosPage() {
   return (
     <div className="card">
       <div className="chart-head">
-        Terceros <span className="hact">{terceros.length} registros</span>
+        Terceros <span className="hact">{formatNumero(terceros.length)} registros</span>
       </div>
       <div className="tbl-wrap">
         <table>

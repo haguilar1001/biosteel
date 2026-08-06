@@ -2,7 +2,7 @@
 // Impuestos pendientes (histórico mensual, BioSteel).
 // ==========================================================
 import { requirePermiso } from "@/server/auth-context";
-import { formatCOP } from "@/lib/format";
+import { formatCOP, formatNumero } from "@/lib/format";
 import { listarImpuestos, resumenImpuestos, type AlertaImpuesto } from "@/lib/negocio/impuestos";
 
 const MES = ["", "Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
@@ -58,7 +58,7 @@ export default async function ImpuestosPage() {
 
       <div className="card">
         <div className="chart-head">
-          Detalle por período <span className="hact">{pendientes.length} meses con saldo</span>
+          Detalle por período <span className="hact">{formatNumero(pendientes.length)} meses con saldo</span>
         </div>
         <div className="tbl-wrap">
           <table>

@@ -23,10 +23,12 @@ export function Donut({
   data,
   centro,
   size = 300,
+  legend = true,
 }: {
   data: SegmentoDonut[];
   centro?: { valor: string; etiqueta: string };
   size?: number;
+  legend?: boolean;
 }) {
   const total = data.reduce((s, d) => s + Math.abs(d.valor), 0) || 1;
   const cx = size / 2, cy = size / 2, r = size / 2 - 4, ir = r * 0.62;
@@ -55,7 +57,7 @@ export function Donut({
           </>
         )}
       </svg>
-      <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: 2 }}>
+      <div style={{ width: "100%", display: legend ? "flex" : "none", flexDirection: "column", gap: 2 }}>
         {data.map((d) => (
           <div key={d.label} style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13, padding: "6px 4px", borderTop: "1px solid var(--line)" }}>
             <i style={{ width: 12, height: 12, borderRadius: 3, background: d.color, flex: "0 0 auto" }} />

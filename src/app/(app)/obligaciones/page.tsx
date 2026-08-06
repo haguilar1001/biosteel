@@ -3,7 +3,7 @@
 // vencimientos con alertas.
 // ==========================================================
 import { requirePermiso } from "@/server/auth-context";
-import { formatCOP, formatPorcentaje } from "@/lib/format";
+import { formatCOP, formatPorcentaje, formatNumero } from "@/lib/format";
 import { listarObligaciones, resumenObligaciones, tipoLabel, type NivelAlerta } from "@/lib/negocio/obligaciones";
 
 const fmtFecha = (d: Date) => new Intl.DateTimeFormat("es-CO", { day: "2-digit", month: "short", year: "2-digit" }).format(d);
@@ -37,7 +37,7 @@ export default async function ObligacionesPage() {
         <div className="kpi">
           <div className="klabel">Saldo total</div>
           <div className="kval num">{formatCOP(resumen.totalSaldo)}</div>
-          <div className="ksub"><span className="flag">{resumen.cantidad} obligaciones</span></div>
+          <div className="ksub"><span className="flag">{formatNumero(resumen.cantidad)} obligaciones</span></div>
         </div>
         <div className="kpi k-egreso">
           <div className="klabel">Cuota mensual</div>
@@ -68,7 +68,7 @@ export default async function ObligacionesPage() {
             </thead>
             <tbody>
               <tr className="fila-total">
-                <td colSpan={3} style={{ fontWeight: 800 }}>Total · {resumen.cantidad} obligaciones</td>
+                <td colSpan={3} style={{ fontWeight: 800 }}>Total · {formatNumero(resumen.cantidad)} obligaciones</td>
                 <td className="r num" style={{ fontWeight: 800 }}>{formatCOP(resumen.totalSaldo)}</td>
                 <td></td>
                 <td className="r num" style={{ fontWeight: 800 }}>{formatCOP(resumen.totalCuotaMensual)}</td>

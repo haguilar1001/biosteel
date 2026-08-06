@@ -3,10 +3,11 @@
 // KPIs + aging por edades (clicable) + detalle con buscador.
 // ==========================================================
 import { requirePermiso } from "@/server/auth-context";
-import { formatCOP } from "@/lib/format";
+import { formatCOP, formatNumero } from "@/lib/format";
 import { resumenCartera, listarFacturas } from "@/lib/negocio/cartera";
 import { CUBETAS, type CubetaAging } from "@/lib/negocio/aging";
 import { Buscador } from "../_components/Buscador";
+import { Donut } from "../_components/charts/Donut";
 
 const CUBETA_TAG: Record<CubetaAging, string> = {
   d1_30: "t-ok", d31_60: "t-w1", d61_90: "t-w2", d91_120: "t-bad", mas120: "t-bad",
@@ -28,6 +29,7 @@ export default async function CarteraPage({
   const resumen = await resumenCartera(usuario, alcance);
   const { filas, total, suma } = await listarFacturas(usuario, alcance, { cubeta: cubetaFiltro, q });
   const maxCubeta = Math.max(1, ...CUBETAS.map((c) => resumen.porCubeta[c.clave].monto));
+  const carteraPositiva = CUBETAS.reduce((s, c) => s + resumen.porCubeta[c.clave].monto, 0);
 
   return (
     <>
@@ -68,14 +70,20 @@ export default async function CarteraPage({
       <div className="card" style={{ marginBottom: 12 }}>
         <div className="chart-head">Cartera por edades (aging) <span className="hact">clic para filtrar</span></div>
         <div className="card-body">
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <div className="grid aging-grid" style={{ gridTemplateColumns: "210px 1fr", gap: 20, alignItems: "center" }}>
+            <div style={{ display: "grid", placeItems: "center" }}>
+              <Donut legend={false} size={200}
+                data={CUBETAS.filter((c) => resumen.porCubeta[c.clave].monto > 0).map((c) => ({ label: c.etiqueta, valor: resumen.porCubeta[c.clave].monto, color: c.color }))}
+                centro={{ valor: (carteraPositiva / 1e9).toFixed(1).replace(".", ",") + " MM", etiqueta: "por cobrar" }} />
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {CUBETAS.map((c) => {
               const celda = resumen.porCubeta[c.clave];
               const activo = cubetaFiltro === c.clave;
               return (
                 <a key={c.clave} href={activo ? "/cartera" : `/cartera?edad=${c.clave}`} style={{ textDecoration: "none", color: "inherit" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 3 }}>
-                    <span style={{ color: activo ? "var(--brand)" : "var(--muted)", fontWeight: activo ? 700 : 400 }}>{c.etiqueta} · {celda.cantidad}</span>
+                    <span style={{ color: activo ? "var(--brand)" : "var(--muted)", fontWeight: activo ? 700 : 400 }}>{c.etiqueta} · {formatNumero(celda.cantidad)}</span>
                     <span style={{ fontWeight: 700 }}>{formatCOP(celda.monto)}</span>
                   </div>
                   <div style={{ height: 10, borderRadius: 6, background: "var(--brand-tint)", overflow: "hidden", outline: activo ? "2px solid var(--brand)" : "none" }}>
@@ -84,6 +92,7 @@ export default async function CarteraPage({
                 </a>
               );
             })}
+            </div>
           </div>
         </div>
       </div>
@@ -92,9 +101,9 @@ export default async function CarteraPage({
         <div className="chart-head">
           Detalle de facturas
           <span className="hact">
-            {q ? `${total} coincidencias` : `${resumen.cantidadFacturas} facturas`}
+            {q ? `${formatNumero(total)} coincidencias` : `${formatNumero(resumen.cantidadFacturas)} facturas`}
             {cubetaFiltro ? ` · edad ${CUBETA_LABEL[cubetaFiltro]}` : ""}
-            {filas.length < total && !cubetaFiltro ? ` · mostrando ${filas.length}` : ""}
+            {filas.length < total && !cubetaFiltro ? ` · mostrando ${formatNumero(filas.length)}` : ""}
           </span>
         </div>
         <div className="card-body" style={{ paddingBottom: 0 }}>
@@ -115,7 +124,7 @@ export default async function CarteraPage({
             <tbody>
               {filas.length > 0 && (
                 <tr className="fila-total">
-                  <td colSpan={4} style={{ fontWeight: 800 }}>Total neto · {total} factura{total === 1 ? "" : "s"}</td>
+                  <td colSpan={4} style={{ fontWeight: 800 }}>Total neto · {formatNumero(total)} factura{total === 1 ? "" : "s"}</td>
                   <td className="r num" style={{ fontWeight: 800 }}>{formatCOP(suma)}</td>
                   <td colSpan={2}></td>
                 </tr>
@@ -131,7 +140,7 @@ export default async function CarteraPage({
                     <td className="flag" title={f.concepto ?? ""}>{f.concepto}</td>
                     <td className="r num" style={{ fontWeight: 700, color: f.saldo < 0 ? "var(--ok)" : undefined }}>{formatCOP(f.saldo)}</td>
                     <td>{fmtFecha(f.fechaVencimiento)}</td>
-                    <td>{f.saldo > 0 ? <span className={`tag ${CUBETA_TAG[f.cubeta]}`}>{CUBETA_LABEL[f.cubeta]}{f.dias > 0 ? ` · ${f.dias}d` : ""}</span> : <span className="flag">—</span>}</td>
+                    <td>{f.saldo > 0 ? <span className={`tag ${CUBETA_TAG[f.cubeta]}`}>{CUBETA_LABEL[f.cubeta]}{f.dias > 0 ? ` · ${formatNumero(f.dias)}d` : ""}</span> : <span className="flag">—</span>}</td>
                   </tr>
                 ))
               )}

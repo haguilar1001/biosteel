@@ -1,6 +1,7 @@
 // Administración · Usuarios (listado). Gestión (crear/editar) en fase siguiente.
 import { requirePermiso } from "@/server/auth-context";
 import { prisma } from "@/lib/db";
+import { formatNumero } from "@/lib/format";
 
 const fmtFechaHora = (d: Date | null) =>
   d ? new Intl.DateTimeFormat("es-CO", { day: "2-digit", month: "short", year: "2-digit", hour: "2-digit", minute: "2-digit" }).format(d) : "Nunca";
@@ -16,7 +17,7 @@ export default async function UsuariosPage() {
   return (
     <div className="card">
       <div className="chart-head">
-        Usuarios <span className="hact">{usuarios.length} registrados</span>
+        Usuarios <span className="hact">{formatNumero(usuarios.length)} registrados</span>
       </div>
       <div className="tbl-wrap">
         <table>

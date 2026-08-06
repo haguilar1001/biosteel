@@ -1,6 +1,6 @@
 // Ingresos: movimientos de entrada (recaudos, préstamos, ventas de contado…).
 import { requirePermiso } from "@/server/auth-context";
-import { formatCOP } from "@/lib/format";
+import { formatCOP, formatNumero } from "@/lib/format";
 import { listarMovimientos, MESES_LABEL } from "@/lib/negocio/flujo";
 
 const ANIO = 2026;
@@ -45,7 +45,7 @@ export default async function IngresosPage({
           </thead>
           <tbody>
             <tr className="fila-total">
-              <td colSpan={4} style={{ fontWeight: 800 }}>Total · {total} movimiento{total === 1 ? "" : "s"}{filas.length < total ? ` (mostrando ${filas.length})` : ""}</td>
+              <td colSpan={4} style={{ fontWeight: 800 }}>Total · {formatNumero(total)} movimiento{total === 1 ? "" : "s"}{filas.length < total ? ` (mostrando ${formatNumero(filas.length)})` : ""}</td>
               <td className="r num" style={{ fontWeight: 800 }}>{formatCOP(suma)}</td>
             </tr>
             {filas.length === 0 ? (

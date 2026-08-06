@@ -4,7 +4,7 @@
 // ==========================================================
 import { requirePermiso } from "@/server/auth-context";
 import { puede, alcanceDe } from "@/lib/rbac/authorize";
-import { formatCOP, formatPorcentaje } from "@/lib/format";
+import { formatCOP, formatPorcentaje, formatNumero } from "@/lib/format";
 import { flujoMensual, totalesFlujo, presupuestoVsReal, MESES_LABEL } from "@/lib/negocio/flujo";
 import { resumenCxp } from "@/lib/negocio/cxp";
 import { resumenCartera, carteraPorCiudad } from "@/lib/negocio/cartera";
@@ -13,13 +13,14 @@ import { calcularIndicadores, type IndicadorCalc } from "@/lib/negocio/indicador
 import { Donut } from "../_components/charts/Donut";
 import { Medidor } from "../_components/charts/Medidor";
 import { MapaCartera } from "../_components/charts/MapaCartera";
+import { Sparkline } from "../_components/charts/Sparkline";
 
 const ANIO = 2026;
 const CATS = ["var(--cat-1)", "var(--cat-2)", "var(--cat-3)", "var(--cat-4)", "var(--cat-5)", "var(--cat-6)", "var(--cat-7)", "var(--cat-8)"];
 
 function fmtInd(v: number, u: IndicadorCalc["unidad"]): string {
   if (u === "cop") return formatCOP(v);
-  if (u === "dias") return `${Math.round(v)} días`;
+  if (u === "dias") return `${formatNumero(Math.round(v))} días`;
   if (u === "veces") return `${v.toFixed(1).replace(".", ",")} veces`;
   return formatPorcentaje(v);
 }
@@ -106,6 +107,11 @@ export default async function DashboardPage() {
           <div className="klabel">Flujo neto {ANIO}</div>
           <div className="kval num" style={{ color: tot && tot.neto < 0 ? "var(--bad)" : undefined }}>{tot ? formatCOP(tot.neto) : "—"}</div>
           <div className="ksub"><span className="flag">{tot ? `ejecución presup. ${formatPorcentaje(tot.ejecucion)}` : ""}</span></div>
+          {meses && meses.length > 1 && (
+            <div style={{ position: "absolute", right: 12, bottom: 10 }}>
+              <Sparkline data={meses.map((m) => m.neto)} color="var(--ingreso)" />
+            </div>
+          )}
         </div>
       </div>
 
