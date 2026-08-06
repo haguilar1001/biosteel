@@ -263,6 +263,7 @@ model Tercero {
   esCliente    Boolean  @default(false)
   esProveedor  Boolean  @default(false)
   esInterno    Boolean  @default(false) // parte relacionada: se ocultan sus anticipos
+  esGrupo      Boolean  @default(false) // IPS del grupo empresarial
   createdAt    DateTime @default(now())
 
   clientePerfil   ClientePerfil?

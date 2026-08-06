@@ -139,6 +139,12 @@ h1, h2, h3 { margin: 0; }
   width: 30px; height: 30px; border-radius: 50%; background: var(--brand-2);
   display: grid; place-items: center; font-size: 12px; font-weight: 700; border: 2px solid rgba(255,255,255,.35);
 }
+.bell {
+  display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%;
+  background: rgba(255,255,255,.16); border: 1px solid rgba(255,255,255,.22);
+  text-decoration: none; font-size: 15px; line-height: 1;
+}
+.bell:hover { background: rgba(255,255,255,.30); }
 
 /* Navegación por módulos (tabs) */
 .appnav { background: var(--surface); border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 40; }
@@ -230,6 +236,27 @@ td.r, th.r { text-align: right; }
 .t-bad { background: var(--bad-t); color: var(--bad); }
 .t-blue { background: var(--brand-tint); color: var(--brand); }
 .empty { padding: 40px 16px; text-align: center; color: var(--muted); font-size: 13px; }
+
+/* Tooltip / popover (desglose al pasar el mouse) */
+.card.card-tt { overflow: visible; }
+.tt { position: relative; cursor: help; }
+.tt > .tt-label { text-decoration: underline dotted var(--brand-soft); text-underline-offset: 3px; }
+.tt-pop {
+  display: none; position: absolute; left: 0; top: 100%; margin-top: 8px; z-index: 70;
+  min-width: 300px; max-width: 380px; text-align: left;
+  background: var(--surface); color: var(--ink); border: 1px solid var(--line);
+  border-radius: 12px; box-shadow: var(--elev); padding: 12px 14px; white-space: normal;
+}
+.tt:hover .tt-pop, .tt:focus-within .tt-pop { display: block; }
+.tt-pop::before {
+  content: ""; position: absolute; top: -6px; left: 18px; width: 11px; height: 11px;
+  background: var(--surface); border-left: 1px solid var(--line); border-top: 1px solid var(--line); transform: rotate(45deg);
+}
+.tt-pop h4 { font-size: 10.5px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; margin: 0 0 8px; font-weight: 700; }
+.tt-row { display: flex; justify-content: space-between; gap: 16px; font-size: 12.5px; padding: 5px 0; border-top: 1px solid var(--line); }
+.tt-row:first-of-type { border-top: 0; }
+.tt-row .n { color: var(--muted); }
+.tt-foot { display: flex; justify-content: space-between; gap: 16px; font-size: 12.5px; padding-top: 8px; margin-top: 4px; border-top: 2px solid var(--brand-soft); font-weight: 800; }
 
 /* Formularios de tesorería */
 .form-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }

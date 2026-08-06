@@ -38,7 +38,8 @@ export default async function CarteraPage({
           <p>Saldo neto · corte 30 jun 2026 · alcance <code>{alcance}</code></p>
         </div>
         <div className="toolbar">
-          <a href="/cartera/clientes" className="btn primary">Informe por cliente</a>
+          <a href="/cartera/ciudades" className="btn primary">Por ciudad</a>
+          <a href="/cartera/clientes" className="btn">Por cliente</a>
         </div>
       </div>
 

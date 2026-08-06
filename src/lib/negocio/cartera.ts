@@ -152,6 +152,54 @@ export interface FilaClienteCartera {
   diasMax: number;
 }
 
+// ---------- Cartera por Ciudad (con desglose por IPS) ----------
+export interface IpsEnCiudad {
+  cliente: string;
+  saldo: number;
+  documentos: number;
+}
+export interface FilaCiudad {
+  ciudad: string;
+  saldo: number;
+  documentos: number;
+  clientes: number;
+  ips: IpsEnCiudad[];
+}
+
+export async function carteraPorCiudad(
+  usuario: UsuarioConRol,
+  alcance: Alcance,
+): Promise<FilaCiudad[]> {
+  const facturas = await prisma.facturaVenta.findMany({
+    where: whereConSaldo(usuario, alcance),
+    select: { saldo: true, terceroId: true, tercero: { select: { nombre: true, ciudad: true } } },
+  });
+
+  const ciudades = new Map<string, { saldo: number; documentos: number; porCliente: Map<number, IpsEnCiudad> }>();
+  for (const f of facturas) {
+    const ciudad = f.tercero.ciudad?.trim() || "Sin ciudad";
+    const s = f.saldo.toNumber();
+    const c = ciudades.get(ciudad) ?? { saldo: 0, documentos: 0, porCliente: new Map() };
+    c.saldo += s;
+    c.documentos += 1;
+    const ips = c.porCliente.get(f.terceroId) ?? { cliente: f.tercero.nombre, saldo: 0, documentos: 0 };
+    ips.saldo += s;
+    ips.documentos += 1;
+    c.porCliente.set(f.terceroId, ips);
+    ciudades.set(ciudad, c);
+  }
+
+  return [...ciudades.entries()]
+    .map(([ciudad, c]) => ({
+      ciudad,
+      saldo: c.saldo,
+      documentos: c.documentos,
+      clientes: c.porCliente.size,
+      ips: [...c.porCliente.values()].sort((a, b) => b.saldo - a.saldo),
+    }))
+    .sort((a, b) => b.saldo - a.saldo);
+}
+
 export async function carteraPorCliente(
   usuario: UsuarioConRol,
   alcance: Alcance,

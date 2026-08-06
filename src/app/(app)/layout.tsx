@@ -19,7 +19,6 @@ const MODULOS: { href: string; label: string; permiso: PermisoClave }[] = [
   { href: "/pagos", label: "Pagos", permiso: "pago.create" },
   { href: "/obligaciones", label: "Obligaciones", permiso: "cxp.view" },
   { href: "/impuestos", label: "Impuestos", permiso: "cxp.view" },
-  { href: "/notificaciones", label: "Notificaciones", permiso: "cxp.view" },
   { href: "/reportes", label: "Reportes", permiso: "reporte.view" },
 ];
 
@@ -61,6 +60,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         <div className="ctx">
           <span className="chip-ctx">🏢 {sedeLabel}</span>
           <span className="chip-ctx" title={usuario.rol.nombre}>{usuario.rol.nombre}</span>
+          {(await puede(usuario, "cxp.view")) && (
+            <a href="/notificaciones" className="bell" title="Notificaciones" aria-label="Notificaciones">🔔</a>
+          )}
           <a href="/cambiar-clave" className="avatar" title={`${usuario.nombre} · Cambiar contraseña`} style={{ textDecoration: "none" }}>{iniciales(usuario.nombre)}</a>
           <form action={logoutAction} style={{ margin: 0 }}>
             <button type="submit" className="logout">Salir</button>
