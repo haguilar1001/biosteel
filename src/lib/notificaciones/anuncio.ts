@@ -1,30 +1,28 @@
 // ==========================================================
 // Correo de anuncio / bienvenida: explica a los destinatarios que, en
 // adelante, recibirán un recordatorio por correo N días antes de cada
-// vencimiento financiero. El logo se incrusta como adjunto CID para que
-// se vea también en Gmail (que bloquea imágenes en base64/data URI).
+// vencimiento financiero. El logo se enlaza desde la URL pública de la app
+// (APP_URL/BIOSTEEL.png), de modo que se ve tanto por SMTP como por la API
+// HTTP de Brevo (sin depender de adjuntos CID).
 // ==========================================================
 import "server-only";
-import { readFile } from "node:fs/promises";
-import path from "node:path";
-import { enviarCorreo, type Adjunto } from "./mailer";
+import { env } from "@/lib/env";
+import { enviarCorreo } from "./mailer";
 
 const AZUL = "#2A4F98";
-const CID_LOGO = "logo-biosteel";
 
-async function logoAdjunto(): Promise<Adjunto> {
-  const ruta = path.join(process.cwd(), "public", "BIOSTEEL.png");
-  const content = await readFile(ruta);
-  return { filename: "biosteel.png", content, cid: CID_LOGO };
+function logoUrl(): string {
+  return `${env.APP_URL.replace(/\/$/, "")}/BIOSTEEL.png`;
 }
 
 function plantillaAnuncio(diasAntes: number): string {
+  const logo = logoUrl();
   return `
   <div style="background:#EEF2F8;padding:24px 0;font-family:Arial,Helvetica,sans-serif">
     <div style="max-width:600px;margin:auto;background:#fff;border:1px solid #E3E9F1;border-radius:14px;overflow:hidden">
 
       <div style="background:${AZUL};padding:22px 28px;text-align:center">
-        <img src="cid:${CID_LOGO}" alt="BioSteel de Colombia S.A.S" width="180" style="max-width:180px;height:auto;display:inline-block" />
+        <img src="${logo}" alt="BioSteel de Colombia S.A.S" width="180" style="max-width:180px;height:auto;display:inline-block" />
       </div>
 
       <div style="padding:28px;color:#1B2434;line-height:1.55">
@@ -66,7 +64,6 @@ function plantillaAnuncio(diasAntes: number): string {
 
 /** Envía el correo de anuncio a los destinatarios indicados. */
 export async function enviarAnuncio(destinatarios: string[], diasAntes: number): Promise<void> {
-  const adjunto = await logoAdjunto();
   const asunto = "BioSteel · Empezaremos a enviar recordatorios de vencimientos financieros";
-  await enviarCorreo(destinatarios, asunto, plantillaAnuncio(diasAntes), [adjunto]);
+  await enviarCorreo(destinatarios, asunto, plantillaAnuncio(diasAntes));
 }

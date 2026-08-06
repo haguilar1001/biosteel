@@ -68,9 +68,9 @@ export default async function NotificacionesPage() {
 
           {!smtpOk && (
             <p style={{ margin: "12px 0 0", color: "var(--muted)", fontSize: 13 }}>
-              Para activar el envío, configura en Railway: <code>SMTP_HOST</code>, <code>SMTP_PORT</code>, <code>SMTP_USER</code>,
-              <code>SMTP_PASS</code>, <code>SMTP_FROM</code> y <code>CRON_SECRET</code>. Luego programa un cron diario que llame
-              a <code>/api/notificaciones/run?secret=…</code>.
+              Para activar el envío en Railway, configura <code>BREVO_API_KEY</code> (API HTTP de Brevo, recomendada),
+              <code>SMTP_FROM</code> (remitente verificado) y <code>CRON_SECRET</code>. Luego programa un cron diario que
+              llame a <code>/api/notificaciones/run?secret=…</code>.
             </p>
           )}
         </div>

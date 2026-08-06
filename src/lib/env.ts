@@ -10,6 +10,10 @@ const schema = z.object({
   APP_URL: z.string().url().default("http://localhost:3000"),
 
   // --- Correo (opcional; si falta, las notificaciones no se envían) ---
+  // Método recomendado en Railway: API HTTP de Brevo (viaja por HTTPS, no
+  // depende de puertos SMTP que el hosting suele bloquear). Si BREVO_API_KEY
+  // está definida, se usa la API; si no, se cae a SMTP (nodemailer).
+  BREVO_API_KEY: z.string().optional(),
   SMTP_HOST: z.string().optional(),
   SMTP_PORT: z.coerce.number().optional(),
   SMTP_USER: z.string().optional(),
