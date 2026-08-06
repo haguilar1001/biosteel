@@ -12,6 +12,7 @@ import { Nav, type ItemNav } from "./_components/Nav";
 
 const MODULOS: { href: string; label: string; permiso: PermisoClave }[] = [
   { href: "/dashboard", label: "Inicio", permiso: "dashboard.view" },
+  { href: "/flujo", label: "Flujo de Caja", permiso: "cxp.view" },
   { href: "/cartera", label: "Cartera", permiso: "cartera.view" },
   { href: "/recaudos", label: "Recaudos", permiso: "recaudo.create" },
   { href: "/cxp", label: "Cuentas por Pagar", permiso: "cxp.view" },

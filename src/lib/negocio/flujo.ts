@@ -1,0 +1,178 @@
+// ==========================================================
+// Lógica del módulo Flujo de Caja: movimientos (ingresos/egresos),
+// presupuesto mensual y comparativo presupuesto vs. real por grupo.
+// ==========================================================
+import "server-only";
+import type { Prisma, TipoMovimiento } from "@prisma/client";
+import { prisma } from "@/lib/db";
+
+export const MESES_LABEL = ["", "Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
+
+export interface MesFlujo {
+  mes: number;
+  ingresos: number;
+  egresos: number;
+  presupuesto: number;
+  neto: number; // ingresos − egresos
+}
+
+/** Resumen mensual: ingresos, egresos y presupuesto por mes del año. */
+export async function flujoMensual(anio: number): Promise<MesFlujo[]> {
+  const [movs, pres] = await Promise.all([
+    prisma.movimientoFlujo.groupBy({ by: ["mes", "tipo"], where: { anio }, _sum: { valor: true } }),
+    prisma.presupuestoMensual.groupBy({ by: ["mes"], where: { anio }, _sum: { valor: true } }),
+  ]);
+
+  const meses = new Map<number, MesFlujo>();
+  const get = (m: number) => {
+    let e = meses.get(m);
+    if (!e) { e = { mes: m, ingresos: 0, egresos: 0, presupuesto: 0, neto: 0 }; meses.set(m, e); }
+    return e;
+  };
+  for (const g of movs) {
+    const e = get(g.mes);
+    const v = g._sum.valor?.toNumber() ?? 0;
+    if (g.tipo === "ingreso") e.ingresos += v; else e.egresos += v;
+  }
+  for (const g of pres) get(g.mes).presupuesto += g._sum.valor?.toNumber() ?? 0;
+  for (const e of meses.values()) e.neto = e.ingresos - e.egresos;
+
+  return [...meses.values()].sort((a, b) => a.mes - b.mes);
+}
+
+export interface TotalesFlujo {
+  ingresos: number;
+  egresos: number;
+  presupuesto: number;
+  neto: number;
+  ejecucion: number; // egresos / presupuesto * 100
+}
+
+export async function totalesFlujo(anio: number): Promise<TotalesFlujo> {
+  const meses = await flujoMensual(anio);
+  const t = meses.reduce(
+    (a, m) => ({ ingresos: a.ingresos + m.ingresos, egresos: a.egresos + m.egresos, presupuesto: a.presupuesto + m.presupuesto }),
+    { ingresos: 0, egresos: 0, presupuesto: 0 },
+  );
+  return { ...t, neto: t.ingresos - t.egresos, ejecucion: t.presupuesto > 0 ? (t.egresos / t.presupuesto) * 100 : 0 };
+}
+
+// ---------- Movimientos (listado) ----------
+export interface FilaMovimiento {
+  id: number;
+  fecha: Date;
+  mes: number;
+  categoria: string | null;
+  terceroNombre: string;
+  nit: string | null;
+  detalle: string | null;
+  observacion: string | null;
+  valor: number;
+}
+
+export interface FiltrosMov {
+  anio: number;
+  mes?: number;
+  categoriaId?: number;
+  q?: string;
+}
+
+function whereMov(tipo: TipoMovimiento, f: FiltrosMov): Prisma.MovimientoFlujoWhereInput {
+  const q = f.q?.trim();
+  return {
+    tipo,
+    anio: f.anio,
+    ...(f.mes ? { mes: f.mes } : {}),
+    ...(f.categoriaId ? { categoriaId: f.categoriaId } : {}),
+    ...(q
+      ? {
+          OR: [
+            { terceroNombre: { contains: q, mode: "insensitive" } },
+            { nit: { contains: q, mode: "insensitive" } },
+            { observacion: { contains: q, mode: "insensitive" } },
+            { detalle: { contains: q, mode: "insensitive" } },
+          ],
+        }
+      : {}),
+  };
+}
+
+export async function listarMovimientos(
+  tipo: TipoMovimiento,
+  f: FiltrosMov,
+): Promise<{ filas: FilaMovimiento[]; total: number; suma: number }> {
+  const where = whereMov(tipo, f);
+  const [total, agg, movs] = await Promise.all([
+    prisma.movimientoFlujo.count({ where }),
+    prisma.movimientoFlujo.aggregate({ where, _sum: { valor: true } }),
+    prisma.movimientoFlujo.findMany({
+      where,
+      select: {
+        id: true, fecha: true, mes: true, terceroNombre: true, nit: true,
+        detalle: true, observacion: true, valor: true,
+        categoria: { select: { nombre: true } },
+      },
+      orderBy: [{ fecha: "desc" }, { id: "desc" }],
+      take: 300,
+    }),
+  ]);
+
+  const filas = movs.map((m) => ({
+    id: m.id, fecha: m.fecha, mes: m.mes, categoria: m.categoria?.nombre ?? null,
+    terceroNombre: m.terceroNombre, nit: m.nit, detalle: m.detalle, observacion: m.observacion,
+    valor: m.valor.toNumber(),
+  }));
+  return { filas, total, suma: agg._sum.valor?.toNumber() ?? 0 };
+}
+
+// ---------- Presupuesto vs Real ----------
+export interface FilaPresupuesto {
+  categoria: string;
+  presupuesto: number;
+  real: number;
+  desviacion: number; // real − presupuesto
+  ejecucion: number;  // real / presupuesto * 100
+}
+
+export async function presupuestoVsReal(anio: number, mes?: number): Promise<FilaPresupuesto[]> {
+  const wPres: Prisma.PresupuestoMensualWhereInput = { anio, ...(mes ? { mes } : {}) };
+  const wReal: Prisma.MovimientoFlujoWhereInput = { anio, tipo: "egreso", ...(mes ? { mes } : {}) };
+
+  const [cats, pres, real] = await Promise.all([
+    prisma.categoriaFlujo.findMany({ select: { id: true, nombre: true, orden: true } }),
+    prisma.presupuestoMensual.groupBy({ by: ["categoriaId"], where: wPres, _sum: { valor: true } }),
+    prisma.movimientoFlujo.groupBy({ by: ["categoriaId"], where: wReal, _sum: { valor: true } }),
+  ]);
+
+  const nombre = new Map(cats.map((c) => [c.id, c.nombre]));
+  const orden = new Map(cats.map((c) => [c.id, c.orden]));
+  const mapa = new Map<number, { presupuesto: number; real: number }>();
+  for (const p of pres) {
+    const e = mapa.get(p.categoriaId) ?? { presupuesto: 0, real: 0 };
+    e.presupuesto += p._sum.valor?.toNumber() ?? 0;
+    mapa.set(p.categoriaId, e);
+  }
+  for (const r of real) {
+    if (r.categoriaId == null) continue;
+    const e = mapa.get(r.categoriaId) ?? { presupuesto: 0, real: 0 };
+    e.real += r._sum.valor?.toNumber() ?? 0;
+    mapa.set(r.categoriaId, e);
+  }
+
+  return [...mapa.entries()]
+    .map(([id, e]) => ({
+      categoria: nombre.get(id) ?? "(sin grupo)",
+      presupuesto: e.presupuesto,
+      real: e.real,
+      desviacion: e.real - e.presupuesto,
+      ejecucion: e.presupuesto > 0 ? (e.real / e.presupuesto) * 100 : 0,
+      _orden: orden.get(id) ?? 999,
+    }))
+    .sort((a, b) => a._orden - b._orden)
+    .map(({ _orden, ...f }) => f);
+}
+
+/** Categorías (grupos) para filtros. */
+export function listarCategorias() {
+  return prisma.categoriaFlujo.findMany({ select: { id: true, nombre: true }, orderBy: { orden: "asc" } });
+}
