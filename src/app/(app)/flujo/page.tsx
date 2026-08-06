@@ -14,11 +14,11 @@ export default async function FlujoResumenPage() {
   return (
     <>
       <div className="kpis">
-        <div className="kpi k-ok">
+        <div className="kpi k-ingreso">
           <div className="klabel">Ingresos {ANIO}</div>
           <div className="kval num">{formatCOP(tot.ingresos)}</div>
         </div>
-        <div className="kpi k-bad">
+        <div className="kpi k-egreso">
           <div className="klabel">Egresos {ANIO}</div>
           <div className="kval num">{formatCOP(tot.egresos)}</div>
         </div>
@@ -41,14 +41,14 @@ export default async function FlujoResumenPage() {
             {meses.map((m) => (
               <div key={m.mes} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4, height: "100%", justifyContent: "flex-end" }}>
                 <div style={{ display: "flex", gap: 3, alignItems: "flex-end", height: "100%", width: "100%", justifyContent: "center" }}>
-                  <div title={`Ingresos ${formatCOP(m.ingresos)}`} style={{ width: "38%", height: `${Math.max(1, (m.ingresos / maxBar) * 100)}%`, background: "var(--ok)", borderRadius: "3px 3px 0 0" }} />
-                  <div title={`Egresos ${formatCOP(m.egresos)}`} style={{ width: "38%", height: `${Math.max(1, (m.egresos / maxBar) * 100)}%`, background: "var(--bad)", borderRadius: "3px 3px 0 0" }} />
+                  <div title={`Ingresos ${formatCOP(m.ingresos)}`} style={{ width: "38%", height: `${Math.max(1, (m.ingresos / maxBar) * 100)}%`, background: "var(--ingreso)", borderRadius: "3px 3px 0 0" }} />
+                  <div title={`Egresos ${formatCOP(m.egresos)}`} style={{ width: "38%", height: `${Math.max(1, (m.egresos / maxBar) * 100)}%`, background: "var(--egreso)", borderRadius: "3px 3px 0 0" }} />
                 </div>
                 <span className="flag">{MESES_LABEL[m.mes]}</span>
               </div>
             ))}
           </div>
-          <div className="legend"><span><i style={{ background: "var(--ok)" }} />Ingresos</span><span><i style={{ background: "var(--bad)" }} />Egresos</span></div>
+          <div className="legend"><span><i style={{ background: "var(--ingreso)" }} />Ingresos</span><span><i style={{ background: "var(--egreso)" }} />Egresos</span></div>
         </div>
       </div>
 
@@ -74,8 +74,8 @@ export default async function FlujoResumenPage() {
               {meses.map((m) => (
                 <tr key={m.mes}>
                   <td style={{ fontWeight: 600 }}>{MESES_LABEL[m.mes]}</td>
-                  <td className="r num" style={{ color: "var(--ok)" }}>{formatCOP(m.ingresos)}</td>
-                  <td className="r num" style={{ color: "var(--bad)" }}>{formatCOP(m.egresos)}</td>
+                  <td className="r num" style={{ color: "var(--ingreso)" }}>{formatCOP(m.ingresos)}</td>
+                  <td className="r num" style={{ color: "var(--egreso)" }}>{formatCOP(m.egresos)}</td>
                   <td className="r num" style={{ color: m.neto >= 0 ? undefined : "var(--bad)" }}>{formatCOP(m.neto)}</td>
                   <td className="r num">{formatCOP(m.presupuesto)}</td>
                   <td className="r num">{m.presupuesto > 0 ? formatPorcentaje((m.egresos / m.presupuesto) * 100) : "—"}</td>

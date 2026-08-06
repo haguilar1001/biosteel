@@ -53,7 +53,7 @@ export default async function IngresosPage({
                   <td style={{ fontWeight: 600 }}>{m.terceroNombre}</td>
                   <td className="flag">{m.detalle}</td>
                   <td className="flag" style={{ maxWidth: 320, overflow: "hidden", textOverflow: "ellipsis" }} title={m.observacion ?? ""}>{m.observacion}</td>
-                  <td className="r num" style={{ fontWeight: 700, color: "var(--ok)" }}>{formatCOP(m.valor)}</td>
+                  <td className="r num" style={{ fontWeight: 700, color: "var(--ingreso)" }}>{formatCOP(m.valor)}</td>
                 </tr>
               ))
             )}

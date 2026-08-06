@@ -20,7 +20,7 @@ export default async function CxpPorProveedorPage({
 
   const filas = await cxpPorProveedor(q, tipo);
   const tot = filas.reduce(
-    (a, f) => ({ docs: a.docs + f.documentos, saldo: a.saldo + f.saldo, vencido: a.vencido + f.vencido }),
+    (a, f) => ({ docs: a.docs + f.documentos, saldo: a.saldo + f.saldoNeto, vencido: a.vencido + f.vencido }),
     { docs: 0, saldo: 0, vencido: 0 },
   );
 
@@ -33,7 +33,7 @@ export default async function CxpPorProveedorPage({
         <div>
           <div className="eyebrow">Cuentas por Pagar</div>
           <h1>Informe por proveedor</h1>
-          <p>{filas.length} proveedores · por pagar {formatCOP(tot.saldo)}</p>
+          <p>{filas.length} proveedores · saldo neto {formatCOP(tot.saldo)}</p>
         </div>
         <div className="toolbar">
           <a href={filtro(undefined)} className={`btn${!tipo ? " primary" : ""}`}>Todos</a>
@@ -52,7 +52,7 @@ export default async function CxpPorProveedorPage({
             <thead>
               <tr>
                 <th>Proveedor</th><th>NIT</th><th>Tipo</th><th className="r">Docs</th>
-                <th className="r">Por pagar</th><th className="r">% Part.</th>
+                <th className="r">Saldo neto</th><th className="r">% Part.</th>
                 <th className="r">Vencido</th><th className="r">Mora máx.</th>
               </tr>
             </thead>
@@ -77,8 +77,8 @@ export default async function CxpPorProveedorPage({
                     <td className="num flag">{f.nit}</td>
                     <td><span className={`tag ${f.interno ? "t-w1" : "t-blue"}`}>{f.interno ? "Interno" : "Externo"}</span></td>
                     <td className="r num">{f.documentos}</td>
-                    <td className="r num" style={{ fontWeight: 700 }}>{formatCOP(f.saldo)}</td>
-                    <td className="r num">{tot.saldo !== 0 ? formatPorcentaje((f.saldo / tot.saldo) * 100) : "—"}</td>
+                    <td className="r num" style={{ fontWeight: 700 }}>{formatCOP(f.saldoNeto)}</td>
+                    <td className="r num">{tot.saldo !== 0 ? formatPorcentaje((f.saldoNeto / tot.saldo) * 100) : "—"}</td>
                     <td className="r num" style={{ color: f.vencido > 0 ? "var(--bad)" : undefined }}>{f.vencido !== 0 ? formatCOP(f.vencido) : "—"}</td>
                     <td className="r num">{f.diasMax > 0 ? `${f.diasMax}d` : "—"}</td>
                   </tr>

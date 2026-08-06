@@ -1,8 +1,9 @@
 // ==========================================================
 // Lógica de negocio: cuentas por pagar (CxP)
-// REGLA: los ANTICIPOS (saldo < 0) se manejan APARTE y NO afectan el
-// saldo de CxP. CxP = solo documentos por pagar (saldo > 0).
-// Los anticipos tienen su propia vista (/cxp/anticipos).
+// La pantalla trabaja en NETO (suma de todos los saldos, positivos y
+// negativos). Neto = lo que realmente se debe = $ 9.434.160.623.
+// Los anticipos (saldo < 0) están incluidos en el neto; además tienen
+// su propia vista de desglose (/cxp/anticipos).
 // ==========================================================
 import "server-only";
 import type { Prisma } from "@prisma/client";
@@ -11,36 +12,33 @@ import { diasVencido } from "./aging";
 
 const MS_DIA = 1000 * 60 * 60 * 24;
 
-const wherePorPagar: Prisma.DocumentoCxpWhereInput = { saldo: { gt: 0 } };
+const whereConSaldo: Prisma.DocumentoCxpWhereInput = { saldo: { not: 0 } };
 const whereAnticipo: Prisma.DocumentoCxpWhereInput = { saldo: { lt: 0 } };
 
-// ---------- Resumen CxP (solo por pagar) ----------
+// ---------- Resumen CxP (neto) ----------
 export interface ResumenCxp {
-  porPagar: number;
+  total: number;            // NETO
   cantidad: number;
-  vencido: number;
-  proximoVencer: number;
-  proximoVencerCantidad: number;
-  anticipos: number;        // total de saldos a favor (aparte, informativo)
+  vencido: number;          // neto de documentos vencidos
+  alDia: number;            // neto al día / por vencer
+  anticipos: number;        // componente de saldos a favor (negativo, informativo)
   anticiposCantidad: number;
 }
 
 export async function resumenCxp(corte: Date = new Date()): Promise<ResumenCxp> {
-  const [porPagar, anticipo] = await Promise.all([
-    prisma.documentoCxp.findMany({ where: wherePorPagar, select: { saldo: true, fechaVencimiento: true } }),
+  const [docs, ant] = await Promise.all([
+    prisma.documentoCxp.findMany({ where: whereConSaldo, select: { saldo: true, fechaVencimiento: true } }),
     prisma.documentoCxp.aggregate({ where: whereAnticipo, _sum: { saldo: true }, _count: true }),
   ]);
 
   const r: ResumenCxp = {
-    porPagar: 0, cantidad: porPagar.length, vencido: 0, proximoVencer: 0, proximoVencerCantidad: 0,
-    anticipos: anticipo._sum.saldo?.toNumber() ?? 0, anticiposCantidad: anticipo._count,
+    total: 0, cantidad: docs.length, vencido: 0, alDia: 0,
+    anticipos: ant._sum.saldo?.toNumber() ?? 0, anticiposCantidad: ant._count,
   };
-  for (const d of porPagar) {
+  for (const d of docs) {
     const s = d.saldo.toNumber();
-    r.porPagar += s;
-    const dias = diasVencido(d.fechaVencimiento, corte);
-    if (dias > 0) r.vencido += s;
-    if (dias <= 0 && dias >= -7) { r.proximoVencer += s; r.proximoVencerCantidad += 1; }
+    r.total += s;
+    if (diasVencido(d.fechaVencimiento, corte) > 0) r.vencido += s; else r.alDia += s;
   }
   return r;
 }
@@ -59,7 +57,7 @@ function filtroBusqueda(q?: string): Prisma.DocumentoCxpWhereInput {
   };
 }
 
-// ---------- Detalle de documentos por pagar ----------
+// ---------- Detalle de documentos (neto) ----------
 export interface FilaCxp {
   id: number;
   numero: string;
@@ -76,7 +74,7 @@ export async function listarDocumentosCxp(
   q?: string,
   corte: Date = new Date(),
 ): Promise<{ filas: FilaCxp[]; total: number; suma: number }> {
-  const where: Prisma.DocumentoCxpWhereInput = { ...wherePorPagar, ...filtroBusqueda(q) };
+  const where: Prisma.DocumentoCxpWhereInput = { ...whereConSaldo, ...filtroBusqueda(q) };
   const [total, agg, docs] = await Promise.all([
     prisma.documentoCxp.count({ where }),
     prisma.documentoCxp.aggregate({ where, _sum: { saldo: true } }),
@@ -99,14 +97,14 @@ export async function listarDocumentosCxp(
   return { filas, total, suma: agg._sum.saldo?.toNumber() ?? 0 };
 }
 
-// ---------- Informe por proveedor (solo por pagar) ----------
+// ---------- Informe por proveedor (neto) ----------
 export interface FilaProveedorCxp {
   proveedorId: number;
   proveedor: string;
   nit: string | null;
   interno: boolean;
   documentos: number;
-  saldo: number;   // por pagar
+  saldoNeto: number;
   vencido: number;
   diasMax: number;
 }
@@ -125,7 +123,7 @@ export async function cxpPorProveedor(
   corte: Date = new Date(),
 ): Promise<FilaProveedorCxp[]> {
   const docs = await prisma.documentoCxp.findMany({
-    where: { ...wherePorPagar, ...filtroBusqueda(q), ...filtroTipo(tipo) },
+    where: { ...whereConSaldo, ...filtroBusqueda(q), ...filtroTipo(tipo) },
     select: {
       saldo: true, fechaVencimiento: true, proveedorId: true,
       proveedor: { select: { nombre: true, nit: true, esInterno: true } },
@@ -138,17 +136,17 @@ export async function cxpPorProveedor(
     const dias = diasVencido(d.fechaVencimiento, corte);
     const e = mapa.get(d.proveedorId) ?? {
       proveedorId: d.proveedorId, proveedor: d.proveedor.nombre, nit: d.proveedor.nit,
-      interno: d.proveedor.esInterno, documentos: 0, saldo: 0, vencido: 0, diasMax: 0,
+      interno: d.proveedor.esInterno, documentos: 0, saldoNeto: 0, vencido: 0, diasMax: 0,
     };
     e.documentos += 1;
-    e.saldo += s;
+    e.saldoNeto += s;
     if (dias > 0) { e.vencido += s; e.diasMax = Math.max(e.diasMax, dias); }
     mapa.set(d.proveedorId, e);
   }
-  return [...mapa.values()].sort((a, b) => b.saldo - a.saldo);
+  return [...mapa.values()].sort((a, b) => b.saldoNeto - a.saldoNeto);
 }
 
-// ---------- Anticipos (saldos a favor), APARTE ----------
+// ---------- Anticipos (desglose informativo) ----------
 export interface ResumenAnticipos {
   total: number;
   cantidad: number;
@@ -162,7 +160,7 @@ export interface FilaAnticipo {
   nit: string | null;
   interno: boolean;
   documentos: number;
-  anticipo: number; // negativo
+  anticipo: number;
 }
 
 export async function resumenAnticipos(): Promise<ResumenAnticipos> {
@@ -197,7 +195,7 @@ export async function anticiposPorTercero(q?: string, tipo?: TipoProveedorFiltro
     e.anticipo += d.saldo.toNumber();
     mapa.set(d.proveedorId, e);
   }
-  return [...mapa.values()].sort((a, b) => a.anticipo - b.anticipo); // más negativo primero
+  return [...mapa.values()].sort((a, b) => a.anticipo - b.anticipo);
 }
 
 export function diasParaVencer(fechaVencimiento: Date, corte: Date = new Date()): number {

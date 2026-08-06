@@ -42,7 +42,7 @@ export default async function EgresosPage({
           <a href="/flujo/egresos" className="btn">Limpiar</a>
         </form>
       </div>
-      <div className="tbl-wrap">
+      <div className="tbl-wrap scroll-top">
         <table>
           <thead>
             <tr><th>Fecha</th><th>Grupo</th><th>Tercero</th><th>Detalle</th><th>Observación</th><th className="r">Valor</th></tr>

@@ -25,7 +25,6 @@ export default async function CxpPage({
   const { q } = await searchParams;
 
   const resumen = await resumenCxp();
-  const neto = resumen.porPagar + resumen.anticipos; // conciliación (anticipos es negativo)
   const { filas, total, suma } = await listarDocumentosCxp(q);
 
   return (
@@ -34,7 +33,7 @@ export default async function CxpPage({
         <div>
           <div className="eyebrow">Cuentas por Pagar</div>
           <h1>Obligaciones con Proveedores</h1>
-          <p>Documentos por pagar (saldo positivo) · los anticipos van aparte</p>
+          <p>Saldo neto (lo que realmente se debe · incluye anticipos)</p>
         </div>
         <div className="toolbar">
           <a href="/cxp/proveedores" className="btn primary">Informe por proveedor</a>
@@ -44,25 +43,25 @@ export default async function CxpPage({
 
       <div className="kpis">
         <div className="kpi">
-          <div className="klabel">CxP por pagar</div>
-          <div className="kval num">{formatCOP(resumen.porPagar)}</div>
-          <div className="ksub"><span className="flag">{resumen.cantidad} docs · vence ≤7d {formatCOP(resumen.proximoVencer)}</span></div>
+          <div className="klabel">CxP neta</div>
+          <div className="kval num">{formatCOP(resumen.total)}</div>
+          <div className="ksub"><span className="flag">{resumen.cantidad} documentos</span></div>
         </div>
         <div className="kpi k-bad">
           <div className="klabel">Vencida</div>
           <div className="kval num">{formatCOP(resumen.vencido)}</div>
           <div className="ksub"><span className="flag">documentos con mora</span></div>
         </div>
-        <a href="/cxp/anticipos" className="kpi k-ok" style={{ textDecoration: "none" }}>
-          <div className="klabel">Anticipos (aparte)</div>
+        <div className="kpi k-ok">
+          <div className="klabel">Al día / por vencer</div>
+          <div className="kval num">{formatCOP(resumen.alDia)}</div>
+          <div className="ksub"><span className="flag">sin mora</span></div>
+        </div>
+        <a href="/cxp/anticipos" className="kpi k-w" style={{ textDecoration: "none" }}>
+          <div className="klabel">Anticipos (incluidos)</div>
           <div className="kval num">{formatCOP(resumen.anticipos)}</div>
           <div className="ksub"><span className="flag">{resumen.anticiposCantidad} docs · ver detalle →</span></div>
         </a>
-        <div className="kpi k-w">
-          <div className="klabel">Neto (conciliación)</div>
-          <div className="kval num">{formatCOP(neto)}</div>
-          <div className="ksub"><span className="flag">por pagar − anticipos</span></div>
-        </div>
       </div>
 
       <div className="card">
@@ -87,7 +86,7 @@ export default async function CxpPage({
             <tbody>
               {filas.length > 0 && (
                 <tr className="fila-total">
-                  <td colSpan={4} style={{ fontWeight: 800 }}>Total por pagar · {total} documento{total === 1 ? "" : "s"}</td>
+                  <td colSpan={4} style={{ fontWeight: 800 }}>Total neto · {total} documento{total === 1 ? "" : "s"}</td>
                   <td className="r num" style={{ fontWeight: 800 }}>{formatCOP(suma)}</td>
                   <td colSpan={2}></td>
                 </tr>

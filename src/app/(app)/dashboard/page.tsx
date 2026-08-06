@@ -50,19 +50,19 @@ export default async function DashboardPage() {
       {tot && cxp ? (
         <>
           <div className="kpis">
-            <div className="kpi k-ok">
+            <div className="kpi k-ingreso">
               <div className="klabel">Ingresos {ANIO}</div>
               <div className="kval num">{formatCOP(tot.ingresos)}</div>
               <div className="ksub"><span className="flag">flujo neto {formatCOP(tot.neto)}</span></div>
             </div>
-            <div className="kpi k-bad">
+            <div className="kpi k-egreso">
               <div className="klabel">Egresos {ANIO}</div>
               <div className="kval num">{formatCOP(tot.egresos)}</div>
               <div className="ksub"><span className="flag">ejecución {formatPorcentaje(tot.ejecucion)}</span></div>
             </div>
             <div className="kpi">
-              <div className="klabel">CxP por pagar</div>
-              <div className="kval num">{formatCOP(cxp.porPagar)}</div>
+              <div className="klabel">CxP neta</div>
+              <div className="kval num">{formatCOP(cxp.total)}</div>
               <div className="ksub"><span className="flag">vencida {formatCOP(cxp.vencido)}</span></div>
             </div>
             <div className="kpi k-w">
@@ -80,14 +80,14 @@ export default async function DashboardPage() {
                   {meses!.map((m) => (
                     <div key={m.mes} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4, height: "100%", justifyContent: "flex-end" }}>
                       <div style={{ display: "flex", gap: 3, alignItems: "flex-end", height: "100%", width: "100%", justifyContent: "center" }}>
-                        <div title={`Ingresos ${formatCOP(m.ingresos)}`} style={{ width: "38%", height: `${Math.max(1, (m.ingresos / maxBar) * 100)}%`, background: "var(--ok)", borderRadius: "3px 3px 0 0" }} />
-                        <div title={`Egresos ${formatCOP(m.egresos)}`} style={{ width: "38%", height: `${Math.max(1, (m.egresos / maxBar) * 100)}%`, background: "var(--bad)", borderRadius: "3px 3px 0 0" }} />
+                        <div title={`Ingresos ${formatCOP(m.ingresos)}`} style={{ width: "38%", height: `${Math.max(1, (m.ingresos / maxBar) * 100)}%`, background: "var(--ingreso)", borderRadius: "3px 3px 0 0" }} />
+                        <div title={`Egresos ${formatCOP(m.egresos)}`} style={{ width: "38%", height: `${Math.max(1, (m.egresos / maxBar) * 100)}%`, background: "var(--egreso)", borderRadius: "3px 3px 0 0" }} />
                       </div>
                       <span className="flag">{MESES_LABEL[m.mes]}</span>
                     </div>
                   ))}
                 </div>
-                <div className="legend"><span><i style={{ background: "var(--ok)" }} />Ingresos</span><span><i style={{ background: "var(--bad)" }} />Egresos</span></div>
+                <div className="legend"><span><i style={{ background: "var(--ingreso)" }} />Ingresos</span><span><i style={{ background: "var(--egreso)" }} />Egresos</span></div>
               </div>
             </div>
 
@@ -122,7 +122,7 @@ export default async function DashboardPage() {
             <div className="tbl-wrap">
               <table>
                 <thead>
-                  <tr><th>Proveedor</th><th>Tipo</th><th className="r">Por pagar</th><th className="r">Vencido</th><th className="r">Mora máx.</th></tr>
+                  <tr><th>Proveedor</th><th>Tipo</th><th className="r">Saldo neto</th><th className="r">Vencido</th><th className="r">Mora máx.</th></tr>
                 </thead>
                 <tbody>
                   {top8.length === 0 ? (
@@ -132,7 +132,7 @@ export default async function DashboardPage() {
                       <tr key={p.proveedorId}>
                         <td style={{ fontWeight: 600 }}>{p.proveedor}</td>
                         <td><span className={`tag ${p.interno ? "t-w1" : "t-blue"}`}>{p.interno ? "Interno" : "Externo"}</span></td>
-                        <td className="r num">{formatCOP(p.saldo)}</td>
+                        <td className="r num">{formatCOP(p.saldoNeto)}</td>
                         <td className="r num" style={{ color: p.vencido > 0 ? "var(--bad)" : "var(--muted)" }}>{formatCOP(p.vencido)}</td>
                         <td className="r num">{p.diasMax > 0 ? `${p.diasMax}d` : "—"}</td>
                       </tr>
