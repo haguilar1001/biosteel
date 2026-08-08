@@ -296,6 +296,12 @@ thead th {
   background: var(--brand-tint); color: var(--brand-700); text-align: left; font-size: 11px;
   text-transform: uppercase; letter-spacing: .4px; padding: 9px 12px; font-weight: 700; white-space: nowrap; border-bottom: 1px solid var(--line);
 }
+/* Encabezado ordenable (clic para ordenar por esa columna). */
+thead th a.th-sort { color: inherit; text-decoration: none; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; }
+thead th a.th-sort:hover { color: var(--brand); }
+thead th a.th-sort .ord { opacity: .35; font-size: 9px; }
+thead th a.th-sort.on { color: var(--brand); }
+thead th a.th-sort.on .ord { opacity: 1; }
 tbody td { padding: 9px 12px; border-bottom: 1px solid var(--line); white-space: nowrap; }
 tbody tr:hover { background: var(--brand-tint); }
 tbody tr.fila-total, tbody tr.fila-total:hover { background: var(--brand-tint); }

@@ -41,7 +41,10 @@ export default async function UsuariosPage() {
             <tbody>
               {usuarios.map((u) => (
                 <tr key={u.id}>
-                  <td style={{ fontWeight: 600 }}>{u.id === actor.id ? "👤 " : ""}{u.nombre}</td>
+                  <td style={{ fontWeight: 600, textTransform: "uppercase" }}>
+                    👤 {u.nombre}
+                    {u.id === actor.id && <span className="tag t-blue" style={{ marginLeft: 6, textTransform: "none" }}>tú</span>}
+                  </td>
                   <td className="flag">{u.email}</td>
                   <td>
                     <SelectorRolUsuario userId={u.id} rolActualId={u.rol.id} roles={roles} esSelf={u.id === actor.id} />
