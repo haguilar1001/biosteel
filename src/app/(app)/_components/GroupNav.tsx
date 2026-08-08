@@ -8,15 +8,24 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-export interface ItemNav { href: string; label: string; }
+// `match`: rutas extra que también marcan activo este ítem/grupo (p. ej. una
+// sección cuyo enlace apunta a una página pero abarca varias sub-rutas).
+export interface ItemNav { href: string; label: string; match?: string[]; }
 export interface Grupo { id: string; label: string; icon?: string; items: ItemNav[]; }
+
+function itemActivo(it: ItemNav, pathname: string): boolean {
+  const bases = [it.href, ...(it.match ?? [])];
+  return bases.some((b) => pathname === b || pathname.startsWith(b + "/"));
+}
 
 function grupoActivo(grupos: Grupo[], pathname: string): Grupo | undefined {
   let best: { g: Grupo; len: number } | undefined;
   for (const g of grupos) {
     for (const it of g.items) {
-      if (pathname === it.href || pathname.startsWith(it.href + "/")) {
-        if (!best || it.href.length > best.len) best = { g, len: it.href.length };
+      for (const b of [it.href, ...(it.match ?? [])]) {
+        if (pathname === b || pathname.startsWith(b + "/")) {
+          if (!best || b.length > best.len) best = { g, len: b.length };
+        }
       }
     }
   }
@@ -46,7 +55,7 @@ export function SubMenu({ grupos }: { grupos: Grupo[] }) {
     <nav className="appnav" aria-label="Módulos">
       <div className="appnav-inner">
         {activo.items.map((it) => {
-          const on = pathname === it.href || pathname.startsWith(it.href + "/");
+          const on = itemActivo(it, pathname);
           return (
             <Link key={it.href} href={it.href} className={on ? "active" : undefined}>{it.label}</Link>
           );

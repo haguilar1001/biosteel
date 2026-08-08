@@ -9,6 +9,7 @@ import { puede } from "@/lib/rbac/authorize";
 import type { PermisoClave } from "@/lib/rbac/permissions";
 import { logoutAction } from "../login/actions";
 import { GruposBar, SubMenu, type Grupo } from "./_components/GroupNav";
+import { ADMIN_SECCIONES } from "./admin/_nav";
 
 // Menú en dos niveles: grupo → módulos. Cada módulo se filtra por permiso;
 // un grupo sin módulos visibles no se muestra.
@@ -30,18 +31,6 @@ const GRUPOS_DEF: { id: string; label: string; icon: string; items: { href: stri
   { id: "analisis", label: "Análisis", icon: "📊", items: [
     { href: "/indicadores", label: "📈 Indicadores", permiso: "cxp.view" },
     { href: "/pyg", label: "📄 PyG", permiso: "cxp.view" },
-  ] },
-  // Administración dividida en dos grupos de primer nivel (barra azul).
-  { id: "usuarios", label: "Manejo de usuarios", icon: "👥", items: [
-    { href: "/admin/usuarios", label: "👤 Usuarios", permiso: "usuario.manage" },
-    { href: "/admin/roles", label: "🔐 Roles y permisos", permiso: "rol.manage" },
-    { href: "/admin/auditoria", label: "📜 Auditoría", permiso: "auditoria.view" },
-  ] },
-  // "Administración" agrupa la parametrización de la app y los catálogos
-  // (terceros y los que se vayan sumando).
-  { id: "admin", label: "Administración", icon: "⚙️", items: [
-    { href: "/admin/parametrizacion", label: "🎨 Fuente y tamaño", permiso: "parametro.manage" },
-    { href: "/admin/terceros", label: "🧑‍💼 Terceros", permiso: "tercero.manage" },
   ] },
 ];
 
@@ -65,6 +54,20 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     }
     if (items.length) grupos.push({ id: g.id, label: g.label, icon: g.icon, items });
   }
+
+  // Grupo "Administración" (barra azul). El submenú muestra las secciones;
+  // cada una aparece si el usuario puede ver al menos una de sus páginas, y
+  // enlaza a la primera página permitida. `match` abarca todas sus rutas para
+  // que el submenú se resalte también en las sub-páginas (roles, auditoría…).
+  const itemsAdmin: { href: string; label: string; match: string[] }[] = [];
+  for (const s of ADMIN_SECCIONES) {
+    let primera: string | undefined;
+    for (const t of s.tabs) {
+      if (await puede(usuario, t.permiso)) { primera = t.href; break; }
+    }
+    if (primera) itemsAdmin.push({ href: primera, label: s.label, match: s.tabs.map((t) => t.href) });
+  }
+  if (itemsAdmin.length) grupos.push({ id: "admin", label: "Administración", icon: "⚙️", items: itemsAdmin });
 
   return (
     <>
