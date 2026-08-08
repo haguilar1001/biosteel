@@ -125,6 +125,55 @@ export async function listarMovimientos(
   return { filas, total, suma: agg._sum.valor?.toNumber() ?? 0 };
 }
 
+// ---------- Agregado por tercero (mayor a menor) ----------
+export interface FilaTercero {
+  terceroNombre: string;
+  nit: string | null;
+  total: number;
+  movimientos: number;
+}
+
+/** Total por tercero (cliente/proveedor) para el tipo y mes dados, desc. */
+export async function movimientosPorTercero(
+  tipo: TipoMovimiento,
+  f: FiltrosMov,
+): Promise<FilaTercero[]> {
+  const where = whereMov(tipo, f);
+  const grupos = await prisma.movimientoFlujo.groupBy({
+    by: ["terceroNombre"],
+    where,
+    _sum: { valor: true },
+    _count: { _all: true },
+  });
+
+  // El NIT no entra en el groupBy (puede variar por fila); se resuelve el más
+  // frecuente por nombre en una segunda pasada ligera.
+  const nits = await prisma.movimientoFlujo.groupBy({
+    by: ["terceroNombre", "nit"],
+    where,
+    _count: { _all: true },
+  });
+  const nitPorNombre = new Map<string, string>();
+  const mejorConteo = new Map<string, number>();
+  for (const g of nits) {
+    if (!g.nit) continue;
+    const c = g._count._all;
+    if (c > (mejorConteo.get(g.terceroNombre) ?? 0)) {
+      mejorConteo.set(g.terceroNombre, c);
+      nitPorNombre.set(g.terceroNombre, g.nit);
+    }
+  }
+
+  return grupos
+    .map((g) => ({
+      terceroNombre: g.terceroNombre,
+      nit: nitPorNombre.get(g.terceroNombre) ?? null,
+      total: g._sum.valor?.toNumber() ?? 0,
+      movimientos: g._count._all,
+    }))
+    .sort((a, b) => b.total - a.total);
+}
+
 // ---------- Presupuesto vs Real ----------
 export interface FilaPresupuesto {
   categoria: string;
@@ -170,6 +219,12 @@ export async function presupuestoVsReal(anio: number, mes?: number): Promise<Fil
     }))
     .sort((a, b) => a._orden - b._orden)
     .map(({ _orden, ...f }) => f);
+}
+
+/** Meses (1–12) con movimientos del tipo dado, ascendente. */
+export async function mesesConMovimiento(anio: number, tipo: TipoMovimiento): Promise<number[]> {
+  const grupos = await prisma.movimientoFlujo.groupBy({ by: ["mes"], where: { anio, tipo }, _count: { _all: true } });
+  return grupos.map((g) => g.mes).sort((a, b) => a - b);
 }
 
 /** Categorías (grupos) para filtros. */

@@ -37,6 +37,7 @@ export default async function CxpPage({
         </div>
         <div className="toolbar">
           <a href="/cxp/proveedores" className="btn primary">Informe por proveedor</a>
+          <a href="/cxp/facturado-pagado" className="btn">Facturado vs Pagado</a>
           <a href="/cxp/anticipos" className="btn">Anticipos</a>
         </div>
       </div>

@@ -23,6 +23,7 @@ const MODULOS: { href: string; label: string; permiso: PermisoClave }[] = [
   { href: "/impuestos", label: "🧾 Impuestos", permiso: "cxp.view" },
   { href: "/reportes", label: "📊 Reportes", permiso: "reporte.view" },
   { href: "/indicadores", label: "📈 Indicadores", permiso: "cxp.view" },
+  { href: "/pyg", label: "📄 PyG", permiso: "cxp.view" },
 ];
 
 // La pestaña Administración aparece si el usuario tiene CUALQUIER permiso de admin.

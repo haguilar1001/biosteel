@@ -42,6 +42,7 @@ export default async function CarteraPage({
         <div className="toolbar">
           <a href="/cartera/ciudades" className="btn primary">Por ciudad</a>
           <a href="/cartera/clientes" className="btn">Por cliente</a>
+          <a href="/cartera/ventas-recaudos" className="btn">Ventas vs Recaudos</a>
         </div>
       </div>
 

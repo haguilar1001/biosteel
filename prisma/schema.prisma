@@ -642,3 +642,56 @@ model PresupuestoMensual {
   @@index([anio, mes])
   @@index([categoriaId])
 }
+
+// =============== 9. VENTAS (por línea / por cliente) ===============
+// Agregados mensuales del reporte "Venta por línea" (SIESA). El detalle es
+// enorme (decenas de miles de renglones), así que se pre-agrega al importar.
+// `valor` = suma de "Valor subtotal local" (neto de notas crédito del período).
+
+// Venta neta por línea de producto y mes.
+model VentaLinea {
+  id     Int     @id @default(autoincrement())
+  anio   Int
+  mes    Int     // 1–12
+  linea  String  // p.ej. "2002 - TRAUMA/ORTOPEDIA"
+  valor  Decimal @db.Decimal(18, 2)
+
+  @@unique([anio, mes, linea])
+  @@index([anio, mes])
+}
+
+// Venta neta por cliente y mes (para el comparativo ventas vs recaudos).
+model VentaCliente {
+  id            Int     @id @default(autoincrement())
+  anio          Int
+  mes           Int     // 1–12
+  clienteNombre String
+  nit           String?
+  valor         Decimal @db.Decimal(18, 2)
+
+  @@unique([anio, mes, clienteNombre])
+  @@index([anio, mes])
+}
+
+// =============== 10. ESTADO DE RESULTADOS (PyG) ===============
+// Un registro por mes. Los totales principales quedan en columnas; el árbol
+// completo de cuentas (para la vista detallada) se guarda en `detalle` (JSON).
+model EstadoResultados {
+  id                   Int     @id @default(autoincrement())
+  anio                 Int
+  mes                  Int     // 1–12
+  ventasNetas          Decimal @db.Decimal(18, 2) // Ingresos operacionales netos
+  costoVenta           Decimal @db.Decimal(18, 2)
+  utilidadBruta        Decimal @db.Decimal(18, 2)
+  gastosOperacionales  Decimal @db.Decimal(18, 2)
+  utilidadOperacional  Decimal @db.Decimal(18, 2)
+  ingresosNoOp         Decimal @default(0) @db.Decimal(18, 2)
+  egresosNoOp          Decimal @default(0) @db.Decimal(18, 2)
+  utilidadNeta         Decimal @db.Decimal(18, 2) // Utilidad del ejercicio
+  detalle              Json?   // árbol de cuentas: [{ seccion, cuenta, valor, nivel }]
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  @@unique([anio, mes])
+  @@index([anio, mes])
+}

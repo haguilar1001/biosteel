@@ -20,6 +20,9 @@
     "db:internos": "tsx prisma/set-internos.ts",
     "db:obligaciones": "tsx prisma/set-obligaciones.ts",
     "db:grupo": "tsx prisma/set-grupo.ts",
+    "db:ventas": "tsx prisma/set-ventas.ts",
+    "db:pyg": "tsx prisma/set-pyg.ts",
+    "db:check": "tsx prisma/check-datos.ts",
     "db:studio": "prisma studio",
     "audit": "npm audit --audit-level=high"
   },
@@ -47,8 +50,10 @@
     "@types/react-dom": "^19.0.3",
     "eslint": "^9.18.0",
     "eslint-config-next": "^15.1.4",
+    "pdf-parse": "^2.4.5",
     "prisma": "^6.2.1",
     "tsx": "^4.19.2",
-    "typescript": "^5.7.3"
+    "typescript": "^5.7.3",
+    "xlsx": "^0.18.5"
   }
 }

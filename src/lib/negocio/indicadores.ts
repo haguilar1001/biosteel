@@ -10,6 +10,7 @@ import type { Alcance } from "@/lib/rbac/permissions";
 import { flujoMensual } from "./flujo";
 import { resumenCartera } from "./cartera";
 import { resumenCxp } from "./cxp";
+import { ventaTotal } from "./ventas";
 
 export type Unidad = "cop" | "dias" | "pct" | "veces";
 
@@ -55,8 +56,22 @@ export async function calcularIndicadores(
     ? meses.filter((m) => mesesSel.includes(m.mes))
     : (meses.length ? [meses[meses.length - 1]!] : []);
   const nSel = sel.length || 1;
-  const utilidadMes = sel.length ? sel.reduce((s, m) => s + (m.ingresos - m.egresos), 0) : null;
-  const ventasMes = sel.reduce((s, m) => s + m.ingresos, 0); // proxy: ventas del período
+  const mesesSelIds = sel.map((m) => m.mes);
+
+  // Recaudos = ingresos del flujo (abonos a cartera) del período.
+  const recaudosMes = sel.reduce((s, m) => s + m.ingresos, 0);
+
+  // Ventas reales (reporte por línea) y utilidad neta (PyG) del período.
+  const [ventasMes, pygSel] = await Promise.all([
+    ventaTotal(ANIO, mesesSelIds),
+    prisma.estadoResultados.aggregate({
+      where: { anio: ANIO, ...(mesesSelIds.length ? { mes: { in: mesesSelIds } } : {}) },
+      _sum: { utilidadNeta: true },
+      _count: { _all: true },
+    }),
+  ]);
+  const hayVentas = ventasMes > 0;
+  const utilidadNeta = pygSel._count._all > 0 ? (pygSel._sum.utilidadNeta?.toNumber() ?? 0) : null;
 
   // Cartera positiva (por edades) y vencida > 90
   const cub = cartera.porCubeta;
@@ -64,8 +79,10 @@ export async function calcularIndicadores(
   const vencida90 = cub.d91_120.monto + cub.mas120.monto;
   const pctVencida90 = carteraPositiva > 0 ? (vencida90 / carteraPositiva) * 100 : 0;
 
-  // DSO ≈ CxC / ventas del período × (30 × nMeses). Proxy de ventas = ingresos.
-  const dso = ventasMes > 0 ? (cartera.total / ventasMes) * (30 * nSel) : null;
+  // DSO ≈ CxC / ventas del período × (30 × nMeses). Si aún no hay ventas
+  // cargadas, usa recaudos (ingresos) como proxy.
+  const baseVentasDso = hayVentas ? ventasMes : recaudosMes;
+  const dso = baseVentasDso > 0 ? (cartera.total / baseVentasDso) * (30 * nSel) : null;
 
   // Rotación CxP ≈ compras anualizadas / CxP (compras YTD proveedores × 12/nMeses)
   const nMeses = meses.filter((m) => m.egresos > 0).length || 1;
@@ -75,23 +92,31 @@ export async function calcularIndicadores(
 
   const base: Indicador[] = [
     {
-      num: 26, nombre: "Utilidad mensual", formula: "Ventas − Cuentas por pagar − Gastos",
-      metaTexto: nSel === 1 ? "> $1.000M COP" : `> $1.000M/mes × ${nSel} = $${nSel}.000M`,
-      frecuencia: "Mensual", real: utilidadMes, unidad: "cop",
-      metaValor: 1_000_000_000 * nSel, metaDir: "mayor",
-      nota: "Aprox: Ingresos − Egresos del período (flujo de caja). Confirmar mapeo de Ventas/Gastos.",
+      num: 1, nombre: "Venta", formula: "Venta neta del período (reporte por línea)",
+      metaTexto: nSel === 1 ? "≥ $2.000M COP" : `≥ $2.000M/mes × ${nSel} = $${(2 * nSel).toLocaleString("es-CO")}M`,
+      frecuencia: "Mensual", real: hayVentas ? ventasMes : null, unidad: "cop",
+      metaValor: 2_000_000_000 * nSel, metaDir: "mayor", pendiente: !hayVentas,
+      nota: hayVentas ? "Fuente: reporte 'Venta por línea' (subtotal local, neto de notas crédito)." : "Cargar ventas con: npm run db:ventas.",
+    },
+    {
+      num: 2, nombre: "Recaudo", formula: "Ingresos (abonos a cartera) del período",
+      metaTexto: nSel === 1 ? "≥ $2.000M COP" : `≥ $2.000M/mes × ${nSel} = $${(2 * nSel).toLocaleString("es-CO")}M`,
+      frecuencia: "Mensual", real: recaudosMes, unidad: "cop",
+      metaValor: 2_000_000_000 * nSel, metaDir: "mayor",
+      nota: "Fuente: ingresos del Flujo de Caja del período.",
+    },
+    {
+      num: 3, nombre: "Utilidad Neta", formula: "Utilidad del ejercicio (Estado de Resultados)",
+      metaTexto: nSel === 1 ? "≥ $200M COP" : `≥ $200M/mes × ${nSel} = $${(200 * nSel).toLocaleString("es-CO")}M`,
+      frecuencia: "Mensual", real: utilidadNeta, unidad: "cop",
+      metaValor: 200_000_000 * nSel, metaDir: "mayor", pendiente: utilidadNeta == null,
+      nota: utilidadNeta != null ? "Fuente: PyG mensual (utilidad del ejercicio)." : "Cargar PyG con: npm run db:pyg.",
     },
     {
       num: 31, nombre: "Días de cartera — DSO", formula: "(Cuentas por cobrar / Ventas del período) × 30",
       metaTexto: "≤ 60 días", frecuencia: "Mensual", real: dso, unidad: "dias",
       metaValor: 60, metaDir: "menor",
-      nota: "Proxy: 'Ventas del período' = ingresos del mes. Con ventas reales será exacto.",
-    },
-    {
-      num: 32, nombre: "Margen bruto por línea", formula: "(Ventas línea − Costo línea) / Ventas línea × 100",
-      metaTexto: "≥ 35%", frecuencia: "Trimestral", real: null, unidad: "pct",
-      metaValor: 35, metaDir: "mayor", pendiente: true,
-      nota: "Requiere ventas y costos por línea de producto (no cargados).",
+      nota: hayVentas ? "Ventas reales (reporte por línea) del período." : "Sin ventas cargadas: usa ingresos como proxy hasta correr db:ventas.",
     },
     {
       num: 33, nombre: "Rotación de cuentas por pagar", formula: "Compras / Promedio de Cuentas por Pagar",
