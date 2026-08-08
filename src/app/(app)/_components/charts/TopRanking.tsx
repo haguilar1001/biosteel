@@ -52,13 +52,15 @@ export function TopRanking({
                 <span className="rank-pos">{idx + 1}</span>
                 <div className="rank-main">
                   <div className="rank-top">
-                    <span className="rank-label" title={t.label}>{t.label}</span>
+                    <span className="rank-label" title={t.label}>
+                      {t.label}
+                      {t.sub && <span className="flag" style={{ marginLeft: 8, fontWeight: 600 }}>· {t.sub}</span>}
+                    </span>
                     <span className="rank-val num">{cop(t.valor)}</span>
                   </div>
                   <div className="rank-bar">
                     <div style={{ width: `${Math.max(2, (Math.abs(t.valor) / max) * 100)}%`, background: color }} />
                   </div>
-                  {t.sub && <span className="rank-sub flag">{t.sub}</span>}
                 </div>
               </div>
             ))}
