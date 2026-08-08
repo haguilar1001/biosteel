@@ -8,6 +8,7 @@ const ORDEN: { href: string; permiso: PermisoClave }[] = [
   { href: "/admin/usuarios", permiso: "usuario.manage" },
   { href: "/admin/roles", permiso: "rol.manage" },
   { href: "/admin/terceros", permiso: "tercero.manage" },
+  { href: "/admin/parametrizacion", permiso: "parametro.manage" },
   { href: "/admin/auditoria", permiso: "auditoria.view" },
 ];
 

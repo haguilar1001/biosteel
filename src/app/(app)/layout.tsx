@@ -34,7 +34,7 @@ const GRUPOS_DEF: { id: string; label: string; icon: string; items: { href: stri
 ];
 
 // El grupo Administración aparece si el usuario tiene CUALQUIER permiso de admin.
-const PERMISOS_ADMIN: PermisoClave[] = ["usuario.manage", "rol.manage", "tercero.manage", "auditoria.view"];
+const PERMISOS_ADMIN: PermisoClave[] = ["usuario.manage", "rol.manage", "tercero.manage", "parametro.manage", "auditoria.view"];
 
 function iniciales(nombre: string): string {
   return nombre

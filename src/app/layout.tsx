@@ -22,6 +22,15 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="es">
+      <head>
+        {/* Aplica la fuente y el tamaño guardados ANTES del primer pintado
+            (evita el parpadeo). Se configuran en Admin ▸ Parametrización. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `try{var f=localStorage.getItem('ui.font');var z=localStorage.getItem('ui.zoom');var r=document.documentElement;if(f)r.style.setProperty('--app-font',f);if(z)r.style.setProperty('--app-zoom',z);}catch(e){}`,
+          }}
+        />
+      </head>
       <body>{children}</body>
     </html>
   );
