@@ -56,7 +56,12 @@ export default async function VentasPage({ searchParams }: { searchParams: Promi
   const difProm = prom26 - prom25;
 
   // Anillo por ciudad (modo azul: agrupa los menores en "Otros menores").
-  const donut = ciudades.map((c) => ({ label: c.ciudad, valor: c.valor }));
+  // detalle = IPS de la ciudad (para el tooltip).
+  const donut = ciudades.map((c) => ({
+    label: c.ciudad,
+    valor: c.valor,
+    detalle: c.ips.map((i) => ({ label: i.nombre, valor: i.valor })),
+  }));
 
   // Series para la gráfica de líneas (año en curso corta en el mes actual).
   const serieActual = mesesAct.map((m) => (esFuturo(m.mes) ? null : m.venta));
