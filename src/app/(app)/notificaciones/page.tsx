@@ -12,6 +12,7 @@ import { obtenerConfig } from "@/lib/notificaciones/config";
 import { correoConfigurado } from "@/lib/notificaciones/mailer";
 import { EjecutarBtn } from "./EjecutarBtn";
 import { AnuncioBtn } from "./AnuncioBtn";
+import { PruebaBtn } from "./PruebaBtn";
 import { ConfigForm } from "./ConfigForm";
 
 export default async function NotificacionesPage() {
@@ -38,6 +39,7 @@ export default async function NotificacionesPage() {
           <p>Recordatorios de pago por correo, {diasAntes} días antes del vencimiento</p>
         </div>
         <div className="toolbar" style={{ gap: 8 }}>
+          <PruebaBtn email={usuario.email} />
           <AnuncioBtn />
           <EjecutarBtn />
         </div>
@@ -87,7 +89,7 @@ export default async function NotificacionesPage() {
                     const enVentana = (o.diasHasta ?? 99) <= diasAntes;
                     return (
                       <tr key={o.id}>
-                        <td style={{ fontWeight: 600 }}>{o.entidad} <span className="flag">· {tipoLabel(o.tipo)}</span></td>
+                        <td style={{ fontWeight: 600 }}><span style={{ textTransform: "uppercase" }}>{o.entidad}</span> <span className="flag">· {tipoLabel(o.tipo)}</span></td>
                         <td>{formatFecha(o.proximaFecha!)} <span className="flag">({o.diasHasta}d)</span></td>
                         <td className="r num">{o.cuotaMensual != null ? formatCOP(o.cuotaMensual) : "—"}</td>
                         <td>{enVentana ? <span className="tag t-w1">Se enviará</span> : <span className="flag">en {(o.diasHasta ?? 0) - diasAntes}d</span>}</td>
