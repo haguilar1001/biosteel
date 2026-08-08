@@ -21,6 +21,7 @@ const FUENTES: Fuente[] = [
   { id: "georgia", nombre: "Georgia",        nota: "Serif · clásica",        stack: '"Georgia", "Times New Roman", serif' },
   { id: "cambria", nombre: "Cambria",        nota: "Serif · para pantalla",  stack: '"Cambria", "Georgia", serif' },
   { id: "consolas",nombre: "Consolas",       nota: "Monoespaciada · técnica",stack: '"Consolas", "Cascadia Mono", monospace' },
+  { id: "emoji",   nombre: "Segoe UI Emoji", nota: "Emojis a color",         stack: '"Segoe UI Emoji", "Segoe UI", sans-serif' },
 ];
 
 // Niveles de tamaño (zoom global). "1" = tamaño de diseño original.

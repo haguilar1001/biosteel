@@ -238,17 +238,6 @@ h1, h2, h3 { margin: 0; }
 .subnav a:hover { color: var(--ink); }
 .subnav a.active { color: var(--brand); border-bottom-color: var(--brand); }
 
-/* Administración en grupos: etiqueta a la izquierda + sus pestañas. */
-.admin-nav2 { display: grid; gap: 2px; margin-bottom: 16px; }
-.admin-grp { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; padding: 2px 0; }
-.admin-grp-lbl {
-  flex: 0 0 auto; min-width: 150px;
-  font-size: 11px; letter-spacing: .8px; text-transform: uppercase;
-  color: var(--brand-2); font-weight: 700;
-}
-.admin-grp .subnav { margin-bottom: 0; border-bottom: none; }
-@media (max-width: 640px) { .admin-grp-lbl { min-width: 100%; } }
-
 /* Contenido */
 .wrap { max-width: 1440px; margin: 0 auto; padding: 18px 16px 48px; }
 .page-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }

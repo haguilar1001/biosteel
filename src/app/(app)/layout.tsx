@@ -31,10 +31,19 @@ const GRUPOS_DEF: { id: string; label: string; icon: string; items: { href: stri
     { href: "/indicadores", label: "📈 Indicadores", permiso: "cxp.view" },
     { href: "/pyg", label: "📄 PyG", permiso: "cxp.view" },
   ] },
+  // Administración dividida en dos grupos de primer nivel (barra azul).
+  { id: "usuarios", label: "Manejo de usuarios", icon: "👥", items: [
+    { href: "/admin/usuarios", label: "👤 Usuarios", permiso: "usuario.manage" },
+    { href: "/admin/roles", label: "🔐 Roles y permisos", permiso: "rol.manage" },
+    { href: "/admin/auditoria", label: "📜 Auditoría", permiso: "auditoria.view" },
+  ] },
+  // "Administración" agrupa la parametrización de la app y los catálogos
+  // (terceros y los que se vayan sumando).
+  { id: "admin", label: "Administración", icon: "⚙️", items: [
+    { href: "/admin/parametrizacion", label: "🎨 Fuente y tamaño", permiso: "parametro.manage" },
+    { href: "/admin/terceros", label: "🧑‍💼 Terceros", permiso: "tercero.manage" },
+  ] },
 ];
-
-// El grupo Administración aparece si el usuario tiene CUALQUIER permiso de admin.
-const PERMISOS_ADMIN: PermisoClave[] = ["usuario.manage", "rol.manage", "tercero.manage", "parametro.manage", "auditoria.view"];
 
 function iniciales(nombre: string): string {
   return nombre
@@ -55,13 +64,6 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       if (await puede(usuario, m.permiso)) items.push({ href: m.href, label: m.label });
     }
     if (items.length) grupos.push({ id: g.id, label: g.label, icon: g.icon, items });
-  }
-  // Grupo Administración: visible con cualquier permiso de admin.
-  for (const p of PERMISOS_ADMIN) {
-    if (await puede(usuario, p)) {
-      grupos.push({ id: "admin", label: "Administración", icon: "⚙️", items: [{ href: "/admin", label: "⚙️ Administración" }] });
-      break;
-    }
   }
 
   return (
