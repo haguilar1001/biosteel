@@ -5,7 +5,7 @@
 // ==========================================================
 import { requirePermiso } from "@/server/auth-context";
 import { formatCOP, formatPorcentaje } from "@/lib/format";
-import { resumenAnual, ventaMensualDetalle, ventaPorCliente, aniosConVenta } from "@/lib/negocio/ventas";
+import { resumenAnual, ventaMensualDetalle, ventaPorCiudad, aniosConVenta } from "@/lib/negocio/ventas";
 import { Donut } from "../_components/charts/Donut";
 import { LineasMensuales } from "../_components/charts/LineasMensuales";
 
@@ -23,11 +23,11 @@ export default async function VentasPage({ searchParams }: { searchParams: Promi
   }
   const anio = sp.anio && anios.includes(Number(sp.anio)) ? Number(sp.anio) : anios[anios.length - 1]!;
 
-  const [kpi, mesesAct, mesesAnt, clientes] = await Promise.all([
+  const [kpi, mesesAct, mesesAnt, ciudades] = await Promise.all([
     resumenAnual(anio),
     ventaMensualDetalle(anio),
     ventaMensualDetalle(anio - 1),
-    ventaPorCliente(anio),
+    ventaPorCiudad(anio),
   ]);
 
   const totalAnt = mesesAnt.reduce((s, m) => s + m.venta, 0);
@@ -49,8 +49,8 @@ export default async function VentasPage({ searchParams }: { searchParams: Promi
   const difC = v26c - v25c;
   const varC = v25c > 0 ? (difC / v25c) * 100 : null;
 
-  // Anillo por cliente (modo azul: agrupa los menores en "Otros menores").
-  const donut = clientes.map((c) => ({ label: c.clienteNombre, valor: c.valor }));
+  // Anillo por ciudad (modo azul: agrupa los menores en "Otros menores").
+  const donut = ciudades.map((c) => ({ label: c.ciudad, valor: c.valor }));
 
   // Series para la gráfica de líneas (año en curso corta en el mes actual).
   const serieActual = mesesAct.map((m) => (esFuturo(m.mes) ? null : m.venta));
@@ -130,9 +130,9 @@ export default async function VentasPage({ searchParams }: { searchParams: Promi
           )}
         </div>
 
-        {/* Venta por cliente (anillo) */}
+        {/* Venta por ciudad (anillo) */}
         <div className="card">
-          <div className="chart-head">Venta por Cliente <span className="hact">{anio}</span></div>
+          <div className="chart-head">Venta por Ciudad <span className="hact">{anio}</span></div>
           <div className="card-body" style={{ display: "grid", placeItems: "center" }}>
             {donut.length === 0 ? <div className="empty">Sin datos.</div> : (
               <Donut azul data={donut} size={260} centro={{ valor: mill(kpi.venta), etiqueta: "venta neta" }} />

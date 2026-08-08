@@ -94,3 +94,34 @@ export async function ventaPorCliente(anio: number, meses?: number[]): Promise<F
     .map((g) => ({ clienteNombre: g.clienteNombre, nit: nitPorNombre.get(g.clienteNombre) ?? null, valor: g._sum.valor?.toNumber() ?? 0, costo: g._sum.costo?.toNumber() ?? 0 }))
     .sort((a, b) => b.valor - a.valor);
 }
+
+export interface FilaCiudadVenta { ciudad: string; valor: number; clientes: number; }
+
+/**
+ * Venta neta por ciudad (año, opcionalmente meses). Cruza el NIT de cada
+ * cliente con Terceros para obtener la ciudad; los que no cruzan o no tienen
+ * ciudad caen en "Sin ciudad". Incluye a todos (también las IPS internas).
+ */
+export async function ventaPorCiudad(anio: number, meses?: number[]): Promise<FilaCiudadVenta[]> {
+  const where: Prisma.VentaClienteWhereInput = { anio, ...(meses && meses.length ? { mes: { in: meses } } : {}) };
+  const grupos = await prisma.ventaCliente.groupBy({ by: ["clienteNombre", "nit"], where, _sum: { valor: true } });
+
+  // Mapa NIT -> ciudad desde Terceros.
+  const nits = [...new Set(grupos.map((g) => g.nit).filter((n): n is string => !!n))];
+  const terceros = nits.length ? await prisma.tercero.findMany({ where: { nit: { in: nits } }, select: { nit: true, ciudad: true } }) : [];
+  const ciudadPorNit = new Map<string, string>();
+  for (const t of terceros) ciudadPorNit.set(t.nit, t.ciudad?.trim() || "Sin ciudad");
+
+  const porCiudad = new Map<string, { valor: number; clientes: number }>();
+  for (const g of grupos) {
+    const ciudad = (g.nit ? ciudadPorNit.get(g.nit) : undefined) ?? "Sin ciudad";
+    const c = porCiudad.get(ciudad) ?? { valor: 0, clientes: 0 };
+    c.valor += g._sum.valor?.toNumber() ?? 0;
+    c.clientes += 1;
+    porCiudad.set(ciudad, c);
+  }
+
+  return [...porCiudad.entries()]
+    .map(([ciudad, c]) => ({ ciudad, valor: c.valor, clientes: c.clientes }))
+    .sort((a, b) => b.valor - a.valor);
+}

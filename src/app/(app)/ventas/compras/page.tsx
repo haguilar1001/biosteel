@@ -41,9 +41,9 @@ export default async function ComprasPage({ searchParams }: { searchParams: Prom
           <table className="tabla-fit" style={{ fontSize: 12.5 }}>
             <thead>
               <tr>
-                <th style={{ minWidth: 190 }}>Proveedor</th>
-                {MES_ABBR.map((m) => <th key={m} className="r">{m}</th>)}
-                <th className="r" style={{ background: "var(--brand-tint)" }}>Total</th>
+                <th style={{ minWidth: 240 }}>Proveedor</th>
+                {MES_ABBR.map((m) => <th key={m} className="r" style={{ width: 44 }}>{m}</th>)}
+                <th className="r" style={{ background: "var(--brand-tint)", width: 64 }}>Total</th>
               </tr>
             </thead>
             <tbody>
