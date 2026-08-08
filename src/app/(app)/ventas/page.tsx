@@ -171,7 +171,7 @@ export default async function VentasPage({ searchParams }: { searchParams: Promi
             categorias={MES_ABBR.slice(1)}
             series={[
               { label: `${anio}`, color: "var(--brand)", data: serieActual },
-              { label: `${anio - 1}`, color: "var(--muted)", data: serieAnterior },
+              { label: `${anio - 1}`, color: "var(--w1)", data: serieAnterior, dash: true },
             ]}
           />
         </div>

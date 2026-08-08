@@ -6,6 +6,7 @@ export interface SerieLinea {
   label: string;
   color: string;
   data: (number | null)[]; // alineada con `categorias`
+  dash?: boolean; // línea punteada (p. ej. para el año anterior)
 }
 
 const nf0 = new Intl.NumberFormat("es-CO", { maximumFractionDigits: 0 });
@@ -60,7 +61,10 @@ export function LineasMensuales({
       <div style={{ display: "flex", gap: 16, marginBottom: 8, fontSize: 12.5, flexWrap: "wrap" }}>
         {series.map((s) => (
           <span key={s.label} style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-            <i style={{ width: 14, height: 3, borderRadius: 2, background: s.color, display: "inline-block" }} /> {s.label}
+            <svg width="18" height="6" style={{ display: "block" }}>
+              <line x1="0" y1="3" x2="18" y2="3" stroke={s.color} strokeWidth="3" strokeLinecap="round" strokeDasharray={s.dash ? "4 3" : undefined} />
+            </svg>
+            {s.label}
           </span>
         ))}
         <span className="flag" style={{ marginLeft: "auto" }}>valores en {unidad}</span>
@@ -92,7 +96,7 @@ export function LineasMensuales({
           return (
             <g key={s.label}>
               {coords.length > 1 && (
-                <path d={curvaSuave(coords)} fill="none" stroke={s.color} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
+                <path d={curvaSuave(coords)} fill="none" stroke={s.color} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" strokeDasharray={s.dash ? "6 5" : undefined} />
               )}
               {s.data.map((v, i) =>
                 v == null ? null : <circle key={i} cx={x(i)} cy={y(v)} r={3} fill={s.color}><title>{`${categorias[i]}: $ ${nf0.format(Math.round(v))}`}</title></circle>,
