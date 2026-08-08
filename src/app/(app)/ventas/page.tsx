@@ -11,7 +11,7 @@ import { LineasMensuales } from "../_components/charts/LineasMensuales";
 
 const MESES = ["", "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 const MES_ABBR = ["", "Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
-const mill = (v: number) => `${new Intl.NumberFormat("es-CO", { maximumFractionDigits: 0 }).format(Math.round(v / 1e6))} mill.`;
+const mill = (v: number) => `${new Intl.NumberFormat("es-CO", { maximumFractionDigits: 0 }).format(Math.round(v / 1e6))} MM`;
 
 export default async function VentasPage({ searchParams }: { searchParams: Promise<{ anio?: string }> }) {
   await requirePermiso("cxp.view");
@@ -48,6 +48,12 @@ export default async function VentasPage({ searchParams }: { searchParams: Promi
   }
   const difC = v26c - v25c;
   const varC = v25c > 0 ? (difC / v25c) * 100 : null;
+
+  // Promedio por mes transcurrido (mismos meses en ambos años).
+  const nMeses = Math.max(1, mesActual);
+  const prom26 = v26c / nMeses;
+  const prom25 = v25c / nMeses;
+  const difProm = prom26 - prom25;
 
   // Anillo por ciudad (modo azul: agrupa los menores en "Otros menores").
   const donut = ciudades.map((c) => ({ label: c.ciudad, valor: c.valor }));
@@ -117,6 +123,17 @@ export default async function VentasPage({ searchParams }: { searchParams: Promi
                     {`${difC >= 0 ? "+" : "−"}${formatCOP(Math.abs(difC))}`}
                   </td>
                   <td className="r num" style={{ fontWeight: 800, color: varC == null ? "var(--muted)" : varC >= 0 ? "var(--ok)" : "var(--bad)" }}>
+                    {varC == null ? "—" : `${varC >= 0 ? "+" : ""}${formatPorcentaje(varC)}`}
+                  </td>
+                </tr>
+                <tr>
+                  <td style={{ fontWeight: 700, fontStyle: "italic", color: "var(--muted)" }}>Promedio mes ({nMeses})</td>
+                  <td className="r num" style={{ fontWeight: 700 }}>{formatCOP(prom26)}</td>
+                  <td className="r num flag">{formatCOP(prom25)}</td>
+                  <td className="r num" style={{ fontWeight: 700, color: difProm >= 0 ? "var(--ok)" : "var(--bad)" }}>
+                    {`${difProm >= 0 ? "+" : "−"}${formatCOP(Math.abs(difProm))}`}
+                  </td>
+                  <td className="r num" style={{ fontWeight: 700, color: varC == null ? "var(--muted)" : varC >= 0 ? "var(--ok)" : "var(--bad)" }}>
                     {varC == null ? "—" : `${varC >= 0 ? "+" : ""}${formatPorcentaje(varC)}`}
                   </td>
                 </tr>
