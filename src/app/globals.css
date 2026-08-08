@@ -8,6 +8,11 @@
   --brand-tint: #EAF1F9;
   --ingreso: var(--brand);
   --egreso: color-mix(in srgb, var(--brand) 50%, transparent);
+  /* Rampa azul institucional para anillos con muchas categorías (menos colorido).
+     Del más oscuro (segmento mayor) al más claro, con dos acentos azul-verde/pizarra. */
+  --az-1: #173a6d; --az-2: #21528f; --az-3: #2f6ab3; --az-4: #4785cc;
+  --az-5: #6aa3dd; --az-6: #97c2ea; --az-7: #2f7d8f; --az-8: #5b6ba3;
+  --az-otros: #9aa7bd;
   /* Paleta categórica validada (CVD-safe, orden fijo) para anillos/mapas */
   --cat-1: #2a78d6; --cat-2: #eb6834; --cat-3: #1baf7a; --cat-4: #eda100;
   --cat-5: #e87ba4; --cat-6: #008300; --cat-7: #4a3aa7; --cat-8: #e34948;
@@ -40,6 +45,9 @@
     --ok-t: #12281E; --w1-t: #2A2410; --w2-t: #2A1D12; --bad-t: #2A1414;
     --cat-1: #3987e5; --cat-2: #d95926; --cat-3: #199e70; --cat-4: #c98500;
     --cat-5: #d55181; --cat-6: #008300; --cat-7: #9085e9; --cat-8: #e66767;
+    --az-1: #2c5da0; --az-2: #3a72bd; --az-3: #4d8cd4; --az-4: #6aa3dd;
+    --az-5: #8bbae7; --az-6: #aecff1; --az-7: #3f97ab; --az-8: #7d8cc4;
+    --az-otros: #7d8aa2;
   }
 }
 

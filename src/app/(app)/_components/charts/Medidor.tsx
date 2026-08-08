@@ -28,7 +28,7 @@ export function Medidor({
           d={semic} fill="none" stroke={color} strokeWidth={14} strokeLinecap="round"
           strokeDasharray={`${frac * largo} ${largo}`}
         />
-        <text x={cx} y={cy - 6} textAnchor="middle" fontSize={size * 0.16} fontWeight="800" fill="var(--ink)" style={{ fontVariantNumeric: "tabular-nums" }}>
+        <text x={cx} y={cy - 6} textAnchor="middle" fontSize={size * 0.13} fontWeight="800" fill="var(--ink)" style={{ fontVariantNumeric: "tabular-nums" }}>
           {formatPorcentaje(valor)}
         </text>
       </svg>

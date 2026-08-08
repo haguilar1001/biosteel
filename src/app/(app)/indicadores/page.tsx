@@ -13,8 +13,6 @@ import { mesesConPyg } from "@/lib/negocio/pyg";
 import { Medidor } from "../_components/charts/Medidor";
 import { Donut } from "../_components/charts/Donut";
 
-const CAT = ["var(--cat-1)", "var(--cat-2)", "var(--cat-3)", "var(--cat-4)", "var(--cat-5)", "var(--cat-6)", "var(--cat-7)", "var(--cat-8)"];
-
 const ANIO = 2026;
 const MES_ABBR = ["", "ENE", "FEB", "MAR", "ABR", "MAY", "JUN", "JUL", "AGO", "SEP", "OCT", "NOV", "DIC"];
 
@@ -59,13 +57,8 @@ export default async function IndicadoresPage({
     ventaPorLinea(ANIO, seleccion),
   ]);
   const totalLineas = lineas.reduce((s, l) => s + l.valor, 0);
-  // Agrupa la cola en "Otras" para un anillo legible (top 7 + resto).
-  const topLineas = lineas.slice(0, 7);
-  const restoLineas = lineas.slice(7).reduce((s, l) => s + l.valor, 0);
-  const donutLineas = [
-    ...topLineas.map((l, i) => ({ label: l.linea.replace(/^\d+\s*-\s*/, ""), valor: l.valor, color: CAT[i % CAT.length]! })),
-    ...(restoLineas > 0 ? [{ label: "Otras", valor: restoLineas, color: "var(--muted)" }] : []),
-  ];
+  // El anillo (modo azul) agrupa solo las líneas menores en "Otros menores".
+  const donutLineas = lineas.map((l) => ({ label: l.linea.replace(/^\d+\s*-\s*/, ""), valor: l.valor }));
 
   const cumplen = indicadores.filter((i) => i.cumple === true).length;
   const conDato = indicadores.filter((i) => i.cumple != null).length;
@@ -81,21 +74,23 @@ export default async function IndicadoresPage({
 
   return (
     <>
-      <div className="page-head">
-        <div>
-          <div className="eyebrow">Contabilidad</div>
-          <h1>Indicadores Financieros</h1>
-          <p>{formatNumero(cumplen)} de {formatNumero(conDato)} indicadores en meta · corte {ANIO_LABEL()}</p>
+      {/* Título y Período lado a lado para ganar espacio vertical. */}
+      <div style={{ display: "flex", gap: 12, alignItems: "stretch", flexWrap: "wrap", marginBottom: 12 }}>
+        <div className="page-head" style={{ marginBottom: 0, flex: "1 1 260px" }}>
+          <div>
+            <div className="eyebrow">Contabilidad</div>
+            <h1>Indicadores Financieros</h1>
+            <p>{formatNumero(cumplen)} de {formatNumero(conDato)} indicadores en meta · corte {ANIO_LABEL()}</p>
+          </div>
         </div>
-      </div>
 
-      {/* Filtro por mes (multi-selección) */}
-      <div className="card" style={{ marginBottom: 12 }}>
+        {/* Filtro por mes (multi-selección) */}
+        <div className="card" style={{ marginBottom: 0, flex: "2 1 520px" }}>
         <div className="chart-head">
           Período de los indicadores mensuales
           <span className="hact">{periodoLabel || "sin datos"}{seleccion.length > 1 ? ` · ${seleccion.length} meses (suma)` : ""}</span>
         </div>
-        <div className="card-body" style={{ paddingTop: 12 }}>
+        <div className="card-body" style={{ paddingTop: 10, paddingBottom: 10 }}>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
             {MES_ABBR.slice(1).map((lbl, i) => {
               const m = i + 1;
@@ -111,10 +106,11 @@ export default async function IndicadoresPage({
               );
             })}
           </div>
-          <p className="flag" style={{ marginTop: 10 }}>
+          <p className="flag" style={{ marginTop: 8 }}>
             Utilidad (#26) y DSO (#31) se calculan sobre el período seleccionado (suma). Los de saldo actual
             (% cartera vencida, rotación CxP) son foto de hoy y no cambian con el mes.
           </p>
+        </div>
         </div>
       </div>
 
@@ -167,26 +163,31 @@ export default async function IndicadoresPage({
           {lineas.length === 0 ? (
             <div className="empty">Sin ventas cargadas. Corre <code>npm run db:ventas</code> para importar el reporte por línea.</div>
           ) : (
-            <div className="grid two" style={{ gridTemplateColumns: "260px 1fr", gap: 20, alignItems: "center" }}>
-              <div style={{ display: "grid", placeItems: "center" }}>
-                <Donut legend={false} size={220} data={donutLineas}
+            <div className="grid two" style={{ gridTemplateColumns: "300px 1fr", gap: 20, alignItems: "start" }}>
+              <div style={{ display: "grid", placeItems: "start center" }}>
+                <Donut azul legend size={280} data={donutLineas}
                   centro={{ valor: (totalLineas / 1e9).toFixed(1).replace(".", ",") + " MM", etiqueta: "venta neta" }} />
               </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                {lineas.map((l, i) => (
-                  <div key={l.linea}>
-                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5, marginBottom: 3 }}>
-                      <span style={{ fontWeight: 600 }} title={l.linea}>
-                        <i style={{ display: "inline-block", width: 10, height: 10, borderRadius: 3, background: i < 7 ? CAT[i % CAT.length] : "var(--muted)", marginRight: 7 }} />
-                        {l.linea}
-                      </span>
-                      <span className="num" style={{ fontWeight: 700 }}>{formatCOP(l.valor)} · {formatPorcentaje(totalLineas > 0 ? (l.valor / totalLineas) * 100 : 0)}</span>
-                    </div>
-                    <div style={{ height: 8, borderRadius: 5, background: "var(--brand-tint)", overflow: "hidden" }}>
-                      <div style={{ width: `${totalLineas > 0 ? Math.max(1, (l.valor / totalLineas) * 100) : 0}%`, height: "100%", background: i < 7 ? CAT[i % CAT.length] : "var(--muted)" }} />
-                    </div>
-                  </div>
-                ))}
+              <div className="tbl-wrap">
+                <table>
+                  <thead>
+                    <tr><th>Línea</th><th className="r">Venta neta</th><th className="r">%</th></tr>
+                  </thead>
+                  <tbody>
+                    <tr className="fila-total">
+                      <td style={{ fontWeight: 800 }}>Total · {formatNumero(lineas.length)} líneas</td>
+                      <td className="r num" style={{ fontWeight: 800 }}>{formatCOP(totalLineas)}</td>
+                      <td className="r num" style={{ fontWeight: 800 }}>{formatPorcentaje(100)}</td>
+                    </tr>
+                    {lineas.map((l) => (
+                      <tr key={l.linea}>
+                        <td style={{ fontWeight: 600 }} title={l.linea}>{l.linea}</td>
+                        <td className="r num">{formatCOP(l.valor)}</td>
+                        <td className="r num" style={{ color: "var(--muted)" }}>{formatPorcentaje(totalLineas > 0 ? (l.valor / totalLineas) * 100 : 0)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </div>
           )}
