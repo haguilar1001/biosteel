@@ -69,18 +69,21 @@ export default async function VentasPage({ searchParams }: { searchParams: Promi
           <div className="chart-head">Ventas · Mes vs Año Anterior <span className="hact">{anio} vs {anio - 1}</span></div>
           <div className="tbl-wrap">
             <table className="tabla-fit">
-              <thead><tr><th>Mes</th><th className="r">Venta {anio}</th><th className="r">Venta {anio - 1}</th><th className="r">% Var.</th></tr></thead>
+              <thead><tr><th>Mes</th><th className="r">Venta {anio}</th><th className="r">Venta {anio - 1}</th><th className="r">Dif. $</th><th className="r">% Var.</th></tr></thead>
               <tbody>
                 {mesesAct.map((m) => {
                   const ant = mesesAnt[m.mes - 1]!.venta;
-                  const varr = ant > 0 ? ((m.venta - ant) / ant) * 100 : null;
+                  const dif = m.venta - ant;
+                  const varr = ant > 0 ? (dif / ant) * 100 : null;
                   const vac = m.venta === 0 && ant === 0;
                   if (vac) return null;
+                  const colDif = dif >= 0 ? "var(--ok)" : "var(--bad)";
                   return (
                     <tr key={m.mes}>
                       <td style={{ fontWeight: 600 }}>{MESES[m.mes]}</td>
                       <td className="r num">{m.venta ? formatCOP(m.venta) : "—"}</td>
                       <td className="r num flag">{ant ? formatCOP(ant) : "—"}</td>
+                      <td className="r num" style={{ fontWeight: 600, color: colDif }}>{`${dif >= 0 ? "+" : "−"}${formatCOP(Math.abs(dif))}`}</td>
                       <td className="r num" style={{ fontWeight: 700, color: varr == null ? "var(--muted)" : varr >= 0 ? "var(--ok)" : "var(--bad)" }}>
                         {varr == null ? "—" : `${varr >= 0 ? "+" : ""}${formatPorcentaje(varr)}`}
                       </td>
@@ -91,6 +94,9 @@ export default async function VentasPage({ searchParams }: { searchParams: Promi
                   <td style={{ fontWeight: 800 }}>Total</td>
                   <td className="r num" style={{ fontWeight: 800 }}>{formatCOP(kpi.venta)}</td>
                   <td className="r num" style={{ fontWeight: 800 }}>{formatCOP(totalAnt)}</td>
+                  <td className="r num" style={{ fontWeight: 800, color: kpi.venta - totalAnt >= 0 ? "var(--ok)" : "var(--bad)" }}>
+                    {`${kpi.venta - totalAnt >= 0 ? "+" : "−"}${formatCOP(Math.abs(kpi.venta - totalAnt))}`}
+                  </td>
                   <td className="r num" style={{ fontWeight: 800, color: totalAnt > 0 && kpi.venta >= totalAnt ? "var(--ok)" : "var(--bad)" }}>
                     {totalAnt > 0 ? `${kpi.venta >= totalAnt ? "+" : ""}${formatPorcentaje(((kpi.venta - totalAnt) / totalAnt) * 100)}` : "—"}
                   </td>
