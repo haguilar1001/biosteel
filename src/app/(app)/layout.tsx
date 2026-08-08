@@ -8,26 +8,32 @@ import { requireUsuario } from "@/server/auth-context";
 import { puede } from "@/lib/rbac/authorize";
 import type { PermisoClave } from "@/lib/rbac/permissions";
 import { logoutAction } from "../login/actions";
-import { Nav, type ItemNav } from "./_components/Nav";
+import { GruposBar, SubMenu, type Grupo } from "./_components/GroupNav";
 
-const MODULOS: { href: string; label: string; permiso: PermisoClave }[] = [
-  { href: "/dashboard", label: "🏠 Inicio", permiso: "dashboard.view" },
-  { href: "/flujo", label: "💵 Flujo de Caja", permiso: "cxp.view" },
-  { href: "/cartera", label: "📥 Cartera", permiso: "cartera.view" },
-  { href: "/ventas", label: "💹 Ventas", permiso: "cxp.view" },
-  // Ocultos del menú hasta que se necesiten (recaudos/pagos manuales).
-  // Las páginas siguen existiendo; para reactivarlas, descomentar:
-  // { href: "/recaudos", label: "💰 Recaudos", permiso: "recaudo.create" },
-  { href: "/cxp", label: "📤 Cuentas por Pagar", permiso: "cxp.view" },
-  // { href: "/pagos", label: "💸 Pagos", permiso: "pago.create" },
-  { href: "/obligaciones", label: "🏦 Obligaciones", permiso: "cxp.view" },
-  { href: "/impuestos", label: "🧾 Impuestos", permiso: "cxp.view" },
-  { href: "/reportes", label: "📊 Reportes", permiso: "reporte.view" },
-  { href: "/indicadores", label: "📈 Indicadores", permiso: "cxp.view" },
-  { href: "/pyg", label: "📄 PyG", permiso: "cxp.view" },
+// Menú en dos niveles: grupo → módulos. Cada módulo se filtra por permiso;
+// un grupo sin módulos visibles no se muestra.
+// (Reportes, Recaudos y Pagos quedan ocultos hasta que tengan datos.)
+const GRUPOS_DEF: { id: string; label: string; items: { href: string; label: string; permiso: PermisoClave }[] }[] = [
+  { id: "inicio", label: "Inicio", items: [
+    { href: "/dashboard", label: "🏠 Inicio", permiso: "dashboard.view" },
+  ] },
+  { id: "tesoreria", label: "Tesorería", items: [
+    { href: "/flujo", label: "💵 Flujo de Caja", permiso: "cxp.view" },
+    { href: "/cxp", label: "📤 Cuentas por Pagar", permiso: "cxp.view" },
+    { href: "/obligaciones", label: "🏦 Obligaciones", permiso: "cxp.view" },
+    { href: "/impuestos", label: "🧾 Impuestos", permiso: "cxp.view" },
+  ] },
+  { id: "comercial", label: "Comercial", items: [
+    { href: "/ventas", label: "💹 Ventas", permiso: "cxp.view" },
+    { href: "/cartera", label: "📥 Cartera", permiso: "cartera.view" },
+  ] },
+  { id: "analisis", label: "Análisis", items: [
+    { href: "/indicadores", label: "📈 Indicadores", permiso: "cxp.view" },
+    { href: "/pyg", label: "📄 PyG", permiso: "cxp.view" },
+  ] },
 ];
 
-// La pestaña Administración aparece si el usuario tiene CUALQUIER permiso de admin.
+// El grupo Administración aparece si el usuario tiene CUALQUIER permiso de admin.
 const PERMISOS_ADMIN: PermisoClave[] = ["usuario.manage", "rol.manage", "tercero.manage", "auditoria.view"];
 
 function iniciales(nombre: string): string {
@@ -41,19 +47,22 @@ function iniciales(nombre: string): string {
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const usuario = await requireUsuario();
 
-  const items: ItemNav[] = [];
-  for (const m of MODULOS) {
-    if (await puede(usuario, m.permiso)) items.push({ href: m.href, label: m.label });
+  // Filtra módulos por permiso y descarta grupos vacíos.
+  const grupos: Grupo[] = [];
+  for (const g of GRUPOS_DEF) {
+    const items: { href: string; label: string }[] = [];
+    for (const m of g.items) {
+      if (await puede(usuario, m.permiso)) items.push({ href: m.href, label: m.label });
+    }
+    if (items.length) grupos.push({ id: g.id, label: g.label, items });
   }
-  // Administración: visible con cualquier permiso de admin.
+  // Grupo Administración: visible con cualquier permiso de admin.
   for (const p of PERMISOS_ADMIN) {
     if (await puede(usuario, p)) {
-      items.push({ href: "/admin", label: "⚙️ Administración" });
+      grupos.push({ id: "admin", label: "Administración", items: [{ href: "/admin", label: "⚙️ Administración" }] });
       break;
     }
   }
-
-  const sedeLabel = usuario.sedeId == null ? "Todas las sedes" : `Sede #${usuario.sedeId}`;
 
   return (
     <>
@@ -62,9 +71,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/BIOSTEEL.png" alt="BioSteel de Colombia S.A.S" className="logo-img" />
         </div>
+        <GruposBar grupos={grupos} />
         <div className="sep" />
         <div className="ctx">
-          <span className="chip-ctx">🏢 {sedeLabel}</span>
           <span className="chip-ctx" title={usuario.rol.nombre}>{usuario.rol.nombre}</span>
           {(await puede(usuario, "cxp.view")) && (
             <a href="/notificaciones" className="bell" title="Notificaciones" aria-label="Notificaciones">🔔</a>
@@ -76,7 +85,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         </div>
       </header>
 
-      <Nav items={items} />
+      <SubMenu grupos={grupos} />
 
       <main className="wrap">{children}</main>
     </>

@@ -201,7 +201,16 @@ h1, h2, h3 { margin: 0; }
 }
 .bell:hover { background: rgba(255,255,255,.30); }
 
-/* Navegación por módulos (tabs) */
+/* Grupos en la barra azul (nivel 1) */
+.nav-grupos { display: flex; gap: 4px; flex-wrap: wrap; align-items: center; }
+.nav-grupo {
+  color: rgba(255,255,255,.82); text-decoration: none; font-weight: 600; font-size: 13.5px;
+  padding: 7px 14px; border-radius: 9px; white-space: nowrap; transition: background .12s, color .12s;
+}
+.nav-grupo:hover { background: rgba(255,255,255,.14); color: #fff; }
+.nav-grupo.active { background: rgba(255,255,255,.22); color: #fff; }
+
+/* Navegación por módulos (tabs, nivel 2) */
 .appnav { background: var(--surface); border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 40; }
 .appnav-inner { display: flex; gap: 2px; padding: 0 8px; overflow-x: auto; max-width: 1240px; margin: 0 auto; }
 .appnav a {
