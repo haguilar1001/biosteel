@@ -1,23 +1,17 @@
 // ==========================================================
-// Cartera por Ciudad — mapa de Colombia + anillo + tabla con tooltip
-// que despliega el subtotal por IPS.
+// Cartera por Ciudad — una sola vista: mapa de Colombia + tabla jerárquica
+// (cada ciudad se expande y muestra el saldo por IPS con % sobre la ciudad).
 // ==========================================================
 import { requirePermiso } from "@/server/auth-context";
-import { formatCOP, formatPorcentaje, formatNumero } from "@/lib/format";
+import { formatCOP } from "@/lib/format";
 import { carteraPorCiudad } from "@/lib/negocio/cartera";
-import { Donut } from "../../_components/charts/Donut";
 import { MapaCartera } from "../../_components/charts/MapaCartera";
+import { CiudadesTabla, type CiudadItem } from "./CiudadesTabla";
 
 const CATS = ["var(--cat-1)", "var(--cat-2)", "var(--cat-3)", "var(--cat-4)", "var(--cat-5)", "var(--cat-6)", "var(--cat-7)", "var(--cat-8)"];
 
-export default async function CarteraPorCiudadPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ vista?: string }>;
-}) {
+export default async function CarteraPorCiudadPage() {
   const { usuario, alcance } = await requirePermiso("cartera.view");
-  const { vista } = await searchParams;
-  const verMapa = vista === "mapa";
   const ciudades = await carteraPorCiudad(usuario, alcance);
   const total = ciudades.reduce((s, c) => s + c.saldo, 0);
   const totalDocs = ciudades.reduce((s, c) => s + c.documentos, 0);
@@ -27,10 +21,13 @@ export default async function CarteraPorCiudadPage({
   const color = new Map<string, string>();
   for (const c of ciudades) color.set(c.ciudad, c.ciudad === "Sin ciudad" ? "var(--muted)" : CATS[idx++ % CATS.length]!);
 
-  const donutData = ciudades.map((c) => ({ label: c.ciudad, valor: c.saldo, color: color.get(c.ciudad)! }));
   const mapaData = ciudades.map((c) => ({
     ciudad: c.ciudad, valor: c.saldo, color: color.get(c.ciudad)!,
     ips: c.ips.map((i) => ({ cliente: i.cliente, saldo: i.saldo })),
+  }));
+  const items: CiudadItem[] = ciudades.map((c) => ({
+    ciudad: c.ciudad, saldo: c.saldo, documentos: c.documentos, clientes: c.clientes,
+    color: color.get(c.ciudad)!, ips: c.ips.map((i) => ({ cliente: i.cliente, saldo: i.saldo, documentos: i.documentos })),
   }));
 
   return (
@@ -39,76 +36,21 @@ export default async function CarteraPorCiudadPage({
         <div>
           <div className="eyebrow">Cartera</div>
           <h1>Cartera por ciudad</h1>
-          <p>Pasa el mouse sobre una ciudad para ver el subtotal de cada IPS</p>
+          <p>Clic en una ciudad para desplegar sus IPS (% sobre el total de la ciudad)</p>
         </div>
         <div className="toolbar">
-          <a href="/cartera/ciudades?vista=mapa" className={`btn${verMapa ? " primary" : ""}`}>🗺️ Mapa</a>
-          <a href="/cartera/ciudades" className={`btn${!verMapa ? " primary" : ""}`}>Tabla</a>
           <a href="/cartera" className="btn">← Facturas</a>
         </div>
       </div>
 
-      {verMapa && (
-      <div className="grid two" style={{ marginBottom: 12, gridTemplateColumns: "1fr 1.4fr" }}>
-        <div className="card">
-          <div className="chart-head">Mapa de cartera</div>
-          <div className="card-body">
-            <MapaCartera data={mapaData} />
-          </div>
-        </div>
-        <div className="card">
-          <div className="chart-head">Composición por ciudad</div>
-          <div className="card-body">
-            <Donut data={donutData} centro={{ valor: (total / 1e9).toFixed(1).replace(".", ",") + " MM", etiqueta: "cartera neta" }} />
-          </div>
-        </div>
+      <div className="card" style={{ marginBottom: 12 }}>
+        <div className="chart-head">Mapa de cartera <span className="hact">{ciudades.length} ciudades · {formatCOP(total)}</span></div>
+        <div className="card-body"><MapaCartera data={mapaData} /></div>
       </div>
-      )}
 
-      <div className="card card-tt">
-        <div className="chart-head">Saldo neto por ciudad <span className="hact">{ciudades.length} ciudades</span></div>
-        <table>
-          <thead>
-            <tr>
-              <th>Ciudad</th><th className="r">Saldo neto</th><th className="r">% Part.</th>
-              <th className="r">IPS / clientes</th><th className="r">Facturas</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr className="fila-total">
-              <td style={{ fontWeight: 800 }}>Total · {ciudades.length} ciudades</td>
-              <td className="r num" style={{ fontWeight: 800 }}>{formatCOP(total)}</td>
-              <td className="r num" style={{ fontWeight: 800 }}>{formatPorcentaje(100)}</td>
-              <td className="r num"></td>
-              <td className="r num" style={{ fontWeight: 800 }}>{formatNumero(totalDocs)}</td>
-            </tr>
-            {ciudades.map((c) => (
-              <tr key={c.ciudad}>
-                <td>
-                  <span className="tt" tabIndex={0}>
-                    <span className="tt-label" style={{ fontWeight: 600 }}>
-                      <i style={{ display: "inline-block", width: 9, height: 9, borderRadius: 2, background: color.get(c.ciudad), marginRight: 7 }} />{c.ciudad}
-                    </span>
-                    <div className="tt-pop">
-                      <h4>IPS en {c.ciudad} · {formatNumero(c.clientes)}</h4>
-                      {c.ips.map((ips) => (
-                        <div className="tt-row" key={ips.cliente}>
-                          <span>{ips.cliente} <span className="n">· {formatNumero(ips.documentos)} fac.</span></span>
-                          <span className="num" style={{ fontWeight: 700, whiteSpace: "nowrap" }}>{formatCOP(ips.saldo)}</span>
-                        </div>
-                      ))}
-                      <div className="tt-foot"><span>Total {c.ciudad}</span><span className="num">{formatCOP(c.saldo)}</span></div>
-                    </div>
-                  </span>
-                </td>
-                <td className="r num" style={{ fontWeight: 700 }}>{formatCOP(c.saldo)}</td>
-                <td className="r num">{total !== 0 ? formatPorcentaje((c.saldo / total) * 100) : "—"}</td>
-                <td className="r num">{formatNumero(c.clientes)}</td>
-                <td className="r num">{formatNumero(c.documentos)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <div className="card">
+        <div className="chart-head">Saldo neto por ciudad <span className="hact">clic para expandir IPS</span></div>
+        <CiudadesTabla ciudades={items} total={total} totalDocs={totalDocs} />
       </div>
     </>
   );
