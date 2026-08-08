@@ -22,7 +22,7 @@ function semaforo(a: number, b: number): { txt: string; clase: string } {
   if (a <= 0) return { txt: b > 0 ? "s/A" : "—", clase: "t-blue" };
   const p = (b / a) * 100;
   const clase = p >= 90 ? "t-ok" : p >= 50 ? "t-w1" : "t-bad";
-  return { txt: `${Math.round(p)}%`, clase };
+  return { txt: `${p.toFixed(2).replace(".", ",")}%`, clase };
 }
 
 export function BarrasComparativas({
@@ -80,18 +80,18 @@ export function BarrasComparativas({
         {top.length === 0 ? (
           <div className="empty">Sin datos.</div>
         ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
             {top.map((t, idx) => {
               const s = semaforo(t.a, t.b);
               return (
                 <div key={`${t.label}-${idx}`} style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   <span className="rank-pos" style={{ alignSelf: "center" }}>{idx + 1}</span>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, marginBottom: 2 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, marginBottom: 1 }}>
                       <span className="rank-label" title={t.label} style={{ fontSize: 12.5 }}>{t.label}</span>
                       <span className={`tag ${s.clase}`} style={{ flex: "0 0 auto" }}>{s.txt}</span>
                     </div>
-                    <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
                       {barra(t.a, colorA)}
                       {barra(t.b, colorB)}
                     </div>

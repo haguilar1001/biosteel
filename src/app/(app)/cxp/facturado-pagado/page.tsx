@@ -16,7 +16,7 @@ function pctTag(facturado: number, pagado: number) {
   if (facturado <= 0) return <span className="tag t-blue">{pagado > 0 ? "s/fact" : "—"}</span>;
   const p = (pagado / facturado) * 100;
   const clase = p >= 90 ? "t-ok" : p >= 50 ? "t-w1" : "t-bad";
-  return <span className={`tag ${clase}`}>{Math.round(p)}%</span>;
+  return <span className={`tag ${clase}`}>{p.toFixed(2).replace(".", ",")}%</span>;
 }
 
 export default async function FacturadoPagadoPage({

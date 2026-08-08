@@ -8,7 +8,7 @@ import { listarMovimientos, movimientosPorTercero, MESES_LABEL, type CampoOrden,
 
 const ANIO = 2026;
 const fmtFecha = (d: Date) => new Intl.DateTimeFormat("es-CO", { day: "2-digit", month: "short" }).format(d);
-const DEF_DIR: Record<string, DirOrden> = { fecha: "desc", tercero: "asc", valor: "desc", cantidad: "desc" };
+const DEF_DIR: Record<string, DirOrden> = { fecha: "desc", tercero: "asc", detalle: "asc", observacion: "asc", valor: "desc", cantidad: "desc" };
 
 export default async function IngresosPage({
   searchParams,
@@ -22,7 +22,7 @@ export default async function IngresosPage({
   const vista = sp.vista === "cliente" ? "cliente" : "detalle";
 
   // Orden: por defecto valor/total desc en "por cliente", fecha desc en detalle.
-  const campos = vista === "cliente" ? ["tercero", "cantidad", "valor"] : ["fecha", "tercero", "valor"];
+  const campos = vista === "cliente" ? ["tercero", "cantidad", "valor"] : ["fecha", "tercero", "detalle", "observacion", "valor"];
   const campoDefault = vista === "cliente" ? "valor" : "fecha";
   const campo = (sp.orden && campos.includes(sp.orden) ? sp.orden : campoDefault) as CampoOrden | "cantidad";
   const dir: DirOrden = sp.dir === "asc" || sp.dir === "desc" ? sp.dir : DEF_DIR[campo] ?? "desc";
@@ -38,13 +38,16 @@ export default async function IngresosPage({
     return `/flujo/ingresos${s ? `?${s}` : ""}`;
   };
   // Encabezado ordenable: alterna dir si es la columna activa; si no, su default.
+  // Toda columna ordenable muestra un indicador (⇅ inactiva, ▲/▼ activa).
   const th = (c: string, label: string, alinR = false) => {
     const activo = campo === c;
     const nextDir: DirOrden = activo ? (dir === "asc" ? "desc" : "asc") : (DEF_DIR[c] ?? "desc");
-    const flecha = activo ? (dir === "asc" ? " ▲" : " ▼") : "";
+    const ind = activo ? (dir === "asc" ? "▲" : "▼") : "⇅";
     return (
       <th className={alinR ? "r" : undefined}>
-        <a href={base({ orden: c, dir: nextDir })} style={{ color: "inherit", textDecoration: "none", cursor: "pointer", fontWeight: activo ? 800 : undefined }}>{label}{flecha}</a>
+        <a href={base({ orden: c, dir: nextDir })} title="Ordenar" style={{ color: "inherit", textDecoration: "none", cursor: "pointer", fontWeight: activo ? 800 : undefined, whiteSpace: "nowrap" }}>
+          {label}<span style={{ marginLeft: 4, fontSize: 10, opacity: activo ? 0.9 : 0.4 }}>{ind}</span>
+        </a>
       </th>
     );
   };
@@ -125,7 +128,7 @@ export default async function IngresosPage({
             <col style={{ width: "36%" }} /><col style={{ width: "14%" }} />
           </colgroup>
           <thead>
-            <tr>{th("fecha", "Fecha")}{th("tercero", "Tercero")}<th>Detalle</th><th>Observación</th>{th("valor", "Valor", true)}</tr>
+            <tr>{th("fecha", "Fecha")}{th("tercero", "Tercero")}{th("detalle", "Detalle")}{th("observacion", "Observación")}{th("valor", "Valor", true)}</tr>
           </thead>
           <tbody>
             <tr className="fila-total">

@@ -97,7 +97,7 @@ function whereMov(tipo: TipoMovimiento, f: FiltrosMov): Prisma.MovimientoFlujoWh
   };
 }
 
-export type CampoOrden = "fecha" | "tercero" | "grupo" | "valor";
+export type CampoOrden = "fecha" | "tercero" | "grupo" | "detalle" | "observacion" | "valor";
 export type DirOrden = "asc" | "desc";
 export interface OrdenMov { campo: CampoOrden; dir: DirOrden }
 
@@ -108,6 +108,8 @@ function orderByMov(orden?: OrdenMov): Prisma.MovimientoFlujoOrderByWithRelation
   switch (orden?.campo) {
     case "tercero": return [{ terceroNombre: dir }, { fecha: "desc" }];
     case "grupo": return [{ categoria: { nombre: dir } }, { fecha: "desc" }];
+    case "detalle": return [{ detalle: dir }, { fecha: "desc" }];
+    case "observacion": return [{ observacion: dir }, { fecha: "desc" }];
     case "valor": return [{ valor: dir }, { id: "desc" }];
     default: return [{ fecha: dir }, { id: "desc" }];
   }

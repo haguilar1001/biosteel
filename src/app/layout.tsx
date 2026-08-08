@@ -5,6 +5,12 @@ export const metadata: Metadata = {
   title: "BioSteel — Flujo de Caja",
   description: "Sistema de flujo de caja de BioSteel de Colombia S.A.S",
   robots: { index: false, follow: false }, // app interna, no indexar
+  // Favicon = logo BioSteel (lo usan también los lanzadores de apps).
+  icons: {
+    icon: [{ url: "/BIOSTEEL.png", type: "image/png" }],
+    shortcut: "/BIOSTEEL.png",
+    apple: "/BIOSTEEL.png",
+  },
 };
 
 export const viewport: Viewport = {
