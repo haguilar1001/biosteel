@@ -10,6 +10,25 @@ export interface SerieLinea {
 
 const nf0 = new Intl.NumberFormat("es-CO", { maximumFractionDigits: 0 });
 
+// Curva suave (Catmull-Rom -> Bézier cúbica) que pasa por todos los puntos.
+function curvaSuave(pts: [number, number][]): string {
+  if (pts.length === 0) return "";
+  if (pts.length === 1) return `M${pts[0]![0]},${pts[0]![1]}`;
+  let d = `M${pts[0]![0].toFixed(1)},${pts[0]![1].toFixed(1)}`;
+  for (let i = 0; i < pts.length - 1; i++) {
+    const p0 = pts[i - 1] ?? pts[i]!;
+    const p1 = pts[i]!;
+    const p2 = pts[i + 1]!;
+    const p3 = pts[i + 2] ?? p2;
+    const c1x = p1[0] + (p2[0] - p0[0]) / 6;
+    const c1y = p1[1] + (p2[1] - p0[1]) / 6;
+    const c2x = p2[0] - (p3[0] - p1[0]) / 6;
+    const c2y = p2[1] - (p3[1] - p1[1]) / 6;
+    d += ` C${c1x.toFixed(1)},${c1y.toFixed(1)} ${c2x.toFixed(1)},${c2y.toFixed(1)} ${p2[0].toFixed(1)},${p2[1].toFixed(1)}`;
+  }
+  return d;
+}
+
 export function LineasMensuales({
   categorias,
   series,
@@ -67,13 +86,13 @@ export function LineasMensuales({
 
         {/* Series: línea + puntos (ignora null) */}
         {series.map((s) => {
-          const pts = s.data
-            .map((v, i) => (v == null ? null : `${x(i).toFixed(1)},${y(v).toFixed(1)}`))
-            .filter((p): p is string => p != null);
+          const coords = s.data
+            .map((v, i) => (v == null ? null : ([x(i), y(v)] as [number, number])))
+            .filter((c): c is [number, number] => c != null);
           return (
             <g key={s.label}>
-              {pts.length > 1 && (
-                <polyline points={pts.join(" ")} fill="none" stroke={s.color} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
+              {coords.length > 1 && (
+                <path d={curvaSuave(coords)} fill="none" stroke={s.color} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
               )}
               {s.data.map((v, i) =>
                 v == null ? null : <circle key={i} cx={x(i)} cy={y(v)} r={3} fill={s.color}><title>{`${categorias[i]}: $ ${nf0.format(Math.round(v))}`}</title></circle>,
