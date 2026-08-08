@@ -13,21 +13,21 @@ import { GruposBar, SubMenu, type Grupo } from "./_components/GroupNav";
 // Menú en dos niveles: grupo → módulos. Cada módulo se filtra por permiso;
 // un grupo sin módulos visibles no se muestra.
 // (Reportes, Recaudos y Pagos quedan ocultos hasta que tengan datos.)
-const GRUPOS_DEF: { id: string; label: string; items: { href: string; label: string; permiso: PermisoClave }[] }[] = [
-  { id: "inicio", label: "Inicio", items: [
+const GRUPOS_DEF: { id: string; label: string; icon: string; items: { href: string; label: string; permiso: PermisoClave }[] }[] = [
+  { id: "inicio", label: "Inicio", icon: "🏠", items: [
     { href: "/dashboard", label: "🏠 Inicio", permiso: "dashboard.view" },
   ] },
-  { id: "tesoreria", label: "Tesorería", items: [
+  { id: "tesoreria", label: "Tesorería", icon: "💰", items: [
     { href: "/flujo", label: "💵 Flujo de Caja", permiso: "cxp.view" },
     { href: "/cxp", label: "📤 Cuentas por Pagar", permiso: "cxp.view" },
     { href: "/obligaciones", label: "🏦 Obligaciones", permiso: "cxp.view" },
     { href: "/impuestos", label: "🧾 Impuestos", permiso: "cxp.view" },
   ] },
-  { id: "comercial", label: "Comercial", items: [
+  { id: "comercial", label: "Comercial", icon: "🛒", items: [
     { href: "/ventas", label: "💹 Ventas", permiso: "cxp.view" },
     { href: "/cartera", label: "📥 Cartera", permiso: "cartera.view" },
   ] },
-  { id: "analisis", label: "Análisis", items: [
+  { id: "analisis", label: "Análisis", icon: "📊", items: [
     { href: "/indicadores", label: "📈 Indicadores", permiso: "cxp.view" },
     { href: "/pyg", label: "📄 PyG", permiso: "cxp.view" },
   ] },
@@ -54,12 +54,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     for (const m of g.items) {
       if (await puede(usuario, m.permiso)) items.push({ href: m.href, label: m.label });
     }
-    if (items.length) grupos.push({ id: g.id, label: g.label, items });
+    if (items.length) grupos.push({ id: g.id, label: g.label, icon: g.icon, items });
   }
   // Grupo Administración: visible con cualquier permiso de admin.
   for (const p of PERMISOS_ADMIN) {
     if (await puede(usuario, p)) {
-      grupos.push({ id: "admin", label: "Administración", items: [{ href: "/admin", label: "⚙️ Administración" }] });
+      grupos.push({ id: "admin", label: "Administración", icon: "⚙️", items: [{ href: "/admin", label: "⚙️ Administración" }] });
       break;
     }
   }

@@ -202,13 +202,19 @@ h1, h2, h3 { margin: 0; }
 .bell:hover { background: rgba(255,255,255,.30); }
 
 /* Grupos en la barra azul (nivel 1) */
-.nav-grupos { display: flex; gap: 4px; flex-wrap: wrap; align-items: center; }
+.nav-grupos { display: flex; gap: 5px; flex-wrap: wrap; align-items: center; }
 .nav-grupo {
+  display: inline-flex; align-items: center; gap: 7px;
   color: rgba(255,255,255,.82); text-decoration: none; font-weight: 600; font-size: 13.5px;
-  padding: 7px 14px; border-radius: 9px; white-space: nowrap; transition: background .12s, color .12s;
+  padding: 7px 14px; border-radius: 10px; white-space: nowrap;
+  border: 1px solid transparent; transition: background .14s, color .14s, border-color .14s;
 }
+.nav-grupo .nav-grupo-ico { font-size: 15px; line-height: 1; }
 .nav-grupo:hover { background: rgba(255,255,255,.14); color: #fff; }
-.nav-grupo.active { background: rgba(255,255,255,.22); color: #fff; }
+.nav-grupo.active {
+  background: #fff; color: var(--brand); border-color: rgba(255,255,255,.6);
+  box-shadow: 0 1px 3px rgba(0,0,0,.18); font-weight: 700;
+}
 
 /* Navegación por módulos (tabs, nivel 2) */
 .appnav { background: var(--surface); border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 40; }

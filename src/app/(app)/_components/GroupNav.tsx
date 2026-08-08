@@ -9,7 +9,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 export interface ItemNav { href: string; label: string; }
-export interface Grupo { id: string; label: string; items: ItemNav[]; }
+export interface Grupo { id: string; label: string; icon?: string; items: ItemNav[]; }
 
 function grupoActivo(grupos: Grupo[], pathname: string): Grupo | undefined {
   let best: { g: Grupo; len: number } | undefined;
@@ -30,7 +30,8 @@ export function GruposBar({ grupos }: { grupos: Grupo[] }) {
     <nav className="nav-grupos" aria-label="Grupos">
       {grupos.map((g) => (
         <Link key={g.id} href={g.items[0]?.href ?? "#"} className={`nav-grupo${activo?.id === g.id ? " active" : ""}`}>
-          {g.label}
+          {g.icon && <span className="nav-grupo-ico" aria-hidden>{g.icon}</span>}
+          <span>{g.label}</span>
         </Link>
       ))}
     </nav>
