@@ -9,7 +9,6 @@ import { resumenAnual, ventaMensualDetalle, ventaPorCliente, aniosConVenta } fro
 import { Donut } from "../_components/charts/Donut";
 
 const MESES = ["", "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
-const CAT = ["var(--cat-1)", "var(--cat-2)", "var(--cat-3)", "var(--cat-4)", "var(--cat-5)", "var(--cat-6)", "var(--cat-7)", "var(--cat-8)"];
 const mill = (v: number) => `${new Intl.NumberFormat("es-CO", { maximumFractionDigits: 0 }).format(Math.round(v / 1e6))} mill.`;
 
 export default async function VentasPage({ searchParams }: { searchParams: Promise<{ anio?: string }> }) {
@@ -32,13 +31,8 @@ export default async function VentasPage({ searchParams }: { searchParams: Promi
   const totalAnt = mesesAnt.reduce((s, m) => s + m.venta, 0);
   const maxVenta = Math.max(1, ...mesesAct.map((m) => m.venta));
 
-  // Anillo por cliente: top 7 + "Otras".
-  const top = clientes.slice(0, 7);
-  const resto = clientes.slice(7).reduce((s, c) => s + c.valor, 0);
-  const donut = [
-    ...top.map((c, i) => ({ label: c.clienteNombre, valor: c.valor, color: CAT[i % CAT.length]! })),
-    ...(resto > 0 ? [{ label: "Otras", valor: resto, color: "var(--muted)" }] : []),
-  ];
+  // Anillo por cliente (modo azul: agrupa los menores en "Otros menores").
+  const donut = clientes.map((c) => ({ label: c.clienteNombre, valor: c.valor }));
 
   return (
     <>
@@ -111,7 +105,7 @@ export default async function VentasPage({ searchParams }: { searchParams: Promi
           <div className="chart-head">Venta por Cliente <span className="hact">{anio}</span></div>
           <div className="card-body" style={{ display: "grid", placeItems: "center" }}>
             {donut.length === 0 ? <div className="empty">Sin datos.</div> : (
-              <Donut data={donut} size={260} centro={{ valor: mill(kpi.venta), etiqueta: "venta neta" }} />
+              <Donut azul data={donut} size={260} centro={{ valor: mill(kpi.venta), etiqueta: "venta neta" }} />
             )}
           </div>
         </div>

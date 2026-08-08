@@ -52,14 +52,9 @@ export default async function DashboardPage() {
   const cartera = alcanceCartera !== "ninguno" ? await resumenCartera(usuario, alcanceCartera) : null;
   const ciudades = alcanceCartera !== "ninguno" ? await carteraPorCiudad(usuario, alcanceCartera) : [];
 
-  // Anillo: egresos por grupo (top 6 + Otros)
+  // Anillo: egresos por grupo (modo azul: agrupa los menores en "Otros menores").
   const grupos = (presup ?? []).filter((p) => p.real > 0).sort((a, b) => b.real - a.real);
-  const top = grupos.slice(0, 6);
-  const otros = grupos.slice(6).reduce((s, g) => s + g.real, 0);
-  const donutEgresos = [
-    ...top.map((g, i) => ({ label: g.categoria, valor: g.real, color: CATS[i % CATS.length]! })),
-    ...(otros > 0 ? [{ label: "Otros", valor: otros, color: "var(--muted)" }] : []),
-  ];
+  const donutEgresos = grupos.map((g) => ({ label: g.categoria, valor: g.real }));
   const totalEgresos = grupos.reduce((s, g) => s + g.real, 0);
 
   // Medidores: los 4 indicadores no pendientes
@@ -142,7 +137,7 @@ export default async function DashboardPage() {
             <div className="chart-head">¿En qué se va la plata? <span className="hact">egresos por grupo {ANIO}</span></div>
             <div className="card-body">
               {donutEgresos.length === 0 ? <div className="empty">Sin egresos.</div> : (
-                <Donut data={donutEgresos} centro={{ valor: (totalEgresos / 1e9).toFixed(1).replace(".", ",") + " MM", etiqueta: "egresos" }} />
+                <Donut azul data={donutEgresos} centro={{ valor: (totalEgresos / 1e9).toFixed(1).replace(".", ",") + " MM", etiqueta: "egresos" }} />
               )}
             </div>
           </div>
