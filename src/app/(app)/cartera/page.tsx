@@ -3,11 +3,10 @@
 // KPIs + aging por edades (clicable) + detalle con buscador.
 // ==========================================================
 import { requirePermiso } from "@/server/auth-context";
-import { formatCOP, formatNumero, formatFecha } from "@/lib/format";
+import { formatCOP, formatNumero, formatFecha, formatPorcentaje } from "@/lib/format";
 import { resumenCartera, listarFacturas } from "@/lib/negocio/cartera";
 import { CUBETAS, type CubetaAging } from "@/lib/negocio/aging";
 import { Buscador } from "../_components/Buscador";
-import { Donut } from "../_components/charts/Donut";
 
 const CUBETA_TAG: Record<CubetaAging, string> = {
   d1_30: "t-ok", d31_60: "t-w1", d61_90: "t-w2", d91_120: "t-bad", mas120: "t-bad",
@@ -16,19 +15,49 @@ const CUBETA_LABEL: Record<CubetaAging, string> = {
   d1_30: "1–30", d31_60: "31–60", d61_90: "61–90", d91_120: "91–120", mas120: "+120",
 };
 
+const SORTS = ["numero", "cliente", "nit", "saldo", "vence", "edad"] as const;
+type SortK = (typeof SORTS)[number];
+const DEF_DIR: Record<SortK, "asc" | "desc"> = { numero: "asc", cliente: "asc", nit: "asc", saldo: "desc", vence: "desc", edad: "desc" };
+
 export default async function CarteraPage({
   searchParams,
 }: {
-  searchParams: Promise<{ edad?: string; q?: string }>;
+  searchParams: Promise<{ edad?: string; q?: string; sort?: string; dir?: string }>;
 }) {
   const { usuario, alcance } = await requirePermiso("cartera.view");
-  const { edad, q } = await searchParams;
+  const sp = await searchParams;
+  const { edad, q } = sp;
   const cubetaFiltro = CUBETAS.some((c) => c.clave === edad) ? (edad as CubetaAging) : undefined;
 
   const resumen = await resumenCartera(usuario, alcance);
-  const { filas, total, suma } = await listarFacturas(usuario, alcance, { cubeta: cubetaFiltro, q });
-  const maxCubeta = Math.max(1, ...CUBETAS.map((c) => resumen.porCubeta[c.clave].monto));
+  const { filas: filasRaw, total, suma } = await listarFacturas(usuario, alcance, { cubeta: cubetaFiltro, q });
   const carteraPositiva = CUBETAS.reduce((s, c) => s + resumen.porCubeta[c.clave].monto, 0);
+  const facturasAging = CUBETAS.reduce((s, c) => s + resumen.porCubeta[c.clave].cantidad, 0);
+
+  // Ordenamiento del detalle (sobre las filas devueltas; el listado se limita
+  // a las 300 de mayor saldo antes de filtrar por edad).
+  const sort: SortK = (SORTS as readonly string[]).includes(sp.sort ?? "") ? (sp.sort as SortK) : "saldo";
+  const dir: "asc" | "desc" = sp.dir === "asc" || sp.dir === "desc" ? sp.dir : DEF_DIR[sort];
+  const factor = dir === "asc" ? 1 : -1;
+  const filas = [...filasRaw].sort((a, b) => {
+    switch (sort) {
+      case "saldo": return (a.saldo - b.saldo) * factor;
+      case "edad": return (a.dias - b.dias) * factor;
+      case "vence": return (a.fechaVencimiento.getTime() - b.fechaVencimiento.getTime()) * factor;
+      case "nit": return String(a.nit ?? "").localeCompare(String(b.nit ?? ""), "es-CO", { numeric: true }) * factor;
+      case "cliente": return a.cliente.localeCompare(b.cliente, "es-CO") * factor;
+      case "numero": return String(a.numero).localeCompare(String(b.numero), "es-CO", { numeric: true }) * factor;
+    }
+  });
+  const thHref = (k: SortK) => {
+    const nextDir = sort === k ? (dir === "asc" ? "desc" : "asc") : DEF_DIR[k];
+    const p = new URLSearchParams();
+    if (q) p.set("q", q);
+    if (cubetaFiltro) p.set("edad", cubetaFiltro);
+    p.set("sort", k);
+    p.set("dir", nextDir);
+    return `/cartera?${p.toString()}`;
+  };
 
   return (
     <>
@@ -46,21 +75,21 @@ export default async function CarteraPage({
       </div>
 
       <div className="kpis">
-        <div className="kpi">
+        <div className="kpi kc">
           <div className="klabel">CxC neta</div>
           <div className="kval num">{formatCOP(resumen.total)}</div>
           <div className="ksub"><span className="flag">{resumen.cantidadFacturas} facturas</span></div>
         </div>
-        <div className="kpi k-bad">
+        <div className="kpi kc k-bad">
           <div className="klabel">Vencida</div>
           <div className="kval num">{formatCOP(resumen.vencido)}</div>
           <div className="ksub"><span className="flag">facturas con mora</span></div>
         </div>
-        <div className="kpi k-ok">
+        <div className="kpi kc k-ok">
           <div className="klabel">Al día / por vencer</div>
           <div className="kval num">{formatCOP(resumen.alDia)}</div>
         </div>
-        <div className="kpi k-w">
+        <div className="kpi kc k-w">
           <div className="klabel">Notas / a favor</div>
           <div className="kval num">{formatCOP(resumen.anticipos)}</div>
           <div className="ksub"><span className="flag">{resumen.anticiposCantidad} documentos</span></div>
@@ -68,32 +97,40 @@ export default async function CarteraPage({
       </div>
 
       <div className="card" style={{ marginBottom: 12 }}>
-        <div className="chart-head">Cartera por edades (aging) <span className="hact">clic para filtrar</span></div>
-        <div className="card-body">
-          <div className="grid aging-grid" style={{ gridTemplateColumns: "210px 1fr", gap: 20, alignItems: "center" }}>
-            <div style={{ display: "grid", placeItems: "center" }}>
-              <Donut legend={false} size={200}
-                data={CUBETAS.filter((c) => resumen.porCubeta[c.clave].monto > 0).map((c) => ({ label: c.etiqueta, valor: resumen.porCubeta[c.clave].monto, color: c.color }))}
-                centro={{ valor: (carteraPositiva / 1e9).toFixed(1).replace(".", ",") + " MM", etiqueta: "por cobrar" }} />
-            </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {CUBETAS.map((c) => {
-              const celda = resumen.porCubeta[c.clave];
-              const activo = cubetaFiltro === c.clave;
-              return (
-                <a key={c.clave} href={activo ? "/cartera" : `/cartera?edad=${c.clave}`} style={{ textDecoration: "none", color: "inherit" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 3 }}>
-                    <span style={{ color: activo ? "var(--brand)" : "var(--muted)", fontWeight: activo ? 700 : 400 }}>{c.etiqueta} · {formatNumero(celda.cantidad)}</span>
-                    <span style={{ fontWeight: 700 }}>{formatCOP(celda.monto)}</span>
-                  </div>
-                  <div style={{ height: 10, borderRadius: 6, background: "var(--brand-tint)", overflow: "hidden", outline: activo ? "2px solid var(--brand)" : "none" }}>
-                    <div style={{ width: `${Math.round((celda.monto / maxCubeta) * 100)}%`, height: "100%", background: c.color }} />
-                  </div>
-                </a>
-              );
-            })}
-            </div>
-          </div>
+        <div className="chart-head">Cartera por edades (aging) <span className="hact">clic en una edad para filtrar</span></div>
+        <div className="tbl-wrap">
+          <table>
+            <thead>
+              <tr><th>Edad</th><th className="r">Facturas</th><th className="r">Saldo</th><th className="r">% Part.</th></tr>
+            </thead>
+            <tbody>
+              <tr className="fila-total">
+                <td style={{ fontWeight: 800 }}>Total por cobrar</td>
+                <td className="r num" style={{ fontWeight: 800 }}>{formatNumero(facturasAging)}</td>
+                <td className="r num" style={{ fontWeight: 800 }}>{formatCOP(carteraPositiva)}</td>
+                <td className="r num" style={{ fontWeight: 800 }}>{formatPorcentaje(100)}</td>
+              </tr>
+              {CUBETAS.map((c) => {
+                const celda = resumen.porCubeta[c.clave];
+                const activo = cubetaFiltro === c.clave;
+                const pct = carteraPositiva > 0 ? (celda.monto / carteraPositiva) * 100 : 0;
+                return (
+                  <tr key={c.clave} style={{ background: activo ? "var(--brand-tint)" : undefined }}>
+                    <td>
+                      <a href={activo ? "/cartera" : `/cartera?edad=${c.clave}`}
+                        style={{ textDecoration: "none", color: activo ? "var(--brand)" : "inherit", display: "inline-flex", alignItems: "center", gap: 8, fontWeight: activo ? 700 : 600 }}>
+                        <i style={{ width: 11, height: 11, borderRadius: 3, background: c.color, flex: "0 0 auto" }} />
+                        {c.etiqueta}{activo ? " ✕" : ""}
+                      </a>
+                    </td>
+                    <td className="r num">{formatNumero(celda.cantidad)}</td>
+                    <td className="r num" style={{ fontWeight: 700 }}>{formatCOP(celda.monto)}</td>
+                    <td className="r num" style={{ color: "var(--muted)" }}>{formatPorcentaje(pct)}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       </div>
 
@@ -117,8 +154,13 @@ export default async function CarteraPage({
             </colgroup>
             <thead>
               <tr>
-                <th>Factura</th><th>Cliente</th><th>NIT</th><th>Concepto</th>
-                <th className="r">Saldo</th><th>Vence</th><th>Edad</th>
+                <th><a href={thHref("numero")} className={`th-sort${sort === "numero" ? " on" : ""}`}>Factura<span className="ord" aria-hidden>{sort === "numero" ? (dir === "asc" ? "▲" : "▼") : "↕"}</span></a></th>
+                <th><a href={thHref("cliente")} className={`th-sort${sort === "cliente" ? " on" : ""}`}>Cliente<span className="ord" aria-hidden>{sort === "cliente" ? (dir === "asc" ? "▲" : "▼") : "↕"}</span></a></th>
+                <th><a href={thHref("nit")} className={`th-sort${sort === "nit" ? " on" : ""}`}>NIT<span className="ord" aria-hidden>{sort === "nit" ? (dir === "asc" ? "▲" : "▼") : "↕"}</span></a></th>
+                <th>Concepto</th>
+                <th className="r"><a href={thHref("saldo")} className={`th-sort${sort === "saldo" ? " on" : ""}`}>Saldo<span className="ord" aria-hidden>{sort === "saldo" ? (dir === "asc" ? "▲" : "▼") : "↕"}</span></a></th>
+                <th><a href={thHref("vence")} className={`th-sort${sort === "vence" ? " on" : ""}`}>Vence<span className="ord" aria-hidden>{sort === "vence" ? (dir === "asc" ? "▲" : "▼") : "↕"}</span></a></th>
+                <th><a href={thHref("edad")} className={`th-sort${sort === "edad" ? " on" : ""}`}>Edad<span className="ord" aria-hidden>{sort === "edad" ? (dir === "asc" ? "▲" : "▼") : "↕"}</span></a></th>
               </tr>
             </thead>
             <tbody>
