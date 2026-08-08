@@ -3,7 +3,7 @@
 // KPIs + aging por edades (clicable) + detalle con buscador.
 // ==========================================================
 import { requirePermiso } from "@/server/auth-context";
-import { formatCOP, formatNumero } from "@/lib/format";
+import { formatCOP, formatNumero, formatFecha } from "@/lib/format";
 import { resumenCartera, listarFacturas } from "@/lib/negocio/cartera";
 import { CUBETAS, type CubetaAging } from "@/lib/negocio/aging";
 import { Buscador } from "../_components/Buscador";
@@ -15,7 +15,6 @@ const CUBETA_TAG: Record<CubetaAging, string> = {
 const CUBETA_LABEL: Record<CubetaAging, string> = {
   d1_30: "1–30", d31_60: "31–60", d61_90: "61–90", d91_120: "91–120", mas120: "+120",
 };
-const fmtFecha = (d: Date) => new Intl.DateTimeFormat("es-CO", { day: "2-digit", month: "short", year: "2-digit" }).format(d);
 
 export default async function CarteraPage({
   searchParams,
@@ -140,7 +139,7 @@ export default async function CarteraPage({
                     <td className="num flag">{f.nit}</td>
                     <td className="flag" title={f.concepto ?? ""}>{f.concepto}</td>
                     <td className="r num" style={{ fontWeight: 700, color: f.saldo < 0 ? "var(--ok)" : undefined }}>{formatCOP(f.saldo)}</td>
-                    <td>{fmtFecha(f.fechaVencimiento)}</td>
+                    <td>{formatFecha(f.fechaVencimiento)}</td>
                     <td>{f.saldo > 0 ? <span className={`tag ${CUBETA_TAG[f.cubeta]}`}>{CUBETA_LABEL[f.cubeta]}{f.dias > 0 ? ` · ${formatNumero(f.dias)}d` : ""}</span> : <span className="flag">—</span>}</td>
                   </tr>
                 ))

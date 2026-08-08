@@ -4,7 +4,7 @@
 // ==========================================================
 import { requirePermiso } from "@/server/auth-context";
 import { puede, alcanceDe } from "@/lib/rbac/authorize";
-import { formatCOP, formatPorcentaje, formatNumero } from "@/lib/format";
+import { formatCOP, formatPorcentaje, formatNumero, formatFecha } from "@/lib/format";
 import { flujoMensual, totalesFlujo, presupuestoVsReal, MESES_LABEL } from "@/lib/negocio/flujo";
 import { resumenCxp } from "@/lib/negocio/cxp";
 import { resumenCartera, carteraPorCiudad } from "@/lib/negocio/cartera";
@@ -34,7 +34,6 @@ function badgeAlerta(a: NivelAlerta, dias: number | null): { clase: string; text
     default: return { clase: "t-blue", texto: "—" };
   }
 }
-const fmtFecha = (d: Date) => new Intl.DateTimeFormat("es-CO", { day: "2-digit", month: "short" }).format(d);
 
 export default async function DashboardPage() {
   const { usuario } = await requirePermiso("dashboard.view");
@@ -74,7 +73,7 @@ export default async function DashboardPage() {
 
   const maxBar = meses ? Math.max(1, ...meses.map((m) => Math.max(m.ingresos, m.egresos))) : 1;
   const obligOrden = obligLista ? [...obligLista].sort((a, b) => (a.proximaFecha?.getTime() ?? Infinity) - (b.proximaFecha?.getTime() ?? Infinity)) : [];
-  const hoy = new Intl.DateTimeFormat("es-CO", { day: "2-digit", month: "long", year: "numeric" }).format(new Date());
+  const hoy = formatFecha(new Date());
 
   return (
     <>
@@ -188,7 +187,7 @@ export default async function DashboardPage() {
                       <tr key={o.id}>
                         <td style={{ fontWeight: 600 }}>{o.entidad} <span className="flag">· {tipoLabel(o.tipo)}</span></td>
                         <td className="r num">{formatCOP(o.saldoCapital)}</td>
-                        <td>{o.proximaFecha ? <>{fmtFecha(o.proximaFecha)} <span className={`tag ${b.clase}`}>{b.texto}</span></> : "—"}</td>
+                        <td>{o.proximaFecha ? <>{formatFecha(o.proximaFecha)} <span className={`tag ${b.clase}`}>{b.texto}</span></> : "—"}</td>
                         <td className="r num">{o.cuotaMensual != null ? formatCOP(o.cuotaMensual) : "—"}</td>
                       </tr>
                     );

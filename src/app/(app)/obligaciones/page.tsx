@@ -3,10 +3,8 @@
 // vencimientos con alertas.
 // ==========================================================
 import { requirePermiso } from "@/server/auth-context";
-import { formatCOP, formatPorcentaje, formatNumero } from "@/lib/format";
+import { formatCOP, formatPorcentaje, formatNumero, formatFecha } from "@/lib/format";
 import { listarObligaciones, resumenObligaciones, tipoLabel, type NivelAlerta } from "@/lib/negocio/obligaciones";
-
-const fmtFecha = (d: Date) => new Intl.DateTimeFormat("es-CO", { day: "2-digit", month: "short", year: "2-digit" }).format(d);
 
 function badgeAlerta(alerta: NivelAlerta, dias: number | null): { clase: string; texto: string } {
   switch (alerta) {
@@ -46,7 +44,7 @@ export default async function ObligacionesPage() {
         </div>
         <div className="kpi k-w">
           <div className="klabel">Próximo vencimiento</div>
-          <div className="kval num" style={{ fontSize: 22 }}>{resumen.proximo ? fmtFecha(resumen.proximo.fecha) : "—"}</div>
+          <div className="kval num" style={{ fontSize: 22 }}>{resumen.proximo ? formatFecha(resumen.proximo.fecha) : "—"}</div>
           <div className="ksub"><span className="flag">{resumen.proximo ? resumen.proximo.entidad : "sin fechas"}</span></div>
         </div>
         <div className="kpi k-ok">
@@ -86,10 +84,10 @@ export default async function ObligacionesPage() {
                     <td className="r num">{o.cuotaMensual != null ? formatCOP(o.cuotaMensual) : "—"}</td>
                     <td>
                       {o.proximaFecha
-                        ? <>{fmtFecha(o.proximaFecha)} <span className={`tag ${b.clase}`}>{b.texto}</span></>
+                        ? <>{formatFecha(o.proximaFecha)} <span className={`tag ${b.clase}`}>{b.texto}</span></>
                         : <span className="flag">—</span>}
                     </td>
-                    <td className="flag">{o.fechaVencimiento ? fmtFecha(o.fechaVencimiento) : "—"}</td>
+                    <td className="flag">{o.fechaVencimiento ? formatFecha(o.fechaVencimiento) : "—"}</td>
                   </tr>
                 );
               })}

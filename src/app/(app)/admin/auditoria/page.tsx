@@ -1,10 +1,7 @@
 // Administración · Auditoría (registro inmutable · BIO-SEC-007).
 import { requirePermiso } from "@/server/auth-context";
 import { prisma } from "@/lib/db";
-import { formatNumero } from "@/lib/format";
-
-const fmtFechaHora = (d: Date) =>
-  new Intl.DateTimeFormat("es-CO", { day: "2-digit", month: "short", year: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit" }).format(d);
+import { formatNumero, formatFechaHoraSeg } from "@/lib/format";
 
 // Etiquetas y color por tipo de acción.
 function tagAccion(accion: string): { clase: string } {
@@ -40,7 +37,7 @@ export default async function AuditoriaPage() {
             ) : (
               eventos.map((e) => (
                 <tr key={String(e.id)}>
-                  <td className="flag">{fmtFechaHora(e.createdAt)}</td>
+                  <td className="flag">{formatFechaHoraSeg(e.createdAt)}</td>
                   <td>{e.usuario?.nombre ?? "—"}</td>
                   <td><span className={`tag ${tagAccion(e.accion).clase}`}>{e.accion}</span></td>
                   <td className="flag">{e.entidad ?? "—"}{e.entidadId ? ` #${e.entidadId}` : ""}</td>

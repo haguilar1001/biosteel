@@ -3,11 +3,10 @@
 // tercero). Encabezados ordenables (asc/desc); el orden se aplica en la
 // consulta y se conserva con o sin filtros.
 import { requirePermiso } from "@/server/auth-context";
-import { formatCOP, formatNumero, formatPorcentaje } from "@/lib/format";
+import { formatCOP, formatNumero, formatPorcentaje, formatFecha } from "@/lib/format";
 import { listarMovimientos, movimientosPorTercero, MESES_LABEL, type CampoOrden, type DirOrden } from "@/lib/negocio/flujo";
 
 const ANIO = 2026;
-const fmtFecha = (d: Date) => new Intl.DateTimeFormat("es-CO", { day: "2-digit", month: "short" }).format(d);
 const DEF_DIR: Record<string, DirOrden> = { fecha: "desc", tercero: "asc", detalle: "asc", observacion: "asc", valor: "desc", cantidad: "desc" };
 
 export default async function IngresosPage({
@@ -140,7 +139,7 @@ export default async function IngresosPage({
             ) : (
               filas.map((m) => (
                 <tr key={m.id}>
-                  <td className="flag">{fmtFecha(m.fecha)}</td>
+                  <td className="flag">{formatFecha(m.fecha)}</td>
                   <td style={{ fontWeight: 600 }} title={m.terceroNombre}>{m.terceroNombre}</td>
                   <td className="flag" title={m.detalle ?? ""}>{m.detalle}</td>
                   <td className="flag" title={m.observacion ?? ""}>{m.observacion}</td>

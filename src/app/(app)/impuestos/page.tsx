@@ -2,11 +2,10 @@
 // Impuestos pendientes (histórico mensual, BioSteel).
 // ==========================================================
 import { requirePermiso } from "@/server/auth-context";
-import { formatCOP, formatNumero } from "@/lib/format";
+import { formatCOP, formatNumero, formatFecha } from "@/lib/format";
 import { listarImpuestos, resumenImpuestos, type AlertaImpuesto } from "@/lib/negocio/impuestos";
 
 const MES = ["", "Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
-const fmtFecha = (d: Date) => new Intl.DateTimeFormat("es-CO", { day: "2-digit", month: "short", year: "2-digit" }).format(d);
 
 function badge(a: AlertaImpuesto, dias: number | null): { clase: string; texto: string } | null {
   switch (a) {
@@ -51,7 +50,7 @@ export default async function ImpuestosPage() {
         </div>
         <div className="kpi k-w">
           <div className="klabel">Próximo vencimiento</div>
-          <div className="kval num" style={{ fontSize: 22 }}>{resumen.proximo ? fmtFecha(resumen.proximo.fecha) : "—"}</div>
+          <div className="kval num" style={{ fontSize: 22 }}>{resumen.proximo ? formatFecha(resumen.proximo.fecha) : "—"}</div>
           <div className="ksub"><span className="flag">{resumen.proximo ? formatCOP(resumen.proximo.total) : "sin futuros"}</span></div>
         </div>
       </div>
@@ -88,7 +87,7 @@ export default async function ImpuestosPage() {
                     <td className="r num">{f.ica ? formatCOP(f.ica) : "—"}</td>
                     <td className="r num">{f.renta ? formatCOP(f.renta) : "—"}</td>
                     <td className="r num" style={{ fontWeight: 700 }}>{formatCOP(f.total)}</td>
-                    <td>{f.vencimiento ? <>{fmtFecha(f.vencimiento)} {b && <span className={`tag ${b.clase}`}>{b.texto}</span>}</> : <span className="flag">—</span>}</td>
+                    <td>{f.vencimiento ? <>{formatFecha(f.vencimiento)} {b && <span className={`tag ${b.clase}`}>{b.texto}</span>}</> : <span className="flag">—</span>}</td>
                   </tr>
                 );
               })}

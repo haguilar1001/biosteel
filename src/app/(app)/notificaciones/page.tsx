@@ -6,16 +6,13 @@
 import { requirePermiso } from "@/server/auth-context";
 import { puede } from "@/lib/rbac/authorize";
 import { prisma } from "@/lib/db";
-import { formatCOP, formatNumero } from "@/lib/format";
+import { formatCOP, formatNumero, formatFecha, formatFechaHora } from "@/lib/format";
 import { listarObligaciones, tipoLabel } from "@/lib/negocio/obligaciones";
 import { obtenerConfig } from "@/lib/notificaciones/config";
 import { correoConfigurado } from "@/lib/notificaciones/mailer";
 import { EjecutarBtn } from "./EjecutarBtn";
 import { AnuncioBtn } from "./AnuncioBtn";
 import { ConfigForm } from "./ConfigForm";
-
-const fmtFecha = (d: Date) => new Intl.DateTimeFormat("es-CO", { day: "2-digit", month: "short", year: "2-digit" }).format(d);
-const fmtHora = (d: Date) => new Intl.DateTimeFormat("es-CO", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }).format(d);
 
 export default async function NotificacionesPage() {
   const { usuario } = await requirePermiso("cxp.view");
@@ -59,7 +56,7 @@ export default async function NotificacionesPage() {
             )}
             {cfg.origen === "bd" && cfg.actualizadoEn && (
               <span className="flag" style={{ marginLeft: 10 }}>
-                Últ. cambio {fmtHora(cfg.actualizadoEn)}{cfg.actualizadoPor ? ` · ${cfg.actualizadoPor}` : ""}
+                Últ. cambio {formatFechaHora(cfg.actualizadoEn)}{cfg.actualizadoPor ? ` · ${cfg.actualizadoPor}` : ""}
               </span>
             )}
           </p>
@@ -91,7 +88,7 @@ export default async function NotificacionesPage() {
                     return (
                       <tr key={o.id}>
                         <td style={{ fontWeight: 600 }}>{o.entidad} <span className="flag">· {tipoLabel(o.tipo)}</span></td>
-                        <td>{fmtFecha(o.proximaFecha!)} <span className="flag">({o.diasHasta}d)</span></td>
+                        <td>{formatFecha(o.proximaFecha!)} <span className="flag">({o.diasHasta}d)</span></td>
                         <td className="r num">{o.cuotaMensual != null ? formatCOP(o.cuotaMensual) : "—"}</td>
                         <td>{enVentana ? <span className="tag t-w1">Se enviará</span> : <span className="flag">en {(o.diasHasta ?? 0) - diasAntes}d</span>}</td>
                       </tr>
@@ -114,7 +111,7 @@ export default async function NotificacionesPage() {
                 ) : (
                   historial.map((h) => (
                     <tr key={h.id}>
-                      <td className="flag">{fmtHora(h.enviadaEn)}</td>
+                      <td className="flag">{formatFechaHora(h.enviadaEn)}</td>
                       <td title={h.destinatarios}>{h.asunto}</td>
                       <td>{h.estado === "enviada" ? <span className="tag t-ok">Enviada</span> : <span className="tag t-bad">Error</span>}</td>
                     </tr>

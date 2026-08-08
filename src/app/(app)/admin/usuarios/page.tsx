@@ -1,12 +1,11 @@
 // Administración · Usuarios — listado + crear usuario + cambiar perfil inline.
 import { requirePermiso } from "@/server/auth-context";
 import { prisma } from "@/lib/db";
-import { formatNumero } from "@/lib/format";
+import { formatNumero, formatFechaHora } from "@/lib/format";
 import { CrearUsuarioForm } from "../_components/CrearUsuarioForm";
 import { SelectorRolUsuario } from "../_components/SelectorRolUsuario";
 
-const fmtFechaHora = (d: Date | null) =>
-  d ? new Intl.DateTimeFormat("es-CO", { day: "2-digit", month: "short", year: "2-digit", hour: "2-digit", minute: "2-digit" }).format(d) : "Nunca";
+const fmtFechaHora = (d: Date | null) => (d ? formatFechaHora(d) : "Nunca");
 
 export default async function UsuariosPage() {
   const { usuario: actor } = await requirePermiso("usuario.manage");

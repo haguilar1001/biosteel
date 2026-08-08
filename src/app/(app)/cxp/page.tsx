@@ -4,11 +4,9 @@
 // concepto y acceso al informe por proveedor.
 // ==========================================================
 import { requirePermiso } from "@/server/auth-context";
-import { formatCOP, formatNumero } from "@/lib/format";
+import { formatCOP, formatNumero, formatFecha } from "@/lib/format";
 import { resumenCxp, listarDocumentosCxp, diasParaVencer } from "@/lib/negocio/cxp";
 import { Buscador } from "../_components/Buscador";
-
-const fmtFecha = (d: Date) => new Intl.DateTimeFormat("es-CO", { day: "2-digit", month: "short", year: "2-digit" }).format(d);
 
 function tagVencimiento(dias: number): { clase: string; texto: string } {
   if (dias < 0) return { clase: "t-bad", texto: `Vencido ${Math.abs(dias)}d` };
@@ -108,7 +106,7 @@ export default async function CxpPage({
                       <td className="num flag">{d.nit}</td>
                       <td className="flag" title={d.concepto ?? ""}>{d.concepto}</td>
                       <td className="r num" style={{ fontWeight: 700, color: d.saldo < 0 ? "var(--ok)" : undefined }}>{formatCOP(d.saldo)}</td>
-                      <td>{fmtFecha(d.fechaVencimiento)} <span className={`tag ${t.clase}`}>{t.texto}</span></td>
+                      <td>{formatFecha(d.fechaVencimiento)} <span className={`tag ${t.clase}`}>{t.texto}</span></td>
                       <td>{d.estado}</td>
                     </tr>
                   );
