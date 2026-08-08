@@ -73,7 +73,7 @@ export default async function FlujoResumenPage() {
               </tr>
               {meses.map((m) => (
                 <tr key={m.mes}>
-                  <td style={{ fontWeight: 600 }}>{MESES_LABEL[m.mes]}</td>
+                  <td style={{ fontWeight: 600, textTransform: "uppercase" }}>{MESES_LABEL[m.mes]}</td>
                   <td className="r num" style={{ color: "var(--ingreso)" }}>{formatCOP(m.ingresos)}</td>
                   <td className="r num" style={{ color: "var(--egreso)" }}>{formatCOP(m.egresos)}</td>
                   <td className="r num" style={{ color: m.neto >= 0 ? undefined : "var(--bad)" }}>{formatCOP(m.neto)}</td>
