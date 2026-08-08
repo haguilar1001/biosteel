@@ -12,7 +12,6 @@ import { obtenerConfig } from "@/lib/notificaciones/config";
 import { correoConfigurado } from "@/lib/notificaciones/mailer";
 import { EjecutarBtn } from "./EjecutarBtn";
 import { AnuncioBtn } from "./AnuncioBtn";
-import { PruebaBtn } from "./PruebaBtn";
 import { ConfigForm } from "./ConfigForm";
 
 export default async function NotificacionesPage() {
@@ -39,7 +38,6 @@ export default async function NotificacionesPage() {
           <p>Recordatorios de pago por correo, {diasAntes} días antes del vencimiento</p>
         </div>
         <div className="toolbar" style={{ gap: 8 }}>
-          <PruebaBtn email={usuario.email} />
           <AnuncioBtn />
           <EjecutarBtn />
         </div>

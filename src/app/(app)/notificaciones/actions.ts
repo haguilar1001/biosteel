@@ -98,25 +98,3 @@ export async function enviarAnuncioAction(_prev: AnuncioState): Promise<AnuncioS
     return { error: e instanceof Error ? e.message : "No se pudo enviar el anuncio." };
   }
 }
-
-// --- Enviar correo de PRUEBA solo al usuario de sesión (no toca a terceros) --
-export async function enviarPruebaAction(_prev: AnuncioState): Promise<AnuncioState> {
-  const usuario = await requireUsuario();
-  try {
-    await exigirPermiso(usuario, "cxp.view");
-  } catch {
-    return { error: "No tienes permiso para enviar notificaciones." };
-  }
-  const cfg = await obtenerConfig();
-  const to = [usuario.email]; // SOLO a ti; no se envía a los destinatarios configurados.
-  const h = await headers();
-  const host = h.get("x-forwarded-host") ?? h.get("host");
-  const proto = h.get("x-forwarded-proto") ?? "https";
-  const baseUrl = host ? `${proto}://${host}` : env.APP_URL;
-  try {
-    await enviarAnuncio(to, cfg.diasAntes, baseUrl);
-    return { enviado: true, destinatarios: to };
-  } catch (e) {
-    return { error: e instanceof Error ? e.message : "No se pudo enviar la prueba." };
-  }
-}
