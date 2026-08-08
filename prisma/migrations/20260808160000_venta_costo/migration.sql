@@ -1,0 +1,5 @@
+-- AlterTable
+ALTER TABLE "VentaLinea" ADD COLUMN "costo" DECIMAL(18,2) NOT NULL DEFAULT 0;
+
+-- AlterTable
+ALTER TABLE "VentaCliente" ADD COLUMN "costo" DECIMAL(18,2) NOT NULL DEFAULT 0;

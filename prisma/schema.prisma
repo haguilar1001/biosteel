@@ -649,12 +649,14 @@ model PresupuestoMensual {
 // `valor` = suma de "Valor subtotal local" (neto de notas crédito del período).
 
 // Venta neta por línea de producto y mes.
+// valor = Σ(Valor subtotal local) − Σ(NOTA_CREDITO) ; costo = Σ(Costo promedio total).
 model VentaLinea {
   id     Int     @id @default(autoincrement())
   anio   Int
   mes    Int     // 1–12
   linea  String  // p.ej. "2002 - TRAUMA/ORTOPEDIA"
-  valor  Decimal @db.Decimal(18, 2)
+  valor  Decimal @db.Decimal(18, 2) // venta neta
+  costo  Decimal @default(0) @db.Decimal(18, 2)
 
   @@unique([anio, mes, linea])
   @@index([anio, mes])
@@ -667,7 +669,8 @@ model VentaCliente {
   mes           Int     // 1–12
   clienteNombre String
   nit           String?
-  valor         Decimal @db.Decimal(18, 2)
+  valor         Decimal @db.Decimal(18, 2) // venta neta
+  costo         Decimal @default(0) @db.Decimal(18, 2)
 
   @@unique([anio, mes, clienteNombre])
   @@index([anio, mes])

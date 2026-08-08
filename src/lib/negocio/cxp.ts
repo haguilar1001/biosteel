@@ -204,6 +204,41 @@ export async function facturadoVsPagado(anio: number, mes: number): Promise<Fila
   return [...mapa.values()].sort((a, b) => Math.max(b.facturado, b.pagado) - Math.max(a.facturado, a.pagado));
 }
 
+// ---------- Compras por proveedor × mes ----------
+// Compras = documentos de CxP emitidos en el año (valor COP), por proveedor y
+// mes de emisión. Se excluyen los internos / partes relacionadas.
+export interface FilaComprasProv {
+  proveedor: string;
+  nit: string | null;
+  meses: number[]; // índice 0 = enero … 11 = diciembre
+  total: number;
+}
+
+export async function comprasPorProveedorMes(anio: number): Promise<{ filas: FilaComprasProv[]; totalMes: number[]; total: number }> {
+  const desde = new Date(Date.UTC(anio, 0, 1));
+  const hasta = new Date(Date.UTC(anio + 1, 0, 1));
+  const docs = await prisma.documentoCxp.findMany({
+    where: { fechaEmision: { gte: desde, lt: hasta }, proveedor: { is: { esInterno: false } } },
+    select: { valorCop: true, fechaEmision: true, proveedorId: true, proveedor: { select: { nombre: true, nit: true } } },
+  });
+
+  const mapa = new Map<number, FilaComprasProv>();
+  const totalMes = Array(12).fill(0) as number[];
+  let total = 0;
+  for (const d of docs) {
+    const m = d.fechaEmision.getUTCMonth(); // 0–11
+    const v = d.valorCop.toNumber();
+    const e = mapa.get(d.proveedorId) ?? { proveedor: d.proveedor.nombre, nit: d.proveedor.nit, meses: Array(12).fill(0) as number[], total: 0 };
+    e.meses[m] = (e.meses[m] ?? 0) + v;
+    e.total += v;
+    mapa.set(d.proveedorId, e);
+    totalMes[m] = (totalMes[m] ?? 0) + v;
+    total += v;
+  }
+  const filas = [...mapa.values()].sort((a, b) => b.total - a.total);
+  return { filas, totalMes, total };
+}
+
 // ---------- Anticipos (desglose informativo) ----------
 export interface ResumenAnticipos {
   total: number;

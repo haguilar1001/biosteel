@@ -14,6 +14,7 @@ const MODULOS: { href: string; label: string; permiso: PermisoClave }[] = [
   { href: "/dashboard", label: "🏠 Inicio", permiso: "dashboard.view" },
   { href: "/flujo", label: "💵 Flujo de Caja", permiso: "cxp.view" },
   { href: "/cartera", label: "📥 Cartera", permiso: "cartera.view" },
+  { href: "/ventas", label: "💹 Ventas", permiso: "cxp.view" },
   // Ocultos del menú hasta que se necesiten (recaudos/pagos manuales).
   // Las páginas siguen existiendo; para reactivarlas, descomentar:
   // { href: "/recaudos", label: "💰 Recaudos", permiso: "recaudo.create" },
