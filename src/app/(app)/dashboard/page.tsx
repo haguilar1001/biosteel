@@ -180,7 +180,7 @@ export default async function DashboardPage() {
                     const b = badgeAlerta(o.alerta, o.diasHasta);
                     return (
                       <tr key={o.id}>
-                        <td style={{ fontWeight: 600 }}>{o.entidad} <span className="flag">· {tipoLabel(o.tipo)}</span></td>
+                        <td style={{ fontWeight: 600 }}><span style={{ textTransform: "uppercase" }}>{o.entidad}</span> <span className="flag">· {tipoLabel(o.tipo)}</span></td>
                         <td className="r num">{formatCOP(o.saldoCapital)}</td>
                         <td>{o.proximaFecha ? <>{formatFecha(o.proximaFecha)} <span className={`tag ${b.clase}`}>{b.texto}</span></> : "—"}</td>
                         <td className="r num">{o.cuotaMensual != null ? formatCOP(o.cuotaMensual) : "—"}</td>

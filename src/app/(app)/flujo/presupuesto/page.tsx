@@ -5,15 +5,16 @@ import { presupuestoVsReal, flujoMensual, MESES_LABEL } from "@/lib/negocio/fluj
 
 const ANIO = 2026;
 
-function BarraCumpl({ pct }: { pct: number }) {
-  return (
-    <div style={{ display: "flex", alignItems: "center", gap: 8, justifyContent: "flex-end" }}>
-      <div style={{ width: 70, height: 8, borderRadius: 4, background: "var(--brand-tint)", overflow: "hidden" }}>
-        <div style={{ width: `${Math.min(100, Math.round(pct))}%`, height: "100%", background: pct > 100 ? "var(--bad)" : "var(--brand-2)" }} />
-      </div>
-      <span>{pct > 0 ? formatPorcentaje(pct) : "—"}</span>
-    </div>
-  );
+// Semáforo de cumplimiento (egresos vs presupuesto):
+//  ≤100% dentro/por debajo (verde) · 100–110% leve sobre (ámbar) · >110% sobreejecutado (rojo).
+function SemaforoCumpl({ pct }: { pct: number }) {
+  if (pct <= 0) return <span className="flag">—</span>;
+  const { clase, icon } = pct > 110
+    ? { clase: "t-bad", icon: "✗" }
+    : pct > 100
+      ? { clase: "t-w1", icon: "▲" }
+      : { clase: "t-ok", icon: "✓" };
+  return <span className={`tag ${clase}`}>{icon} {formatPorcentaje(pct)}</span>;
 }
 
 export default async function PresupuestoPage({
@@ -59,11 +60,11 @@ export default async function PresupuestoPage({
                 const cumpl = m.presupuesto > 0 ? (m.egresos / m.presupuesto) * 100 : 0;
                 return (
                   <tr key={m.mes}>
-                    <td style={{ fontWeight: 600 }}>{MESES_LABEL[m.mes]}</td>
+                    <td style={{ fontWeight: 600, textTransform: "uppercase" }}>{MESES_LABEL[m.mes]}</td>
                     <td className="r num">{formatCOP(m.presupuesto)}</td>
                     <td className="r num">{formatCOP(m.egresos)}</td>
                     <td className="r num" style={{ color: desv > 0 ? "var(--bad)" : desv < 0 ? "var(--ok)" : undefined }}>{formatCOP(desv)}</td>
-                    <td className="r num"><BarraCumpl pct={cumpl} /></td>
+                    <td className="r"><SemaforoCumpl pct={cumpl} /></td>
                   </tr>
                 );
               })}
@@ -114,7 +115,7 @@ export default async function PresupuestoPage({
                     <td className="r num">{formatCOP(f.presupuesto)}</td>
                     <td className="r num">{formatCOP(f.real)}</td>
                     <td className="r num" style={{ color: f.desviacion > 0 ? "var(--bad)" : f.desviacion < 0 ? "var(--ok)" : undefined }}>{formatCOP(f.desviacion)}</td>
-                    <td className="r num"><BarraCumpl pct={f.ejecucion} /></td>
+                    <td className="r"><SemaforoCumpl pct={f.ejecucion} /></td>
                   </tr>
                 ))
               )}
