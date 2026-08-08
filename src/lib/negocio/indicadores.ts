@@ -11,6 +11,7 @@ import { flujoMensual } from "./flujo";
 import { resumenCartera } from "./cartera";
 import { resumenCxp } from "./cxp";
 import { ventaTotal } from "./ventas";
+import { mesesConPyg } from "./pyg";
 
 export type Unidad = "cop" | "dias" | "pct" | "veces";
 
@@ -62,16 +63,26 @@ export async function calcularIndicadores(
   const recaudosMes = sel.reduce((s, m) => s + m.ingresos, 0);
 
   // Ventas reales (reporte por línea) y utilidad neta (PyG) del período.
-  const [ventasMes, pygSel] = await Promise.all([
+  const [ventasMes, pygSel, pygMeses] = await Promise.all([
     ventaTotal(ANIO, mesesSelIds),
     prisma.estadoResultados.aggregate({
       where: { anio: ANIO, ...(mesesSelIds.length ? { mes: { in: mesesSelIds } } : {}) },
       _sum: { utilidadNeta: true },
       _count: { _all: true },
     }),
+    mesesConPyg(ANIO),
   ]);
   const hayVentas = ventasMes > 0;
   const utilidadNeta = pygSel._count._all > 0 ? (pygSel._sum.utilidadNeta?.toNumber() ?? 0) : null;
+
+  // Nota del indicador de Utilidad Neta según disponibilidad de PyG.
+  const MES_LBL = ["", "ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
+  const ultimoPyg = pygMeses.length ? pygMeses[pygMeses.length - 1]! : null;
+  const notaUtilNeta = utilidadNeta != null
+    ? "Fuente: PyG mensual (utilidad del ejercicio)."
+    : ultimoPyg
+      ? `Aún no hay PyG del período seleccionado (último cargado: ${MES_LBL[ultimoPyg]}). Elige un mes con cierre o carga el PyG.`
+      : "Cargar PyG con: npm run db:pyg.";
 
   // Cartera positiva (por edades) y vencida > 90
   const cub = cartera.porCubeta;
@@ -110,7 +121,7 @@ export async function calcularIndicadores(
       metaTexto: nSel === 1 ? "≥ $200M COP" : `≥ $200M/mes × ${nSel} = $${(200 * nSel).toLocaleString("es-CO")}M`,
       frecuencia: "Mensual", real: utilidadNeta, unidad: "cop",
       metaValor: 200_000_000 * nSel, metaDir: "mayor", pendiente: utilidadNeta == null,
-      nota: utilidadNeta != null ? "Fuente: PyG mensual (utilidad del ejercicio)." : "Cargar PyG con: npm run db:pyg.",
+      nota: notaUtilNeta,
     },
     {
       num: 31, nombre: "Días de cartera — DSO", formula: "(Cuentas por cobrar / Ventas del período) × 30",

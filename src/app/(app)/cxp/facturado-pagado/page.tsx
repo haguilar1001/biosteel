@@ -11,6 +11,14 @@ import { BarrasComparativas, type BarraItem } from "../../_components/charts/Bar
 
 const ANIO = 2026;
 
+// Semáforo de cobertura = pagado / facturado.
+function pctTag(facturado: number, pagado: number) {
+  if (facturado <= 0) return <span className="tag t-blue">{pagado > 0 ? "s/fact" : "—"}</span>;
+  const p = (pagado / facturado) * 100;
+  const clase = p >= 90 ? "t-ok" : p >= 50 ? "t-w1" : "t-bad";
+  return <span className={`tag ${clase}`}>{Math.round(p)}%</span>;
+}
+
 export default async function FacturadoPagadoPage({
   searchParams,
 }: {
@@ -29,7 +37,7 @@ export default async function FacturadoPagadoPage({
 
   const items: BarraItem[] = filas
     .filter((f) => f.facturado > 0 || f.pagado > 0)
-    .map((f) => ({ label: f.proveedor, a: f.facturado, b: f.pagado, sub: f.interno ? "Interno" : "Externo" }));
+    .map((f) => ({ label: f.proveedor, a: f.facturado, b: f.pagado }));
 
   return (
     <>
@@ -93,18 +101,19 @@ export default async function FacturadoPagadoPage({
           <table>
             <thead>
               <tr>
-                <th>Proveedor</th><th>NIT</th><th>Tipo</th>
-                <th className="r">Facturado</th><th className="r">Pagado</th><th className="r">Diferencia</th>
+                <th>Proveedor</th><th>NIT</th>
+                <th className="r">Facturado</th><th className="r">Pagado</th><th className="r">Diferencia</th><th className="r">% Pagado</th>
               </tr>
             </thead>
             <tbody>
               {items.length > 0 && (
                 <tr className="fila-total">
                   <td style={{ fontWeight: 800 }}>Total · {formatNumero(items.length)} proveedores</td>
-                  <td></td><td></td>
+                  <td></td>
                   <td className="r num" style={{ fontWeight: 800 }}>{formatCOP(totFact)}</td>
                   <td className="r num" style={{ fontWeight: 800 }}>{formatCOP(totPag)}</td>
                   <td className="r num" style={{ fontWeight: 800 }}>{formatCOP(totPag - totFact)}</td>
+                  <td className="r">{pctTag(totFact, totPag)}</td>
                 </tr>
               )}
               {filas.length === 0 ? (
@@ -114,10 +123,10 @@ export default async function FacturadoPagadoPage({
                   <tr key={f.proveedor}>
                     <td style={{ fontWeight: 600 }} title={f.proveedor}>{f.proveedor}</td>
                     <td className="num flag">{f.nit}</td>
-                    <td><span className={`tag ${f.interno ? "t-w1" : "t-blue"}`}>{f.interno ? "Interno" : "Externo"}</span></td>
                     <td className="r num" style={{ color: "var(--cat-1)" }}>{formatCOP(f.facturado)}</td>
                     <td className="r num" style={{ color: "var(--cat-3)" }}>{formatCOP(f.pagado)}</td>
                     <td className="r num" style={{ fontWeight: 700, color: f.pagado - f.facturado < 0 ? "var(--bad)" : "var(--ok)" }}>{formatCOP(f.pagado - f.facturado)}</td>
+                    <td className="r">{pctTag(f.facturado, f.pagado)}</td>
                   </tr>
                 ))
               )}

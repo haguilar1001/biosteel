@@ -9,6 +9,7 @@ import { formatCOP, formatPorcentaje, formatNumero } from "@/lib/format";
 import { calcularIndicadores, type IndicadorCalc } from "@/lib/negocio/indicadores";
 import { flujoMensual } from "@/lib/negocio/flujo";
 import { ventaPorLinea } from "@/lib/negocio/ventas";
+import { mesesConPyg } from "@/lib/negocio/pyg";
 import { Medidor } from "../_components/charts/Medidor";
 import { Donut } from "../_components/charts/Donut";
 
@@ -35,19 +36,23 @@ export default async function IndicadoresPage({
   const alcanceCartera = await alcanceDe(usuario, "cartera.view");
   const alcInd = alcanceCartera === "ninguno" ? "todos" : alcanceCartera;
 
-  // Meses con datos (para habilitar chips) y último con datos (default).
-  const meses = await flujoMensual(ANIO);
+  // Meses con datos (para habilitar chips) y default.
+  const [meses, pygMeses] = await Promise.all([flujoMensual(ANIO), mesesConPyg(ANIO)]);
   const conDatos = meses.filter((m) => m.ingresos > 0 || m.egresos > 0).map((m) => m.mes);
   const ultimo = conDatos.length ? conDatos[conDatos.length - 1]! : null;
+  // Default = último mes con PyG cargado (así los 3 KPIs se ven juntos);
+  // si ese mes no tiene flujo o no hay PyG, cae al último mes con movimientos.
+  const ultimoPyg = [...pygMeses].reverse().find((m) => conDatos.includes(m)) ?? null;
+  const porDefecto = ultimoPyg ?? ultimo;
 
-  // Selección desde la URL (?meses=1,2,3); default = último mes con datos.
+  // Selección desde la URL (?meses=1,2,3); default = mes de cierre más reciente.
   const sp = await searchParams;
   const pedidos = (sp.meses ?? "")
     .split(",")
     .map((s) => Number(s.trim()))
     .filter((n) => Number.isInteger(n) && conDatos.includes(n));
   const seleccion = pedidos.length ? [...new Set(pedidos)].sort((a, b) => a - b)
-    : (ultimo ? [ultimo] : []);
+    : (porDefecto ? [porDefecto] : []);
 
   const [indicadores, lineas] = await Promise.all([
     calcularIndicadores(usuario, alcInd, seleccion),

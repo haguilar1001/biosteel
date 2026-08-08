@@ -97,9 +97,26 @@ function whereMov(tipo: TipoMovimiento, f: FiltrosMov): Prisma.MovimientoFlujoWh
   };
 }
 
+export type CampoOrden = "fecha" | "tercero" | "grupo" | "valor";
+export type DirOrden = "asc" | "desc";
+export interface OrdenMov { campo: CampoOrden; dir: DirOrden }
+
+// El orden se aplica en la consulta (no en el cliente) para que sea correcto
+// sobre TODO el conjunto, ya que solo se traen 300 filas.
+function orderByMov(orden?: OrdenMov): Prisma.MovimientoFlujoOrderByWithRelationInput[] {
+  const dir = orden?.dir ?? "desc";
+  switch (orden?.campo) {
+    case "tercero": return [{ terceroNombre: dir }, { fecha: "desc" }];
+    case "grupo": return [{ categoria: { nombre: dir } }, { fecha: "desc" }];
+    case "valor": return [{ valor: dir }, { id: "desc" }];
+    default: return [{ fecha: dir }, { id: "desc" }];
+  }
+}
+
 export async function listarMovimientos(
   tipo: TipoMovimiento,
   f: FiltrosMov,
+  orden?: OrdenMov,
 ): Promise<{ filas: FilaMovimiento[]; total: number; suma: number }> {
   const where = whereMov(tipo, f);
   const [total, agg, movs] = await Promise.all([
@@ -112,7 +129,7 @@ export async function listarMovimientos(
         detalle: true, observacion: true, valor: true,
         categoria: { select: { nombre: true } },
       },
-      orderBy: [{ fecha: "desc" }, { id: "desc" }],
+      orderBy: orderByMov(orden),
       take: 300,
     }),
   ]);
@@ -225,6 +242,12 @@ export async function presupuestoVsReal(anio: number, mes?: number): Promise<Fil
 export async function mesesConMovimiento(anio: number, tipo: TipoMovimiento): Promise<number[]> {
   const grupos = await prisma.movimientoFlujo.groupBy({ by: ["mes"], where: { anio, tipo }, _count: { _all: true } });
   return grupos.map((g) => g.mes).sort((a, b) => a - b);
+}
+
+/** Nombres de terceros internos / partes relacionadas (p.ej. la propia BioSteel). */
+export async function nombresInternos(): Promise<string[]> {
+  const t = await prisma.tercero.findMany({ where: { esInterno: true }, select: { nombre: true } });
+  return t.map((x) => x.nombre);
 }
 
 /** Categorías (grupos) para filtros. */

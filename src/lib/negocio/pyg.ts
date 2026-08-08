@@ -48,6 +48,12 @@ export interface PygAcumulado {
 
 const pct = (n: number, d: number) => (d !== 0 ? (n / d) * 100 : 0);
 
+/** Meses (1–12) que tienen PyG cargado, ascendente. */
+export async function mesesConPyg(anio: number): Promise<number[]> {
+  const rows = await prisma.estadoResultados.findMany({ where: { anio }, select: { mes: true }, orderBy: { mes: "asc" } });
+  return rows.map((r) => r.mes);
+}
+
 export async function listarPyg(anio: number): Promise<PygMes[]> {
   const rows = await prisma.estadoResultados.findMany({ where: { anio }, orderBy: { mes: "asc" } });
   return rows.map((r) => {

@@ -149,11 +149,12 @@ export async function cxpPorProveedor(
 // ---------- Facturado vs Pagado por proveedor (por mes) ----------
 // Facturado = documentos de CxP emitidos en el mes (valor COP).
 // Pagado    = egresos del Flujo de Caja al proveedor en el mes.
-// Se cruzan por nombre normalizado (misma fuente ERP).
+// Se cruzan por nombre normalizado (misma fuente ERP). Se EXCLUYEN los
+// terceros internos / partes relacionadas (p.ej. la propia BioSteel), que
+// no son proveedores externos y distorsionan el comparativo.
 export interface FilaFactPago {
   proveedor: string;
   nit: string | null;
-  interno: boolean;
   facturado: number;
   pagado: number;
 }
@@ -166,23 +167,26 @@ export async function facturadoVsPagado(anio: number, mes: number): Promise<Fila
   const desde = new Date(Date.UTC(anio, mes - 1, 1));
   const hasta = new Date(Date.UTC(anio, mes, 1));
 
-  const [docs, egresos] = await Promise.all([
+  const [docs, egresos, internos] = await Promise.all([
     prisma.documentoCxp.findMany({
-      where: { fechaEmision: { gte: desde, lt: hasta } },
-      select: { valorCop: true, proveedor: { select: { nombre: true, nit: true, esInterno: true } } },
+      where: { fechaEmision: { gte: desde, lt: hasta }, proveedor: { is: { esInterno: false } } },
+      select: { valorCop: true, proveedor: { select: { nombre: true, nit: true } } },
     }),
     prisma.movimientoFlujo.groupBy({
       by: ["terceroNombre"],
       where: { anio, mes, tipo: "egreso" },
       _sum: { valor: true },
     }),
+    prisma.tercero.findMany({ where: { esInterno: true }, select: { nombre: true } }),
   ]);
+
+  const setInterno = new Set(internos.map((t) => normNombre(t.nombre)));
 
   const mapa = new Map<string, FilaFactPago>();
   const get = (nombre: string): FilaFactPago => {
     const k = normNombre(nombre);
     let e = mapa.get(k);
-    if (!e) { e = { proveedor: nombre, nit: null, interno: false, facturado: 0, pagado: 0 }; mapa.set(k, e); }
+    if (!e) { e = { proveedor: nombre, nit: null, facturado: 0, pagado: 0 }; mapa.set(k, e); }
     return e;
   };
 
@@ -190,9 +194,9 @@ export async function facturadoVsPagado(anio: number, mes: number): Promise<Fila
     const e = get(d.proveedor.nombre);
     e.facturado += d.valorCop.toNumber();
     e.nit = e.nit ?? d.proveedor.nit;
-    e.interno = e.interno || d.proveedor.esInterno;
   }
   for (const g of egresos) {
+    if (setInterno.has(normNombre(g.terceroNombre))) continue; // excluye internos
     const e = get(g.terceroNombre);
     e.pagado += g._sum.valor?.toNumber() ?? 0;
   }

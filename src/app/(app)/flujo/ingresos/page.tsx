@@ -1,18 +1,19 @@
 // Ingresos: movimientos de entrada (recaudos, préstamos, ventas de contado…).
 // Dos vistas: "Detalle" (movimiento a movimiento) y "Por cliente" (total por
-// tercero, mayor a menor) — ambas respetan el filtro de mes y el buscador.
+// tercero). Encabezados ordenables (asc/desc); el orden se aplica en la
+// consulta y se conserva con o sin filtros.
 import { requirePermiso } from "@/server/auth-context";
 import { formatCOP, formatNumero, formatPorcentaje } from "@/lib/format";
-import { listarMovimientos, movimientosPorTercero, MESES_LABEL } from "@/lib/negocio/flujo";
-import { TopRanking, type RankItem } from "../../_components/charts/TopRanking";
+import { listarMovimientos, movimientosPorTercero, MESES_LABEL, type CampoOrden, type DirOrden } from "@/lib/negocio/flujo";
 
 const ANIO = 2026;
 const fmtFecha = (d: Date) => new Intl.DateTimeFormat("es-CO", { day: "2-digit", month: "short" }).format(d);
+const DEF_DIR: Record<string, DirOrden> = { fecha: "desc", tercero: "asc", valor: "desc", cantidad: "desc" };
 
 export default async function IngresosPage({
   searchParams,
 }: {
-  searchParams: Promise<{ mes?: string; q?: string; vista?: string }>;
+  searchParams: Promise<{ mes?: string; q?: string; vista?: string; orden?: string; dir?: string }>;
 }) {
   await requirePermiso("cxp.view");
   const sp = await searchParams;
@@ -20,18 +21,39 @@ export default async function IngresosPage({
   const q = sp.q;
   const vista = sp.vista === "cliente" ? "cliente" : "detalle";
 
-  const qs = (v: string) => {
+  // Orden: por defecto valor/total desc en "por cliente", fecha desc en detalle.
+  const campos = vista === "cliente" ? ["tercero", "cantidad", "valor"] : ["fecha", "tercero", "valor"];
+  const campoDefault = vista === "cliente" ? "valor" : "fecha";
+  const campo = (sp.orden && campos.includes(sp.orden) ? sp.orden : campoDefault) as CampoOrden | "cantidad";
+  const dir: DirOrden = sp.dir === "asc" || sp.dir === "desc" ? sp.dir : DEF_DIR[campo] ?? "desc";
+
+  const base = (over: { vista?: string; orden?: string; dir?: string } = {}) => {
     const p = new URLSearchParams();
     if (mes) p.set("mes", String(mes));
     if (q) p.set("q", q);
+    const v = over.vista ?? vista;
     if (v === "cliente") p.set("vista", "cliente");
+    if (over.orden) { p.set("orden", over.orden); p.set("dir", over.dir!); }
     const s = p.toString();
     return `/flujo/ingresos${s ? `?${s}` : ""}`;
+  };
+  // Encabezado ordenable: alterna dir si es la columna activa; si no, su default.
+  const th = (c: string, label: string, alinR = false) => {
+    const activo = campo === c;
+    const nextDir: DirOrden = activo ? (dir === "asc" ? "desc" : "asc") : (DEF_DIR[c] ?? "desc");
+    const flecha = activo ? (dir === "asc" ? " ▲" : " ▼") : "";
+    return (
+      <th className={alinR ? "r" : undefined}>
+        <a href={base({ orden: c, dir: nextDir })} style={{ color: "inherit", textDecoration: "none", cursor: "pointer", fontWeight: activo ? 800 : undefined }}>{label}{flecha}</a>
+      </th>
+    );
   };
 
   const filtros = (
     <form method="get" className="toolbar">
       {vista === "cliente" && <input type="hidden" name="vista" value="cliente" />}
+      {sp.orden && <input type="hidden" name="orden" value={campo} />}
+      {sp.orden && <input type="hidden" name="dir" value={dir} />}
       <select name="mes" defaultValue={mes ?? ""} className="select">
         <option value="">Todos los meses</option>
         {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
@@ -40,28 +62,30 @@ export default async function IngresosPage({
       </select>
       <input type="search" name="q" defaultValue={q ?? ""} placeholder="Tercero, NIT, observación…" className="select" style={{ minWidth: 220 }} />
       <button type="submit" className="btn primary">Filtrar</button>
-      <a href={qs(vista)} className="btn">Limpiar</a>
+      <a href={base()} className="btn">Limpiar</a>
       <span style={{ flex: 1 }} />
-      <a href={qs("detalle")} className={`btn${vista === "detalle" ? " primary" : ""}`}>Detalle</a>
-      <a href={qs("cliente")} className={`btn${vista === "cliente" ? " primary" : ""}`}>Por cliente</a>
+      <a href={base({ vista: "detalle" })} className={`btn${vista === "detalle" ? " primary" : ""}`}>Detalle</a>
+      <a href={base({ vista: "cliente" })} className={`btn${vista === "cliente" ? " primary" : ""}`}>Por cliente</a>
     </form>
   );
 
   if (vista === "cliente") {
-    const filas = await movimientosPorTercero("ingreso", { anio: ANIO, mes, q });
+    const filasRaw = await movimientosPorTercero("ingreso", { anio: ANIO, mes, q });
+    const filas = [...filasRaw].sort((a, b) => {
+      const s = campo === "tercero" ? a.terceroNombre.localeCompare(b.terceroNombre)
+        : campo === "cantidad" ? a.movimientos - b.movimientos
+        : a.total - b.total;
+      return dir === "asc" ? s : -s;
+    });
     const total = filas.reduce((s, f) => s + f.total, 0);
-    const rank: RankItem[] = filas.map((f) => ({ label: f.terceroNombre, valor: f.total, sub: `${formatNumero(f.movimientos)} mov.` }));
     return (
       <div className="card">
-        <div className="chart-head">Ingresos {ANIO} · por cliente <span className="hact">{mes ? MESES_LABEL[mes] : "todos los meses"}</span></div>
+        <div className="chart-head">Ingresos {ANIO} · por cliente <span className="hact">{mes ? MESES_LABEL[mes] : "todos los meses"} · clic en columnas para ordenar</span></div>
         <div className="card-body" style={{ paddingBottom: 0 }}>{filtros}</div>
-        <div className="card-body" style={{ paddingTop: 0 }}>
-          <TopRanking titulo="Mayores clientes por recaudo" items={rank} color="var(--ingreso)" inicial={10} step={5} />
-        </div>
         <div className="tbl-wrap">
           <table className="tabla-fit">
             <colgroup><col style={{ width: "6%" }} /><col style={{ width: "48%" }} /><col style={{ width: "16%" }} /><col style={{ width: "18%" }} /><col style={{ width: "12%" }} /></colgroup>
-            <thead><tr><th>#</th><th>Cliente</th><th className="r">Movimientos</th><th className="r">Total</th><th className="r">% Part.</th></tr></thead>
+            <thead><tr><th>#</th>{th("tercero", "Cliente")}{th("cantidad", "Movimientos", true)}{th("valor", "Total", true)}<th className="r">% Part.</th></tr></thead>
             <tbody>
               <tr className="fila-total">
                 <td></td><td style={{ fontWeight: 800 }}>Total · {formatNumero(filas.length)} cliente{filas.length === 1 ? "" : "s"}</td>
@@ -88,11 +112,11 @@ export default async function IngresosPage({
     );
   }
 
-  const { filas, total, suma } = await listarMovimientos("ingreso", { anio: ANIO, mes, q });
+  const { filas, total, suma } = await listarMovimientos("ingreso", { anio: ANIO, mes, q }, { campo: campo as CampoOrden, dir });
 
   return (
     <div className="card">
-      <div className="chart-head">Ingresos {ANIO}</div>
+      <div className="chart-head">Ingresos {ANIO} <span className="hact">clic en columnas para ordenar</span></div>
       <div className="card-body" style={{ paddingBottom: 0 }}>{filtros}</div>
       <div className="tbl-wrap">
         <table className="tabla-fit">
@@ -101,7 +125,7 @@ export default async function IngresosPage({
             <col style={{ width: "36%" }} /><col style={{ width: "14%" }} />
           </colgroup>
           <thead>
-            <tr><th>Fecha</th><th>Tercero</th><th>Detalle</th><th>Observación</th><th className="r">Valor</th></tr>
+            <tr>{th("fecha", "Fecha")}{th("tercero", "Tercero")}<th>Detalle</th><th>Observación</th>{th("valor", "Valor", true)}</tr>
           </thead>
           <tbody>
             <tr className="fila-total">

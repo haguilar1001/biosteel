@@ -8,7 +8,7 @@
 import { requirePermiso } from "@/server/auth-context";
 import { formatCOP, formatNumero } from "@/lib/format";
 import { ventaPorCliente } from "@/lib/negocio/ventas";
-import { movimientosPorTercero, mesesConMovimiento, MESES_LABEL } from "@/lib/negocio/flujo";
+import { movimientosPorTercero, mesesConMovimiento, nombresInternos, MESES_LABEL } from "@/lib/negocio/flujo";
 import { BarrasComparativas, type BarraItem } from "../../_components/charts/BarrasComparativas";
 
 const ANIO = 2026;
@@ -36,21 +36,26 @@ export default async function VentasRecaudosPage({
   const ultimo = mesesRec.length ? mesesRec[mesesRec.length - 1]! : new Date().getMonth() + 1;
   const mes = sp.mes && /^\d+$/.test(sp.mes) ? Number(sp.mes) : ultimo;
 
-  const [ventas, recaudos] = await Promise.all([
+  const [ventas, recaudos, internos] = await Promise.all([
     ventaPorCliente(ANIO, [mes]),
     movimientosPorTercero("ingreso", { anio: ANIO, mes }),
+    nombresInternos(),
   ]);
+  // Excluye internos / partes relacionadas (p.ej. la propia BioSteel).
+  const setInterno = new Set(internos.map((n) => norm(n)));
 
   // Cruce por nombre normalizado.
   const mapa = new Map<string, { label: string; ventas: number; recaudos: number }>();
   for (const v of ventas) {
     const k = norm(v.clienteNombre);
+    if (setInterno.has(k)) continue;
     const e = mapa.get(k) ?? { label: v.clienteNombre, ventas: 0, recaudos: 0 };
     e.ventas += v.valor;
     mapa.set(k, e);
   }
   for (const r of recaudos) {
     const k = norm(r.terceroNombre);
+    if (setInterno.has(k)) continue;
     const e = mapa.get(k) ?? { label: r.terceroNombre, ventas: 0, recaudos: 0 };
     e.recaudos += r.total;
     // Prefiere un nombre "con letras" legible si el de ventas venía vacío.
@@ -59,8 +64,8 @@ export default async function VentasRecaudosPage({
   }
 
   const filas = [...mapa.values()].sort((a, b) => Math.max(b.ventas, b.recaudos) - Math.max(a.ventas, a.recaudos));
-  const totVentas = ventas.reduce((s, v) => s + v.valor, 0);
-  const totRecaudos = recaudos.reduce((s, r) => s + r.total, 0);
+  const totVentas = filas.reduce((s, f) => s + f.ventas, 0);
+  const totRecaudos = filas.reduce((s, f) => s + f.recaudos, 0);
 
   const items: BarraItem[] = filas
     .filter((f) => f.ventas > 0 || f.recaudos > 0)
