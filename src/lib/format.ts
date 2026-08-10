@@ -42,23 +42,23 @@ export function formatMoneda(v: Numerico, simbolo: string): string {
 }
 
 // ==========================================================
-// Fechas — formato corto institucional AA/MM/DD (Short Date).
+// Fechas — formato institucional DD/MM/AAAA (Día/Mes/Año).
 // Un único helper para toda la app; usa la zona horaria del entorno,
 // igual que el formato anterior (coherente en el servidor de Railway).
 // ==========================================================
 const p2 = (n: number) => String(n).padStart(2, "0");
 
-/** Fecha corta AA/MM/DD (p. ej. 26/08/08). */
+/** Fecha DD/MM/AAAA (p. ej. 13/08/2026). */
 export function formatFecha(d: Date): string {
-  return `${p2(d.getFullYear() % 100)}/${p2(d.getMonth() + 1)}/${p2(d.getDate())}`;
+  return `${p2(d.getDate())}/${p2(d.getMonth() + 1)}/${d.getFullYear()}`;
 }
 
-/** Fecha y hora AA/MM/DD HH:mm. */
+/** Fecha y hora DD/MM/AAAA HH:mm. */
 export function formatFechaHora(d: Date): string {
   return `${formatFecha(d)} ${p2(d.getHours())}:${p2(d.getMinutes())}`;
 }
 
-/** Fecha y hora con segundos AA/MM/DD HH:mm:ss (auditoría). */
+/** Fecha y hora con segundos DD/MM/AAAA HH:mm:ss (auditoría). */
 export function formatFechaHoraSeg(d: Date): string {
   return `${formatFechaHora(d)}:${p2(d.getSeconds())}`;
 }
