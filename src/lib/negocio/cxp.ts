@@ -163,9 +163,10 @@ function normNombre(s: string): string {
   return s.trim().toUpperCase().replace(/\s+/g, " ");
 }
 
-export async function facturadoVsPagado(anio: number, mes: number): Promise<FilaFactPago[]> {
-  const desde = new Date(Date.UTC(anio, mes - 1, 1));
-  const hasta = new Date(Date.UTC(anio, mes, 1));
+// mes = undefined → año corrido (todos los meses).
+export async function facturadoVsPagado(anio: number, mes?: number): Promise<FilaFactPago[]> {
+  const desde = mes ? new Date(Date.UTC(anio, mes - 1, 1)) : new Date(Date.UTC(anio, 0, 1));
+  const hasta = mes ? new Date(Date.UTC(anio, mes, 1)) : new Date(Date.UTC(anio + 1, 0, 1));
 
   const [docs, egresos, internos] = await Promise.all([
     prisma.documentoCxp.findMany({
@@ -174,7 +175,7 @@ export async function facturadoVsPagado(anio: number, mes: number): Promise<Fila
     }),
     prisma.movimientoFlujo.groupBy({
       by: ["terceroNombre"],
-      where: { anio, mes, tipo: "egreso" },
+      where: { anio, tipo: "egreso", ...(mes ? { mes } : {}) },
       _sum: { valor: true },
     }),
     prisma.tercero.findMany({ where: { esInterno: true }, select: { nombre: true } }),

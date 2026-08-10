@@ -1,25 +1,60 @@
 // Resumen del Flujo de Caja: ingresos vs egresos vs presupuesto por mes.
 import { requirePermiso } from "@/server/auth-context";
 import { formatCOP, formatPorcentaje } from "@/lib/format";
-import { flujoMensual, totalesFlujo, MESES_LABEL } from "@/lib/negocio/flujo";
+import { flujoMensual, MESES_LABEL } from "@/lib/negocio/flujo";
 
 const ANIO = 2026;
 
-export default async function FlujoResumenPage() {
+export default async function FlujoResumenPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ mes?: string }>;
+}) {
   await requirePermiso("cxp.view");
+  const sp = await searchParams;
+  const mes = sp.mes && /^\d+$/.test(sp.mes) ? Number(sp.mes) : undefined;
 
-  const [meses, tot] = await Promise.all([flujoMensual(ANIO), totalesFlujo(ANIO)]);
+  const meses = await flujoMensual(ANIO);
   const maxBar = Math.max(1, ...meses.map((m) => Math.max(m.ingresos, m.egresos)));
+
+  // Totales según el filtro (mes seleccionado o año corrido).
+  const scope = mes ? meses.filter((m) => m.mes === mes) : meses;
+  const acc = scope.reduce(
+    (a, m) => ({ ingresos: a.ingresos + m.ingresos, egresos: a.egresos + m.egresos, presupuesto: a.presupuesto + m.presupuesto }),
+    { ingresos: 0, egresos: 0, presupuesto: 0 },
+  );
+  const tot = {
+    ...acc,
+    neto: acc.ingresos - acc.egresos,
+    ejecucion: acc.presupuesto > 0 ? (acc.egresos / acc.presupuesto) * 100 : 0,
+  };
+  const alcance = mes ? MESES_LABEL[mes]!.toUpperCase() : `${ANIO}`;
 
   return (
     <>
+      <div className="card" style={{ marginBottom: 12 }}>
+        <div className="card-body" style={{ paddingBottom: 12 }}>
+          <form method="get" className="toolbar">
+            <label className="flag" style={{ alignSelf: "center" }}>Mes:</label>
+            <select name="mes" defaultValue={mes ?? ""} className="select">
+              <option value="">Todos los meses</option>
+              {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
+                <option key={m} value={m}>{MESES_LABEL[m]}</option>
+              ))}
+            </select>
+            <button type="submit" className="btn primary">Ver</button>
+            {mes ? <a href="/flujo" className="btn">Todos los meses</a> : null}
+          </form>
+        </div>
+      </div>
+
       <div className="kpis">
         <div className="kpi k-ingreso">
-          <div className="klabel">Ingresos {ANIO}</div>
+          <div className="klabel">Ingresos {alcance}</div>
           <div className="kval num">{formatCOP(tot.ingresos)}</div>
         </div>
         <div className="kpi k-egreso">
-          <div className="klabel">Egresos {ANIO}</div>
+          <div className="klabel">Egresos {alcance}</div>
           <div className="kval num">{formatCOP(tot.egresos)}</div>
         </div>
         <div className="kpi">
@@ -39,7 +74,7 @@ export default async function FlujoResumenPage() {
         <div className="card-body">
           <div style={{ display: "flex", alignItems: "flex-end", gap: 8, height: 180 }}>
             {meses.map((m) => (
-              <div key={m.mes} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4, height: "100%", justifyContent: "flex-end" }}>
+              <div key={m.mes} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4, height: "100%", justifyContent: "flex-end", opacity: mes && m.mes !== mes ? 0.35 : 1 }}>
                 <div style={{ display: "flex", gap: 3, alignItems: "flex-end", height: "100%", width: "100%", justifyContent: "center" }}>
                   <div title={`Ingresos ${formatCOP(m.ingresos)}`} style={{ width: "38%", height: `${Math.max(1, (m.ingresos / maxBar) * 100)}%`, background: "var(--ingreso)", borderRadius: "3px 3px 0 0" }} />
                   <div title={`Egresos ${formatCOP(m.egresos)}`} style={{ width: "38%", height: `${Math.max(1, (m.egresos / maxBar) * 100)}%`, background: "var(--egreso)", borderRadius: "3px 3px 0 0" }} />
@@ -53,7 +88,7 @@ export default async function FlujoResumenPage() {
       </div>
 
       <div className="card">
-        <div className="chart-head">Detalle mensual</div>
+        <div className="chart-head">Detalle mensual{mes ? <span className="hact">{MESES_LABEL[mes]!.toUpperCase()}</span> : null}</div>
         <div className="tbl-wrap">
           <table>
             <thead>
@@ -64,14 +99,14 @@ export default async function FlujoResumenPage() {
             </thead>
             <tbody>
               <tr className="fila-total">
-                <td style={{ fontWeight: 800 }}>Total {ANIO}</td>
+                <td style={{ fontWeight: 800 }}>{mes ? MESES_LABEL[mes]!.toUpperCase() : `Total ${ANIO}`}</td>
                 <td className="r num" style={{ fontWeight: 800 }}>{formatCOP(tot.ingresos)}</td>
                 <td className="r num" style={{ fontWeight: 800 }}>{formatCOP(tot.egresos)}</td>
                 <td className="r num" style={{ fontWeight: 800 }}>{formatCOP(tot.neto)}</td>
                 <td className="r num" style={{ fontWeight: 800 }}>{formatCOP(tot.presupuesto)}</td>
                 <td className="r num" style={{ fontWeight: 800 }}>{formatPorcentaje(tot.ejecucion)}</td>
               </tr>
-              {meses.map((m) => (
+              {!mes && meses.map((m) => (
                 <tr key={m.mes}>
                   <td style={{ fontWeight: 600, textTransform: "uppercase" }}>{MESES_LABEL[m.mes]}</td>
                   <td className="r num" style={{ color: "var(--ingreso)" }}>{formatCOP(m.ingresos)}</td>

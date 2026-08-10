@@ -6,15 +6,23 @@ import { presupuestoVsReal, flujoMensual, MESES_LABEL } from "@/lib/negocio/fluj
 const ANIO = 2026;
 
 // Semáforo de cumplimiento (egresos vs presupuesto):
-//  ≤100% dentro/por debajo (verde) · 100–110% leve sobre (ámbar) · >110% sobreejecutado (rojo).
-function SemaforoCumpl({ pct }: { pct: number }) {
-  if (pct <= 0) return <span className="flag">—</span>;
-  const { clase, icon } = pct > 110
-    ? { clase: "t-bad", icon: "✗" }
-    : pct > 100
-      ? { clase: "t-w1", icon: "▲" }
-      : { clase: "t-ok", icon: "✓" };
-  return <span className={`tag ${clase}`}>{icon} {formatPorcentaje(pct)}</span>;
+//  ≤100% dentro/por debajo (verde) · 100–110% leve sobre (ámbar) · 110–150% sobreejecutado (rojo)
+//  ≥150% sobreejecución grave (⚠️) · egreso sin presupuesto asignado (⚠️).
+function CeldaCumplimiento({ presupuesto, real }: { presupuesto: number; real: number }) {
+  // Egreso ejecutado sin presupuesto asignado.
+  if (presupuesto <= 0) {
+    if (real > 0) return <span className="tag t-bad" title="Egreso ejecutado sin presupuesto asignado">⚠️ Sin presup.</span>;
+    return <span className="flag">—</span>;
+  }
+  const pct = (real / presupuesto) * 100;
+  const { clase, icon, alerta } = pct >= 150
+    ? { clase: "t-bad", icon: "⚠️", alerta: true }
+    : pct > 110
+      ? { clase: "t-bad", icon: "✗", alerta: false }
+      : pct > 100
+        ? { clase: "t-w1", icon: "▲", alerta: false }
+        : { clase: "t-ok", icon: "✓", alerta: false };
+  return <span className={`tag ${clase}`} title={alerta ? "Sobreejecución ≥150% del presupuesto" : undefined}>{icon} {formatPorcentaje(pct)}</span>;
 }
 
 export default async function PresupuestoPage({
@@ -57,14 +65,13 @@ export default async function PresupuestoPage({
               </tr>
               {meses.map((m) => {
                 const desv = m.egresos - m.presupuesto;
-                const cumpl = m.presupuesto > 0 ? (m.egresos / m.presupuesto) * 100 : 0;
                 return (
                   <tr key={m.mes}>
                     <td style={{ fontWeight: 600, textTransform: "uppercase" }}>{MESES_LABEL[m.mes]}</td>
                     <td className="r num">{formatCOP(m.presupuesto)}</td>
                     <td className="r num">{formatCOP(m.egresos)}</td>
                     <td className="r num" style={{ color: desv > 0 ? "var(--bad)" : desv < 0 ? "var(--ok)" : undefined }}>{formatCOP(desv)}</td>
-                    <td className="r"><SemaforoCumpl pct={cumpl} /></td>
+                    <td className="r"><CeldaCumplimiento presupuesto={m.presupuesto} real={m.egresos} /></td>
                   </tr>
                 );
               })}
@@ -115,7 +122,7 @@ export default async function PresupuestoPage({
                     <td className="r num">{formatCOP(f.presupuesto)}</td>
                     <td className="r num">{formatCOP(f.real)}</td>
                     <td className="r num" style={{ color: f.desviacion > 0 ? "var(--bad)" : f.desviacion < 0 ? "var(--ok)" : undefined }}>{formatCOP(f.desviacion)}</td>
-                    <td className="r"><SemaforoCumpl pct={f.ejecucion} /></td>
+                    <td className="r"><CeldaCumplimiento presupuesto={f.presupuesto} real={f.real} /></td>
                   </tr>
                 ))
               )}

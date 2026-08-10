@@ -29,7 +29,11 @@ export default async function FacturadoPagadoPage({
 
   const mesesData = await mesesConMovimiento(ANIO, "egreso");
   const ultimo = mesesData.length ? mesesData[mesesData.length - 1]! : new Date().getMonth() + 1;
-  const mes = sp.mes && /^\d+$/.test(sp.mes) ? Number(sp.mes) : ultimo;
+  // mes = "all" → año corrido (todos los meses); vacío → último mes con pagos.
+  const todos = sp.mes === "all";
+  const mes = todos ? undefined : sp.mes && /^\d+$/.test(sp.mes) ? Number(sp.mes) : ultimo;
+  const etiqueta = todos ? `año corrido ${ANIO}` : `${MESES_LABEL[mes!]} ${ANIO}`;
+  const etiquetaCorta = todos ? "Año corrido" : MESES_LABEL[mes!];
 
   const filas = await facturadoVsPagado(ANIO, mes);
   const totFact = filas.reduce((s, f) => s + f.facturado, 0);
@@ -45,7 +49,7 @@ export default async function FacturadoPagadoPage({
         <div>
           <div className="eyebrow">Cuentas por Pagar</div>
           <h1>Facturado vs Pagado</h1>
-          <p>Por proveedor · {MESES_LABEL[mes]} {ANIO} · facturado (CxP) contra pagado (flujo)</p>
+          <p>Por proveedor · {etiqueta} · facturado (CxP) contra pagado (flujo)</p>
         </div>
         <div className="toolbar">
           <a href="/cxp/proveedores" className="btn">Por proveedor (saldo)</a>
@@ -57,7 +61,8 @@ export default async function FacturadoPagadoPage({
         <div className="card-body" style={{ paddingBottom: 12 }}>
           <form method="get" className="toolbar">
             <label className="flag" style={{ alignSelf: "center" }}>Mes:</label>
-            <select name="mes" defaultValue={mes} className="select">
+            <select name="mes" defaultValue={todos ? "all" : mes} className="select">
+              <option value="all">Todos los meses</option>
               {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
                 <option key={m} value={m}>{MESES_LABEL[m]}{mesesData.includes(m) ? "" : " (sin pagos)"}</option>
               ))}
@@ -69,12 +74,12 @@ export default async function FacturadoPagadoPage({
 
       <div className="kpis" style={{ marginBottom: 12 }}>
         <div className="kpi">
-          <div className="klabel">Facturado en el mes</div>
+          <div className="klabel">Facturado {todos ? "en el año" : "en el mes"}</div>
           <div className="kval num" style={{ color: "var(--cat-1)" }}>{formatCOP(totFact)}</div>
           <div className="ksub"><span className="flag">documentos emitidos (CxP)</span></div>
         </div>
         <div className="kpi">
-          <div className="klabel">Pagado en el mes</div>
+          <div className="klabel">Pagado {todos ? "en el año" : "en el mes"}</div>
           <div className="kval num" style={{ color: "var(--cat-3)" }}>{formatCOP(totPag)}</div>
           <div className="ksub"><span className="flag">egresos a proveedores</span></div>
         </div>
@@ -87,7 +92,7 @@ export default async function FacturadoPagadoPage({
 
       <div style={{ marginBottom: 12 }}>
         <BarrasComparativas
-          titulo={`Facturado vs Pagado · ${MESES_LABEL[mes]}`}
+          titulo={`Facturado vs Pagado · ${etiquetaCorta}`}
           items={items}
           labelA="Facturado" labelB="Pagado"
           colorA="var(--cat-1)" colorB="var(--cat-3)"
@@ -117,7 +122,7 @@ export default async function FacturadoPagadoPage({
                 </tr>
               )}
               {filas.length === 0 ? (
-                <tr><td colSpan={6} className="empty">Sin datos para {MESES_LABEL[mes]}.</td></tr>
+                <tr><td colSpan={6} className="empty">Sin datos para {etiquetaCorta}.</td></tr>
               ) : (
                 filas.map((f) => (
                   <tr key={f.proveedor}>
