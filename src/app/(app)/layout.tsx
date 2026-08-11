@@ -32,6 +32,12 @@ const GRUPOS_DEF: { id: string; label: string; icon: string; items: { href: stri
     { href: "/indicadores", label: "📈 Indicadores", permiso: "cxp.view" },
     { href: "/pyg", label: "📄 PyG", permiso: "cxp.view" },
   ] },
+  { id: "inventarios", label: "Inventarios", icon: "📦", items: [
+    { href: "/inventario", label: "📦 Inventario", permiso: "inventario.view" },
+    { href: "/inventario/ciudades", label: "📍 Por Ciudad", permiso: "inventario.view" },
+    { href: "/inventario/estados", label: "🔍 Por Estado", permiso: "inventario.view" },
+    { href: "/inventario/novedades", label: "🔔 Novedades", permiso: "inventario.view" },
+  ] },
 ];
 
 function iniciales(nombre: string): string {

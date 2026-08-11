@@ -94,6 +94,27 @@ enum TipoMovimiento {
   egreso
 }
 
+enum EstadoInventario {
+  activo
+  en_reparacion
+  de_baja
+  pendiente
+}
+
+enum TipoItemInventario {
+  equipo
+  accesorio
+}
+
+enum TipoNovedad {
+  compra              // Alta / ingreso de un equipo nuevo
+  baja                // Retiro definitivo del inventario
+  dano                // Reporte de daño
+  reparacion          // Envío a reparación
+  retorno_reparacion  // Retorno de reparación (queda activo)
+  traslado            // Movimiento entre sedes
+}
+
 // =============== 1. ORGANIZACIÓN ===============
 
 model Empresa {
@@ -116,6 +137,7 @@ model Sede {
   usuarios  Usuario[]
   cuentas   CuentaBancaria[]
   facturas  FacturaVenta[]
+  equipos   EquipoInventario[]
 
   @@index([empresaId])
 }
@@ -187,6 +209,7 @@ model Usuario {
   vendedor        Vendedor?
   recaudosCreados Recaudo[]
   pagosCreados    Pago[]
+  novedadesInv    NovedadInventario[]
 
   @@index([rolId])
 }
@@ -697,4 +720,72 @@ model EstadoResultados {
 
   @@unique([anio, mes])
   @@index([anio, mes])
+}
+
+// =============== 11. INVENTARIO DE EQUIPOS ===============
+// Equipo (padre) = conjunto físico ubicado en una sede (ej. "Stryker Sistem 8").
+// Agrupa sus ítems/accesorios (hijos). El estado se lleva a nivel de ítem
+// porque un equipo puede estar activo con un accesorio en reparación.
+
+model EquipoInventario {
+  id            Int      @id @default(autoincrement())
+  sede          Sede     @relation(fields: [sedeId], references: [id])
+  sedeId        Int
+  categoria     String   // MOTOR, MOTOR SISTEM 8, CRANEOTOMO, REGULADOR…
+  marca         String   // HALL, STRYKER, MEDTRONIC MIDAS, PUSM, TRS, SYNTHES…
+  nombre        String?  // Etiqueta opcional (ej. "Motor Hall #1")
+  observaciones String?
+  activo        Boolean  @default(true) // false cuando el equipo se da de baja completo
+
+  items     ItemInventario[]
+  novedades NovedadInventario[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([sedeId])
+  @@index([categoria])
+}
+
+model ItemInventario {
+  id            Int                @id @default(autoincrement())
+  equipo        EquipoInventario   @relation(fields: [equipoId], references: [id], onDelete: Cascade)
+  equipoId      Int
+  descripcion   String             // PIEZA DE MANO, MANGUERA NEGRA, ADAPTADOR HUDSON…
+  tipo          TipoItemInventario @default(accesorio)
+  cantidad      Int                @default(1)
+  lote          String?            // Serial / lote (opcional)
+  estado        EstadoInventario   @default(activo)
+  observaciones String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([equipoId])
+  @@index([estado])
+}
+
+// Bitácora de novedades: compra, baja, daño, reparación, retorno y traslado.
+// Cada novedad puede afectar todo el equipo o un ítem puntual, y registra la
+// transición de estado y/o sede para dejar trazabilidad.
+model NovedadInventario {
+  id             Int         @id @default(autoincrement())
+  fecha          DateTime    @default(now())
+  tipo           TipoNovedad
+  equipo         EquipoInventario @relation(fields: [equipoId], references: [id], onDelete: Cascade)
+  equipoId       Int
+  itemId         Int?        // Ítem afectado (opcional; null = todo el equipo)
+  sedeOrigenId   Int?        // Traslado: sede de origen
+  sedeDestinoId  Int?        // Traslado / compra: sede destino
+  estadoAnterior EstadoInventario?
+  estadoNuevo    EstadoInventario?
+  descripcion    String?
+  usuario        Usuario?    @relation(fields: [usuarioId], references: [id])
+  usuarioId      Int?
+
+  createdAt DateTime @default(now())
+
+  @@index([equipoId])
+  @@index([tipo])
+  @@index([fecha])
 }

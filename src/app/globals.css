@@ -369,3 +369,13 @@ td.r, th.r { text-align: right; }
 @media (max-width: 560px) {
   .kpis { grid-template-columns: 1fr 1fr; }
 }
+
+/* Diálogos (módulo Inventarios) */
+.dlg {
+  border: 1px solid var(--line); border-radius: var(--r); padding: 0;
+  background: var(--surface); color: var(--ink); box-shadow: 0 24px 60px rgba(27,36,52,.28);
+  max-width: 640px; width: calc(100% - 32px);
+}
+.dlg::backdrop { background: rgba(27,36,52,.45); backdrop-filter: blur(2px); }
+.dlg .form-crear { border: 0; box-shadow: none; }
+.dlg h3 { font-size: 16px; }

@@ -22,6 +22,7 @@
     "db:grupo": "tsx prisma/set-grupo.ts",
     "db:ventas": "node --max-old-space-size=8192 node_modules/tsx/dist/cli.mjs prisma/set-ventas.ts",
     "db:pyg": "tsx prisma/set-pyg.ts",
+    "db:inventario": "tsx prisma/set-inventario.ts",
     "db:check": "tsx prisma/check-datos.ts",
     "db:studio": "prisma studio",
     "audit": "npm audit --audit-level=high"
