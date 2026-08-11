@@ -101,7 +101,7 @@ export function BarrasApiladas({ filas, leyenda }: { filas: FilaBarra[]; leyenda
       )}
       {filas.map((f) => (
         <div key={f.label} style={{ display: "grid", gridTemplateColumns: "130px 1fr 54px", alignItems: "center", gap: 10 }}>
-          <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", paddingLeft: 6 }}>
             <div style={{ fontWeight: 600, fontSize: 13 }}>{f.label}</div>
             {f.sub && <div className="flag" style={{ fontSize: 11 }}>{f.sub}</div>}
           </div>

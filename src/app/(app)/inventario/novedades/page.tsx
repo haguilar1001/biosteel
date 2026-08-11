@@ -3,12 +3,14 @@
 // Historial de compras, bajas, daños, reparaciones, retornos y
 // traslados. Las novedades se registran desde la tabla de inventario.
 // ==========================================================
-import { requirePermiso } from "@/server/auth-context";
+import { requirePermiso, requireUsuario } from "@/server/auth-context";
+import { puede } from "@/lib/rbac/authorize";
 import { formatNumero, formatFecha } from "@/lib/format";
 import {
-  listarNovedades, novedadLabel, novedadIcono, estadoLabel, estadoClase,
+  listarNovedades, listarEquipos, catalogos, novedadLabel, novedadIcono, estadoLabel, estadoClase,
 } from "@/lib/negocio/inventario";
 import type { TipoNovedad } from "@prisma/client";
+import NuevaNovedadForm from "../NuevaNovedadForm";
 
 const TIPO_TAG: Record<TipoNovedad, string> = {
   compra: "t-ok", baja: "t-bad", dano: "t-w1", reparacion: "t-w1", retorno_reparacion: "t-ok", traslado: "t-blue",
@@ -16,7 +18,14 @@ const TIPO_TAG: Record<TipoNovedad, string> = {
 
 export default async function NovedadesPage() {
   await requirePermiso("inventario.view");
-  const novedades = await listarNovedades();
+  const usuario = await requireUsuario();
+  const puedeGestionar = await puede(usuario, "inventario.manage");
+  const [novedades, equipos, cat] = await Promise.all([listarNovedades(), listarEquipos(), catalogos()]);
+
+  const equiposOpc = equipos.map((e) => ({
+    id: e.id, etiqueta: `${e.categoria} · ${e.marca}`, ciudad: e.ciudad, sedeId: e.sedeId,
+    items: e.items.map((it) => ({ id: it.id, descripcion: it.descripcion })),
+  }));
 
   const conteo = novedades.reduce<Record<string, number>>((acc, n) => {
     acc[n.tipo] = (acc[n.tipo] ?? 0) + 1;
@@ -29,8 +38,9 @@ export default async function NovedadesPage() {
         <div>
           <div className="eyebrow">Inventarios</div>
           <h1>Novedades</h1>
-          <p>Bitácora de movimientos · {formatNumero(novedades.length)} registros · se registran desde la tabla de inventario</p>
+          <p>Bitácora de movimientos · {formatNumero(novedades.length)} registros</p>
         </div>
+        {puedeGestionar && <NuevaNovedadForm equipos={equiposOpc} sedes={cat.sedes} />}
       </div>
 
       <div className="kpis">

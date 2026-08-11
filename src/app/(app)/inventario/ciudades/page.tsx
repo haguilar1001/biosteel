@@ -9,6 +9,7 @@ import {
   inventarioPorCiudad, resumenInventario, composicionInventario, estadoLabel, estadoClase, estadoIcono, ESTADOS,
 } from "@/lib/negocio/inventario";
 import { DonutConteo, BarrasApiladas, ESTADO_COLOR, colorPaleta, type Segmento, type FilaBarra } from "../_viz";
+import { MapaInventario } from "../MapaInventario";
 
 export default async function InventarioCiudadesPage() {
   await requirePermiso("inventario.view");
@@ -21,6 +22,7 @@ export default async function InventarioCiudadesPage() {
     total: c.total,
     partes: ESTADOS.map((e) => ({ label: estadoLabel(e), valor: c.estados[e], color: ESTADO_COLOR[e]! })),
   }));
+  const burbujas = grupos.map((g) => ({ ciudad: g.ciudad, sede: g.sede, total: g.totalItems, estados: g.porEstado }));
 
   return (
     <>
@@ -64,6 +66,11 @@ export default async function InventarioCiudadesPage() {
           <div className="chart-head">Ítems por ciudad · desglose por estado</div>
           <BarrasApiladas filas={barrasCiudad} leyenda={leyendaEstados} />
         </div>
+      </div>
+
+      <div className="card" style={{ marginBottom: 12 }}>
+        <div className="chart-head">🗺️ Mapa de inventario por sede</div>
+        <MapaInventario data={burbujas} />
       </div>
 
       <div className="subhead">Detalle por sede</div>
