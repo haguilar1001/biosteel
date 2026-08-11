@@ -97,6 +97,24 @@ export async function listarDocumentosCxp(
   return { filas, total, suma: agg._sum.saldo?.toNumber() ?? 0 };
 }
 
+/** Documentos del filtro SIN límite (para exportar a Excel). */
+export async function exportarDocumentosCxp(q?: string, corte: Date = new Date()): Promise<FilaCxp[]> {
+  const where: Prisma.DocumentoCxpWhereInput = { ...whereConSaldo, ...filtroBusqueda(q) };
+  const docs = await prisma.documentoCxp.findMany({
+    where,
+    select: {
+      id: true, numero: true, saldo: true, fechaVencimiento: true, estado: true, concepto: true,
+      proveedor: { select: { nombre: true, nit: true } },
+    },
+    orderBy: { saldo: "desc" },
+  });
+  return docs.map((d) => ({
+    id: d.id, numero: d.numero, proveedor: d.proveedor.nombre, nit: d.proveedor.nit,
+    concepto: d.concepto, saldo: d.saldo.toNumber(), fechaVencimiento: d.fechaVencimiento,
+    dias: diasVencido(d.fechaVencimiento, corte), estado: d.estado,
+  }));
+}
+
 // ---------- Informe por proveedor (neto) ----------
 export interface FilaProveedorCxp {
   proveedorId: number;

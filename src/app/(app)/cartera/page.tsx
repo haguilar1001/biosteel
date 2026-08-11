@@ -59,6 +59,11 @@ export default async function CarteraPage({
     return `/cartera?${p.toString()}`;
   };
 
+  const expParams = new URLSearchParams();
+  if (q) expParams.set("q", q);
+  if (cubetaFiltro) expParams.set("edad", cubetaFiltro);
+  const expHref = `/cartera/export${expParams.toString() ? `?${expParams}` : ""}`;
+
   return (
     <>
       <div className="page-head">
@@ -71,6 +76,7 @@ export default async function CarteraPage({
           <a href="/cartera/ciudades" className="btn primary">Por ciudad</a>
           <a href="/cartera/clientes" className="btn">Por cliente</a>
           <a href="/cartera/ventas-recaudos" className="btn">Ventas vs Recaudos</a>
+          <a href={expHref} className="btn" title="Descargar en Excel el detalle filtrado">⬇️ Excel</a>
         </div>
       </div>
 

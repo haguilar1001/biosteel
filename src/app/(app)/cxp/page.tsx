@@ -37,6 +37,7 @@ export default async function CxpPage({
           <a href="/cxp/proveedores" className="btn primary">Informe por proveedor</a>
           <a href="/cxp/facturado-pagado" className="btn">Facturado vs Pagado</a>
           <a href="/cxp/anticipos" className="btn">Anticipos</a>
+          <a href={`/cxp/export${q ? `?q=${encodeURIComponent(q)}` : ""}`} className="btn" title="Descargar en Excel el detalle filtrado">⬇️ Excel</a>
         </div>
       </div>
 

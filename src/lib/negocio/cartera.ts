@@ -141,6 +141,36 @@ export async function listarFacturas(
   return { filas, total, suma: agg._sum.saldo?.toNumber() ?? 0 };
 }
 
+/** Facturas del filtro SIN límite (para exportar a Excel). Respeta el alcance RBAC. */
+export async function exportarFacturas(
+  usuario: UsuarioConRol,
+  alcance: Alcance,
+  filtros: FiltrosCartera = {},
+  corte: Date = new Date(),
+): Promise<FilaCartera[]> {
+  const where: Prisma.FacturaVentaWhereInput = { ...whereConSaldo(usuario, alcance), ...filtroBusqueda(filtros.q) };
+  const facturas = await prisma.facturaVenta.findMany({
+    where,
+    select: {
+      id: true, numero: true, valorTotal: true, saldo: true, fechaEmision: true,
+      fechaVencimiento: true, estado: true, concepto: true,
+      tercero: { select: { nombre: true, nit: true } },
+    },
+    orderBy: { saldo: "desc" },
+  });
+  let filas = facturas.map((f): FilaCartera => {
+    const dias = diasVencido(f.fechaVencimiento, corte);
+    return {
+      id: f.id, numero: f.numero, cliente: f.tercero.nombre, nit: f.tercero.nit,
+      concepto: f.concepto, fechaEmision: f.fechaEmision, fechaVencimiento: f.fechaVencimiento,
+      valorTotal: f.valorTotal.toNumber(), saldo: f.saldo.toNumber(), dias, cubeta: cubetaDe(dias),
+      estado: f.estado,
+    };
+  });
+  if (filtros.cubeta) filas = filas.filter((f) => f.cubeta === filtros.cubeta && f.saldo > 0);
+  return filas;
+}
+
 // ---------- Informe por cliente (neto) ----------
 export interface FilaClienteCartera {
   clienteId: number;
