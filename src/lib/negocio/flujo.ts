@@ -63,6 +63,7 @@ export interface FilaMovimiento {
   fecha: Date;
   mes: number;
   categoria: string | null;
+  categoriaId: number | null;
   terceroNombre: string;
   nit: string | null;
   detalle: string | null;
@@ -128,7 +129,7 @@ export async function listarMovimientos(
       where,
       select: {
         id: true, fecha: true, mes: true, terceroNombre: true, nit: true,
-        detalle: true, observacion: true, valor: true,
+        detalle: true, observacion: true, valor: true, categoriaId: true,
         categoria: { select: { nombre: true } },
       },
       orderBy: orderByMov(orden),
@@ -137,7 +138,7 @@ export async function listarMovimientos(
   ]);
 
   const filas = movs.map((m) => ({
-    id: m.id, fecha: m.fecha, mes: m.mes, categoria: m.categoria?.nombre ?? null,
+    id: m.id, fecha: m.fecha, mes: m.mes, categoria: m.categoria?.nombre ?? null, categoriaId: m.categoriaId,
     terceroNombre: m.terceroNombre, nit: m.nit, detalle: m.detalle, observacion: m.observacion,
     valor: m.valor.toNumber(),
   }));
@@ -255,4 +256,13 @@ export async function nombresInternos(): Promise<string[]> {
 /** Categorías (grupos) para filtros. */
 export function listarCategorias() {
   return prisma.categoriaFlujo.findMany({ select: { id: true, nombre: true }, orderBy: { orden: "asc" } });
+}
+
+/** Categorías de un tipo (para el selector de reclasificación). */
+export function categoriasPorTipo(tipo: TipoMovimiento) {
+  return prisma.categoriaFlujo.findMany({
+    where: { tipo, activo: true },
+    select: { id: true, nombre: true },
+    orderBy: { orden: "asc" },
+  });
 }

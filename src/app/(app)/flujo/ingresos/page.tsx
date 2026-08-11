@@ -3,8 +3,10 @@
 // tercero). Encabezados ordenables (asc/desc); el orden se aplica en la
 // consulta y se conserva con o sin filtros.
 import { requirePermiso } from "@/server/auth-context";
+import { puede } from "@/lib/rbac/authorize";
 import { formatCOP, formatNumero, formatPorcentaje, formatFecha } from "@/lib/format";
-import { listarMovimientos, movimientosPorTercero, MESES_LABEL, type CampoOrden, type DirOrden } from "@/lib/negocio/flujo";
+import { listarMovimientos, movimientosPorTercero, categoriasPorTipo, MESES_LABEL, type CampoOrden, type DirOrden } from "@/lib/negocio/flujo";
+import { SelectorCategoria } from "../SelectorCategoria";
 
 const ANIO = 2026;
 const DEF_DIR: Record<string, DirOrden> = { fecha: "desc", tercero: "asc", detalle: "asc", observacion: "asc", valor: "desc", cantidad: "desc" };
@@ -14,7 +16,9 @@ export default async function IngresosPage({
 }: {
   searchParams: Promise<{ mes?: string; q?: string; vista?: string; orden?: string; dir?: string }>;
 }) {
-  await requirePermiso("cxp.view");
+  const { usuario } = await requirePermiso("cxp.view");
+  const puedeGestionar = await puede(usuario, "flujo.manage");
+  const catsEdit = puedeGestionar ? await categoriasPorTipo("ingreso") : [];
   const sp = await searchParams;
   const mes = sp.mes && /^\d+$/.test(sp.mes) ? Number(sp.mes) : undefined;
   const q = sp.q;
@@ -123,23 +127,28 @@ export default async function IngresosPage({
       <div className="tbl-wrap">
         <table className="tabla-fit">
           <colgroup>
-            <col style={{ width: "8%" }} /><col style={{ width: "26%" }} /><col style={{ width: "16%" }} />
-            <col style={{ width: "36%" }} /><col style={{ width: "14%" }} />
+            <col style={{ width: "8%" }} /><col style={{ width: "15%" }} /><col style={{ width: "22%" }} />
+            <col style={{ width: "27%" }} /><col style={{ width: "14%" }} /><col style={{ width: "14%" }} />
           </colgroup>
           <thead>
-            <tr>{th("fecha", "Fecha")}{th("tercero", "Tercero")}{th("detalle", "Detalle")}{th("observacion", "Observación")}{th("valor", "Valor", true)}</tr>
+            <tr>{th("fecha", "Fecha")}<th>Categoría</th>{th("tercero", "Tercero")}{th("detalle", "Detalle")}{th("observacion", "Observación")}{th("valor", "Valor", true)}</tr>
           </thead>
           <tbody>
             <tr className="fila-total">
-              <td colSpan={4} style={{ fontWeight: 800 }}>Total · {formatNumero(total)} movimiento{total === 1 ? "" : "s"}{filas.length < total ? ` (mostrando ${formatNumero(filas.length)})` : ""}</td>
+              <td colSpan={5} style={{ fontWeight: 800 }}>Total · {formatNumero(total)} movimiento{total === 1 ? "" : "s"}{filas.length < total ? ` (mostrando ${formatNumero(filas.length)})` : ""}</td>
               <td className="r num" style={{ fontWeight: 800 }}>{formatCOP(suma)}</td>
             </tr>
             {filas.length === 0 ? (
-              <tr><td colSpan={5} className="empty">Sin movimientos.</td></tr>
+              <tr><td colSpan={6} className="empty">Sin movimientos.</td></tr>
             ) : (
               filas.map((m) => (
                 <tr key={m.id}>
                   <td className="flag">{formatFecha(m.fecha)}</td>
+                  <td title={m.categoria ?? ""}>
+                    {puedeGestionar
+                      ? <SelectorCategoria movimientoId={m.id} categoriaId={m.categoriaId} categorias={catsEdit} />
+                      : (m.categoria ?? "—")}
+                  </td>
                   <td style={{ fontWeight: 600 }} title={m.terceroNombre}>{m.terceroNombre}</td>
                   <td className="flag" title={m.detalle ?? ""}>{m.detalle}</td>
                   <td className="flag" title={m.observacion ?? ""}>{m.observacion}</td>

@@ -3,8 +3,10 @@
 // ordenables (asc/desc); el orden se aplica en la consulta y se conserva
 // con o sin filtros.
 import { requirePermiso } from "@/server/auth-context";
+import { puede } from "@/lib/rbac/authorize";
 import { formatCOP, formatNumero, formatPorcentaje, formatFecha } from "@/lib/format";
-import { listarMovimientos, movimientosPorTercero, listarCategorias, MESES_LABEL, type CampoOrden, type DirOrden } from "@/lib/negocio/flujo";
+import { listarMovimientos, movimientosPorTercero, listarCategorias, categoriasPorTipo, MESES_LABEL, type CampoOrden, type DirOrden } from "@/lib/negocio/flujo";
+import { SelectorCategoria } from "../SelectorCategoria";
 
 const ANIO = 2026;
 const DEF_DIR: Record<string, DirOrden> = { fecha: "desc", grupo: "asc", tercero: "asc", detalle: "asc", observacion: "asc", valor: "desc", cantidad: "desc" };
@@ -14,13 +16,15 @@ export default async function EgresosPage({
 }: {
   searchParams: Promise<{ mes?: string; grupo?: string; q?: string; vista?: string; orden?: string; dir?: string }>;
 }) {
-  await requirePermiso("cxp.view");
+  const { usuario } = await requirePermiso("cxp.view");
+  const puedeGestionar = await puede(usuario, "flujo.manage");
   const sp = await searchParams;
   const mes = sp.mes && /^\d+$/.test(sp.mes) ? Number(sp.mes) : undefined;
   const categoriaId = sp.grupo && /^\d+$/.test(sp.grupo) ? Number(sp.grupo) : undefined;
   const q = sp.q;
   const vista = sp.vista === "proveedor" ? "proveedor" : "detalle";
   const categorias = await listarCategorias();
+  const catsEdit = puedeGestionar ? await categoriasPorTipo("egreso") : [];
 
   const campos = vista === "proveedor" ? ["tercero", "cantidad", "valor"] : ["fecha", "grupo", "tercero", "detalle", "observacion", "valor"];
   const campoDefault = vista === "proveedor" ? "valor" : "fecha";
@@ -145,7 +149,11 @@ export default async function EgresosPage({
               filas.map((m) => (
                 <tr key={m.id}>
                   <td className="flag">{formatFecha(m.fecha)}</td>
-                  <td title={m.categoria ?? ""}>{m.categoria ?? "—"}</td>
+                  <td title={m.categoria ?? ""}>
+                    {puedeGestionar
+                      ? <SelectorCategoria movimientoId={m.id} categoriaId={m.categoriaId} categorias={catsEdit} />
+                      : (m.categoria ?? "—")}
+                  </td>
                   <td style={{ fontWeight: 600 }} title={m.terceroNombre}>{m.terceroNombre}</td>
                   <td className="flag" title={m.detalle ?? ""}>{m.detalle}</td>
                   <td className="flag" title={m.observacion ?? ""}>{m.observacion}</td>
