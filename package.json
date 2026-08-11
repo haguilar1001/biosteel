@@ -26,7 +26,8 @@
     "db:codigos": "tsx prisma/set-codigos.ts",
     "db:check": "tsx prisma/check-datos.ts",
     "db:studio": "prisma studio",
-    "audit": "npm audit --audit-level=high"
+    "audit": "npm audit --audit-level=high",
+    "test": "node --import tsx --conditions=react-server --test \"src/**/*.test.ts\""
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
