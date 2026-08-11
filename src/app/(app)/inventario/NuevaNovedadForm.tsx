@@ -7,6 +7,7 @@
 // ==========================================================
 import { useEffect, useRef, useState, useActionState } from "react";
 import { registrarNovedadAction, crearEquipoCompraAction } from "./actions";
+import { SelectOCrear } from "./SelectOCrear";
 
 interface EquipoOpc {
   id: number; etiqueta: string; ciudad: string; sedeId: number; categoria: string; marca: string;
@@ -112,8 +113,7 @@ export default function NuevaNovedadForm({ equipos, sedes, categorias, marcas }:
                   <datalist id="cat-nov">{categorias.map((c) => <option key={c} value={c} />)}</datalist>
                 </div>
                 <div className="field"><label>Marca / Modelo</label>
-                  <input name="marca" list="marca-nov" required placeholder="STRYKER, HALL…" value={marca} onChange={(e) => setMarca(e.target.value)} />
-                  <datalist id="marca-nov">{marcas.map((m) => <option key={m} value={m} />)}</datalist>
+                  <SelectOCrear name="marca" opciones={marcas} value={marca} onValueChange={setMarca} required placeholder="Nueva marca / modelo…" crearLabel="➕ Crear nueva marca…" />
                 </div>
                 <div className="field"><label>Nombre (opcional)</label><input name="nombre" placeholder="Motor Hall #2" /></div>
                 <div className="field"><label>Fecha de compra</label><input name="fecha" type="date" /></div>

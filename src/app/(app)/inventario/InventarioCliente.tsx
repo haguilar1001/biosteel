@@ -8,6 +8,7 @@ import {
   crearEquipoAction, eliminarEquipoAction, crearItemAction, actualizarItemAction,
   eliminarItemAction, registrarNovedadAction, type AccionState,
 } from "./actions";
+import { SelectOCrear } from "./SelectOCrear";
 
 // ---- Tipos que llegan del servidor (planos) ----
 type Estado = "activo" | "en_reparacion" | "de_baja" | "pendiente";
@@ -261,8 +262,7 @@ const DialogEquipo = ({ ref, sedes, categorias, marcas }: {
             <datalist id="cat-list">{categorias.map((c) => <option key={c} value={c} />)}</datalist>
           </div>
           <div className="field"><label>Marca / Modelo</label>
-            <input name="marca" list="marca-list" required placeholder="STRYKER, HALL…" />
-            <datalist id="marca-list">{marcas.map((m) => <option key={m} value={m} />)}</datalist>
+            <SelectOCrear name="marca" opciones={marcas} required placeholder="Nueva marca / modelo…" crearLabel="➕ Crear nueva marca…" />
           </div>
           <div className="field"><label>Nombre (opcional)</label><input name="nombre" placeholder="Motor Hall #1" /></div>
         </div>
