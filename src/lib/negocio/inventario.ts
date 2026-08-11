@@ -5,6 +5,7 @@
 // ==========================================================
 import "server-only";
 import { prisma } from "@/lib/db";
+import { Prisma } from "@prisma/client";
 import type { EstadoInventario, TipoItemInventario, TipoNovedad } from "@prisma/client";
 
 // ---------- Etiquetas y estilos ----------
@@ -289,6 +290,21 @@ export interface NovedadVista {
   usuario: string | null;
 }
 
+/** Consecutivo legible del soporte de una novedad (NOV-00042). */
+export function consecutivoNovedad(id: number): string {
+  return `NOV-${String(id).padStart(5, "0")}`;
+}
+
+/** ¿La fecha cae en el día de hoy (hora local del servidor)? */
+export function esHoy(fecha: Date): boolean {
+  const h = new Date();
+  return (
+    fecha.getFullYear() === h.getFullYear() &&
+    fecha.getMonth() === h.getMonth() &&
+    fecha.getDate() === h.getDate()
+  );
+}
+
 /** Bitácora de novedades, más reciente primero. */
 export async function listarNovedades(limite = 200): Promise<NovedadVista[]> {
   const novedades = await prisma.novedadInventario.findMany({
@@ -324,4 +340,111 @@ export async function listarNovedades(limite = 200): Promise<NovedadVista[]> {
     descripcion: n.descripcion,
     usuario: n.usuario?.nombre ?? null,
   }));
+}
+
+// ---------- Soporte imprimible de una novedad ----------
+
+export interface ItemSoporte {
+  descripcion: string;
+  tipo: TipoItemInventario;
+  cantidad: number;
+  lote: string | null;
+  estado: EstadoInventario;
+}
+
+export interface SoporteNovedad {
+  id: number;
+  consecutivo: string;      // NOV-00042
+  fecha: Date;              // fecha de la novedad
+  createdAt: Date;          // fecha/hora de registro en el sistema
+  tipo: TipoNovedad;
+  descripcion: string | null;
+  estadoAnterior: EstadoInventario | null;
+  estadoNuevo: EstadoInventario | null;
+  // Equipo
+  equipoCodigo: string | null;
+  categoria: string;
+  marca: string;
+  nombre: string | null;
+  sedeActual: string;
+  ciudad: string;
+  // Ítem afectado (null = todo el equipo)
+  item: ItemSoporte | null;
+  equipoItems: ItemSoporte[];
+  // Traslado
+  sedeOrigen: string | null;
+  sedeDestino: string | null;
+  // Autoría
+  usuario: string | null;
+}
+
+// Include compartido para armar el soporte.
+const soporteInclude = Prisma.validator<Prisma.NovedadInventarioInclude>()({
+  equipo: { include: { sede: true, items: { orderBy: { id: "asc" } } } },
+  usuario: { select: { nombre: true } },
+});
+
+type NovedadConSoporte = Prisma.NovedadInventarioGetPayload<{ include: typeof soporteInclude }>;
+
+function aItemSoporte(it: { descripcion: string; tipo: TipoItemInventario; cantidad: number; lote: string | null; estado: EstadoInventario }): ItemSoporte {
+  return { descripcion: it.descripcion, tipo: it.tipo, cantidad: it.cantidad, lote: it.lote, estado: it.estado };
+}
+
+function mapSoporte(n: NonNullable<NovedadConSoporte>, sedeNombre: Map<number, string>): SoporteNovedad {
+  const itemAfectado = n.itemId ? n.equipo.items.find((i) => i.id === n.itemId) ?? null : null;
+  return {
+    id: n.id,
+    consecutivo: consecutivoNovedad(n.id),
+    fecha: n.fecha,
+    createdAt: n.createdAt,
+    tipo: n.tipo,
+    descripcion: n.descripcion,
+    estadoAnterior: n.estadoAnterior,
+    estadoNuevo: n.estadoNuevo,
+    equipoCodigo: n.equipo.codigo,
+    categoria: n.equipo.categoria,
+    marca: n.equipo.marca,
+    nombre: n.equipo.nombre,
+    sedeActual: n.equipo.sede.nombre,
+    ciudad: n.equipo.sede.ciudad,
+    item: itemAfectado ? aItemSoporte(itemAfectado) : null,
+    equipoItems: n.equipo.items.map(aItemSoporte),
+    sedeOrigen: n.sedeOrigenId ? sedeNombre.get(n.sedeOrigenId) ?? null : null,
+    sedeDestino: n.sedeDestinoId ? sedeNombre.get(n.sedeDestinoId) ?? null : null,
+    usuario: n.usuario?.nombre ?? null,
+  };
+}
+
+/** Nombres de sede para un conjunto de novedades (traslados). */
+async function sedesDe(novedades: NonNullable<NovedadConSoporte>[]): Promise<Map<number, string>> {
+  const ids = new Set<number>();
+  for (const n of novedades) {
+    if (n.sedeOrigenId) ids.add(n.sedeOrigenId);
+    if (n.sedeDestinoId) ids.add(n.sedeDestinoId);
+  }
+  if (ids.size === 0) return new Map();
+  const sedes = await prisma.sede.findMany({ where: { id: { in: [...ids] } }, select: { id: true, nombre: true } });
+  return new Map(sedes.map((s) => [s.id, s.nombre]));
+}
+
+/** Datos completos para el soporte imprimible de UNA novedad. */
+export async function soporteNovedad(id: number): Promise<SoporteNovedad | null> {
+  const n = await prisma.novedadInventario.findUnique({ where: { id }, include: soporteInclude });
+  if (!n) return null;
+  const sedeNombre = await sedesDe([n]);
+  return mapSoporte(n, sedeNombre);
+}
+
+/** Soportes de todas las novedades registradas HOY (para exportar el día completo). */
+export async function soportesDeHoy(): Promise<SoporteNovedad[]> {
+  const hoy = new Date();
+  const desde = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate(), 0, 0, 0, 0);
+  const hasta = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate() + 1, 0, 0, 0, 0);
+  const novedades = await prisma.novedadInventario.findMany({
+    where: { fecha: { gte: desde, lt: hasta } },
+    orderBy: [{ fecha: "asc" }, { id: "asc" }],
+    include: soporteInclude,
+  });
+  const sedeNombre = await sedesDe(novedades);
+  return novedades.map((n) => mapSoporte(n, sedeNombre));
 }

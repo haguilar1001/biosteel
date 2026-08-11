@@ -7,7 +7,7 @@ import { requirePermiso, requireUsuario } from "@/server/auth-context";
 import { puede } from "@/lib/rbac/authorize";
 import { formatNumero, formatFecha } from "@/lib/format";
 import {
-  listarNovedades, listarEquipos, catalogos, novedadLabel, novedadIcono, estadoLabel, estadoClase,
+  listarNovedades, listarEquipos, catalogos, novedadLabel, novedadIcono, estadoLabel, estadoClase, esHoy,
 } from "@/lib/negocio/inventario";
 import type { TipoNovedad } from "@prisma/client";
 import NuevaNovedadForm from "../NuevaNovedadForm";
@@ -43,7 +43,12 @@ export default async function NovedadesPage() {
           <h1>Novedades</h1>
           <p>Bitácora de movimientos · {formatNumero(novedades.length)} registros</p>
         </div>
-        {puedeGestionar && <NuevaNovedadForm equipos={equiposOpc} sedes={cat.sedes} categorias={cat.categorias} marcas={cat.marcas} />}
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <a className="btn" href="/soporte/inventario/hoy" target="_blank" rel="noopener" title="Exportar a PDF las novedades registradas hoy">
+            📄 Soportes de hoy
+          </a>
+          {puedeGestionar && <NuevaNovedadForm equipos={equiposOpc} sedes={cat.sedes} categorias={cat.categorias} marcas={cat.marcas} />}
+        </div>
       </div>
 
       <div className="kpis">
@@ -76,13 +81,16 @@ export default async function NovedadesPage() {
             <thead>
               <tr>
                 <th>Fecha</th><th>Novedad</th><th>Equipo</th><th>Ítem</th>
-                <th>Detalle</th><th>Estado</th><th>Usuario</th>
+                <th>Detalle</th><th>Estado</th><th>Usuario</th><th>Soporte</th>
               </tr>
             </thead>
             <tbody>
               {novedades.map((n) => (
                 <tr key={n.id}>
-                  <td className="num flag">{formatFecha(n.fecha)}</td>
+                  <td className="num flag">
+                    {formatFecha(n.fecha)}
+                    {esHoy(n.fecha) && <span className="tag t-ok" style={{ marginLeft: 6 }}>Hoy</span>}
+                  </td>
                   <td><span className={`tag ${TIPO_TAG[n.tipo]}`}>{novedadIcono(n.tipo)} {novedadLabel(n.tipo)}</span></td>
                   <td style={{ fontWeight: 600 }}>{n.equipo}<div className="flag">📍 {n.ciudad}</div></td>
                   <td className="flag">{n.itemDescripcion ?? "Todo el equipo"}</td>
@@ -97,10 +105,15 @@ export default async function NovedadesPage() {
                       : <span className="flag">—</span>}
                   </td>
                   <td className="flag">{n.usuario ?? "—"}</td>
+                  <td>
+                    <a className="tag t-blue" style={{ textDecoration: "none" }}
+                       href={`/soporte/inventario/novedad/${n.id}`} target="_blank" rel="noopener"
+                       title="Ver / exportar a PDF el soporte de esta novedad">📄 PDF</a>
+                  </td>
                 </tr>
               ))}
               {novedades.length === 0 && (
-                <tr><td colSpan={7} style={{ textAlign: "center", padding: 24, color: "var(--muted)" }}>
+                <tr><td colSpan={8} style={{ textAlign: "center", padding: 24, color: "var(--muted)" }}>
                   Aún no hay novedades registradas.
                 </td></tr>
               )}
