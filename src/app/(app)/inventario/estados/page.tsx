@@ -6,7 +6,7 @@
 import { requirePermiso } from "@/server/auth-context";
 import { formatNumero } from "@/lib/format";
 import {
-  inventarioPorEstado, composicionInventario, estadoLabel, estadoClase, estadoIcono, ESTADOS,
+  inventarioPorEstado, composicionInventario, resumenInventario, estadoLabel, estadoClase, estadoIcono, ESTADOS,
 } from "@/lib/negocio/inventario";
 import { DonutConteo, BarrasApiladas, ESTADO_COLOR, type Segmento, type FilaBarra } from "../_viz";
 
@@ -16,7 +16,7 @@ const KPI_CLASE: Record<string, string> = {
 
 export default async function InventarioEstadosPage() {
   await requirePermiso("inventario.view");
-  const [inf, comp] = await Promise.all([inventarioPorEstado(), composicionInventario()]);
+  const [inf, comp, resumen] = await Promise.all([inventarioPorEstado(), composicionInventario(), resumenInventario()]);
 
   const donutEstados: Segmento[] = ESTADOS.map((e) => ({ label: estadoLabel(e), valor: inf.porEstado[e], color: ESTADO_COLOR[e]! }));
   const leyenda: Segmento[] = ESTADOS.map((e) => ({ label: estadoLabel(e), valor: 0, color: ESTADO_COLOR[e]! }));
@@ -43,7 +43,7 @@ export default async function InventarioEstadosPage() {
             <div className="kval num">{formatNumero(inf.porEstado[e])}</div>
             <div className="ksub">
               <span className="flag">
-                {inf.total ? `${((inf.porEstado[e] / inf.total) * 100).toFixed(1)} % del total` : "—"}
+                🔩 {formatNumero(resumen.porEstadoTipo[e].equipo)} equipos · 🧩 {formatNumero(resumen.porEstadoTipo[e].accesorio)} accesorios
               </span>
             </div>
           </div>

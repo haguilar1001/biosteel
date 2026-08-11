@@ -112,12 +112,18 @@ export interface ResumenInventario {
   totalRegistros: number;  // filas de ítem
   ciudades: number;
   porEstado: Record<EstadoInventario, number>;
+  /** Desglose de cada estado por tipo (equipo / accesorio). */
+  porEstadoTipo: Record<EstadoInventario, { equipo: number; accesorio: number }>;
 }
 
 /** KPIs generales del inventario. */
 export async function resumenInventario(): Promise<ResumenInventario> {
   const equipos = await listarEquipos();
   const porEstado: Record<EstadoInventario, number> = { activo: 0, en_reparacion: 0, de_baja: 0, pendiente: 0 };
+  const porEstadoTipo: Record<EstadoInventario, { equipo: number; accesorio: number }> = {
+    activo: { equipo: 0, accesorio: 0 }, en_reparacion: { equipo: 0, accesorio: 0 },
+    de_baja: { equipo: 0, accesorio: 0 }, pendiente: { equipo: 0, accesorio: 0 },
+  };
   let totalItems = 0;
   let totalRegistros = 0;
   const ciudades = new Set<string>();
@@ -125,11 +131,12 @@ export async function resumenInventario(): Promise<ResumenInventario> {
     ciudades.add(e.ciudad);
     for (const it of e.items) {
       porEstado[it.estado] += it.cantidad;
+      porEstadoTipo[it.estado][it.tipo] += it.cantidad;
       totalItems += it.cantidad;
       totalRegistros += 1;
     }
   }
-  return { totalEquipos: equipos.length, totalItems, totalRegistros, ciudades: ciudades.size, porEstado };
+  return { totalEquipos: equipos.length, totalItems, totalRegistros, ciudades: ciudades.size, porEstado, porEstadoTipo };
 }
 
 export interface GrupoCiudad {

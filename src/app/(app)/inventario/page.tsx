@@ -42,17 +42,17 @@ export default async function InventarioPage() {
         <div className="kpi k-ok">
           <div className="klabel">✅ Activos</div>
           <div className="kval num">{formatNumero(resumen.porEstado.activo)}</div>
-          <div className="ksub"><span className="flag">ítems operativos</span></div>
+          <div className="ksub"><span className="flag">🔩 {formatNumero(resumen.porEstadoTipo.activo.equipo)} equipos · 🧩 {formatNumero(resumen.porEstadoTipo.activo.accesorio)} accesorios</span></div>
         </div>
         <div className="kpi k-w">
           <div className="klabel">🔧 En reparación</div>
           <div className="kval num">{formatNumero(resumen.porEstado.en_reparacion)}</div>
-          <div className="ksub"><span className="flag">requieren atención</span></div>
+          <div className="ksub"><span className="flag">🔩 {formatNumero(resumen.porEstadoTipo.en_reparacion.equipo)} equipos · 🧩 {formatNumero(resumen.porEstadoTipo.en_reparacion.accesorio)} accesorios</span></div>
         </div>
         <div className="kpi k-bad">
           <div className="klabel">🚫 De baja</div>
           <div className="kval num">{formatNumero(resumen.porEstado.de_baja)}</div>
-          <div className="ksub"><span className="flag">fuera de servicio</span></div>
+          <div className="ksub"><span className="flag">🔩 {formatNumero(resumen.porEstadoTipo.de_baja.equipo)} equipos · 🧩 {formatNumero(resumen.porEstadoTipo.de_baja.accesorio)} accesorios</span></div>
         </div>
       </div>
 
