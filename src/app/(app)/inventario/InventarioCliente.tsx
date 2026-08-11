@@ -63,9 +63,14 @@ export default function InventarioCliente({ equipos, sedes, categorias, marcas, 
       .filter((e) => !fCiudad || e.ciudad === fCiudad)
       .filter((e) => !fCategoria || e.categoria === fCategoria)
       .map((e) => {
+        // Coincidencia a nivel de equipo (código, marca o categoría): muestra todo el equipo.
+        const equipoMatch = !t
+          || (e.codigo ?? "").toLowerCase().includes(t)
+          || e.marca.toLowerCase().includes(t)
+          || e.categoria.toLowerCase().includes(t);
         const items = e.items
           .filter((it) => !fEstado || it.estado === fEstado)
-          .filter((it) => !t || it.descripcion.toLowerCase().includes(t) || e.marca.toLowerCase().includes(t) || (it.lote ?? "").toLowerCase().includes(t));
+          .filter((it) => equipoMatch || it.descripcion.toLowerCase().includes(t) || (it.lote ?? "").toLowerCase().includes(t));
         return { ...e, items };
       })
       .filter((e) => e.items.length > 0);
@@ -101,7 +106,7 @@ export default function InventarioCliente({ equipos, sedes, categorias, marcas, 
               <option value="">Todos los estados</option>
               {ESTADOS.map((s) => <option key={s} value={s}>{EST_ICONO[s]} {EST_LABEL[s]}</option>)}
             </select>
-            <input className="select" placeholder="🔎 Buscar descripción, marca o lote…" value={q}
+            <input className="select" placeholder="🔎 Buscar código, descripción, marca o lote…" value={q}
               onChange={(e) => setQ(e.target.value)} style={{ minWidth: 240 }} />
             {(fCiudad || fCategoria || fEstado || q) && (
               <button className="btn" onClick={() => { setFCiudad(""); setFCategoria(""); setFEstado(""); setQ(""); }}>Limpiar</button>
