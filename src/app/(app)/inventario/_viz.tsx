@@ -111,7 +111,7 @@ export function BarrasApiladas({ filas, leyenda }: { filas: FilaBarra[]; leyenda
                 style={{ width: `${(p.valor / f.total) * 100}%`, background: p.color }} />
             ))}
           </div>
-          <div className="num" style={{ fontWeight: 700, textAlign: "right" }}>{formatNumero(f.total)}</div>
+          <div className="num" style={{ fontWeight: 700, textAlign: "right", paddingRight: 6 }}>{formatNumero(f.total)}</div>
         </div>
       ))}
     </div>
