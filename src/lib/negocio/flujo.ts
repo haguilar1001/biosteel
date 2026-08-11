@@ -145,6 +145,24 @@ export async function listarMovimientos(
   return { filas, total, suma: agg._sum.valor?.toNumber() ?? 0 };
 }
 
+/** Todos los movimientos del filtro (sin límite) para exportar a Excel. */
+export async function exportarMovimientos(tipo: TipoMovimiento, f: FiltrosMov): Promise<FilaMovimiento[]> {
+  const movs = await prisma.movimientoFlujo.findMany({
+    where: whereMov(tipo, f),
+    select: {
+      id: true, fecha: true, mes: true, terceroNombre: true, nit: true,
+      detalle: true, observacion: true, valor: true, categoriaId: true,
+      categoria: { select: { nombre: true } },
+    },
+    orderBy: [{ fecha: "asc" }, { id: "asc" }],
+  });
+  return movs.map((m) => ({
+    id: m.id, fecha: m.fecha, mes: m.mes, categoria: m.categoria?.nombre ?? null, categoriaId: m.categoriaId,
+    terceroNombre: m.terceroNombre, nit: m.nit, detalle: m.detalle, observacion: m.observacion,
+    valor: m.valor.toNumber(),
+  }));
+}
+
 // ---------- Agregado por tercero (mayor a menor) ----------
 export interface FilaTercero {
   terceroNombre: string;

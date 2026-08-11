@@ -74,6 +74,7 @@ export default async function EgresosPage({
       <input type="search" name="q" defaultValue={q ?? ""} placeholder="Tercero, NIT, observación…" className="select" style={{ minWidth: 200 }} />
       <button type="submit" className="btn primary">Filtrar</button>
       <a href={base()} className="btn">Limpiar</a>
+      <a href={`/flujo/export?tipo=egreso&anio=${ANIO}${mes ? `&mes=${mes}` : ""}${categoriaId ? `&grupo=${categoriaId}` : ""}${q ? `&q=${encodeURIComponent(q)}` : ""}`} className="btn" title="Descargar en Excel el listado filtrado">⬇️ Excel</a>
       <span style={{ flex: 1 }} />
       <a href={base({ vista: "detalle" })} className={`btn${vista === "detalle" ? " primary" : ""}`}>Detalle</a>
       <a href={base({ vista: "proveedor" })} className={`btn${vista === "proveedor" ? " primary" : ""}`}>Por proveedor</a>

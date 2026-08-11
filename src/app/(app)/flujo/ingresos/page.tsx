@@ -69,6 +69,7 @@ export default async function IngresosPage({
       <input type="search" name="q" defaultValue={q ?? ""} placeholder="Tercero, NIT, observación…" className="select" style={{ minWidth: 220 }} />
       <button type="submit" className="btn primary">Filtrar</button>
       <a href={base()} className="btn">Limpiar</a>
+      <a href={`/flujo/export?tipo=ingreso&anio=${ANIO}${mes ? `&mes=${mes}` : ""}${q ? `&q=${encodeURIComponent(q)}` : ""}`} className="btn" title="Descargar en Excel el listado filtrado">⬇️ Excel</a>
       <span style={{ flex: 1 }} />
       <a href={base({ vista: "detalle" })} className={`btn${vista === "detalle" ? " primary" : ""}`}>Detalle</a>
       <a href={base({ vista: "cliente" })} className={`btn${vista === "cliente" ? " primary" : ""}`}>Por cliente</a>
