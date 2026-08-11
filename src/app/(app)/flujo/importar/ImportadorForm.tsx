@@ -105,6 +105,27 @@ export default function ImportadorForm() {
               </p>
             )}
 
+            {/* Clasificación automática por categoría */}
+            {state.porCategoria && state.porCategoria.length > 0 && (
+              <>
+                <div className="subhead" style={{ margin: "6px 0" }}>Clasificación automática por categoría</div>
+                <div className="tbl-wrap" style={{ marginBottom: 12 }}>
+                  <table className="tabla-fit">
+                    <thead><tr><th>Categoría</th><th className="r" style={{ width: 120 }}>Movimientos</th><th className="r" style={{ width: 160 }}>Suma</th></tr></thead>
+                    <tbody>
+                      {state.porCategoria.map((c) => (
+                        <tr key={c.categoria}>
+                          <td style={{ fontWeight: 600 }}>{c.categoria}</td>
+                          <td className="r num">{c.cantidad}</td>
+                          <td className="r num" style={{ fontWeight: 700 }}>{cop(c.suma)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            )}
+
             {/* Errores */}
             {state.erroresLista && state.erroresLista.length > 0 && (
               <div className="tbl-wrap" style={{ marginBottom: 12 }}>
@@ -128,7 +149,7 @@ export default function ImportadorForm() {
                 <div className="tbl-wrap">
                   <table className="tabla-fit">
                     <thead>
-                      <tr><th style={{ width: 130 }}>Documento</th><th style={{ width: 100 }}>Fecha</th><th>Tercero</th><th style={{ width: 120 }}>NIT</th><th>Detalle</th><th className="r" style={{ width: 140 }}>Valor</th></tr>
+                      <tr><th style={{ width: 130 }}>Documento</th><th style={{ width: 100 }}>Fecha</th><th>Tercero</th><th style={{ width: 110 }}>NIT</th><th>Detalle</th><th style={{ width: 150 }}>Categoría</th><th className="r" style={{ width: 140 }}>Valor</th></tr>
                     </thead>
                     <tbody>
                       {state.muestra.map((m) => (
@@ -138,6 +159,7 @@ export default function ImportadorForm() {
                           <td style={{ fontWeight: 600 }} title={m.terceroNombre}>{m.terceroNombre}</td>
                           <td className="flag">{m.nit ?? "—"}</td>
                           <td className="flag" title={m.detalle ?? ""}>{m.detalle ?? "—"}</td>
+                          <td><span className="tag t-blue">{m.categoria}</span></td>
                           <td className="r num" style={{ fontWeight: 700, color: esIngreso ? "var(--ingreso, #2A9D6B)" : "var(--bad, #D64545)" }}>{cop(m.valor)}</td>
                         </tr>
                       ))}

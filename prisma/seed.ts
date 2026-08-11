@@ -6,6 +6,7 @@
 import { PrismaClient, type AlcancePermiso } from "@prisma/client";
 import { hash } from "@node-rs/argon2";
 import { PERMISOS, ROLES_BASE, MATRIZ_ROLES } from "../src/lib/rbac/permissions";
+import { CATEGORIAS_FLUJO } from "../src/lib/negocio/categorias-flujo";
 
 const prisma = new PrismaClient();
 
@@ -51,6 +52,15 @@ async function main() {
   for (const r of retenciones) {
     const existe = await prisma.conceptoRetencion.findFirst({ where: { nombre: r.nombre } });
     if (!existe) await prisma.conceptoRetencion.create({ data: r });
+  }
+
+  // --- Categorías de flujo (para la clasificación automática del importador) ---
+  for (const c of CATEGORIAS_FLUJO) {
+    await prisma.categoriaFlujo.upsert({
+      where: { nombre: c.nombre },
+      update: { tipo: c.tipo, orden: c.orden },
+      create: { nombre: c.nombre, tipo: c.tipo, orden: c.orden },
+    });
   }
 
   // --- Permisos ---
