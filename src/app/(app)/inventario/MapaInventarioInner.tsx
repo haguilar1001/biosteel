@@ -1,9 +1,10 @@
 "use client";
-// Mapa real (Leaflet + OpenStreetMap) con burbujas por sede, dimensionadas
-// por cantidad de ítems y con desglose por tipo y estado en el tooltip.
+// Mapa real (Leaflet + OpenStreetMap) con burbujas por sede de TAMAÑO FIJO
+// (para que no se monten ni tapen unas a otras), con el % que representa cada
+// sede dentro de la burbuja y el desglose por tipo y estado en el tooltip.
 import "leaflet/dist/leaflet.css";
-import { latLngBounds } from "leaflet";
-import { MapContainer, TileLayer, CircleMarker, Tooltip } from "react-leaflet";
+import { latLngBounds, divIcon } from "leaflet";
+import { MapContainer, TileLayer, Marker, Tooltip } from "react-leaflet";
 
 const COORD: Record<string, [number, number]> = {
   "Barranquilla": [10.9685, -74.7813],
@@ -41,8 +42,22 @@ const COLOMBIA: [[number, number], [number, number]] = [[-4.5, -82], [13.5, -66]
 
 export default function MapaInventarioInner({ data }: { data: BurbujaSede[] }) {
   const conCoord = data.filter((d) => COORD[d.ciudad] && d.total > 0);
-  const max = Math.max(1, ...conCoord.map((d) => d.total));
-  const radio = (v: number) => 10 + Math.sqrt(v / max) * 34;
+  const granTotal = conCoord.reduce((s, d) => s + d.total, 0) || 1;
+  const SIZE = 46; // diámetro fijo de cada burbuja (iguales, no se montan)
+  const pctLabel = (v: number) => {
+    const p = (v / granTotal) * 100;
+    return p >= 1 ? `${Math.round(p)}%` : "<1%";
+  };
+  const icono = (v: number) =>
+    divIcon({
+      className: "burbuja-inv",
+      iconSize: [SIZE, SIZE],
+      iconAnchor: [SIZE / 2, SIZE / 2],
+      html:
+        `<div style="width:${SIZE}px;height:${SIZE}px;border-radius:50%;background:var(--brand);` +
+        `border:2px solid #fff;box-shadow:0 1px 5px rgba(0,0,0,.4);display:flex;align-items:center;` +
+        `justify-content:center;color:#fff;font-weight:800;font-size:12.5px;cursor:pointer;">${pctLabel(v)}</div>`,
+    });
 
   // Encuadra a las sedes con datos (así se ve solo Colombia, no toda la región).
   const bounds = conCoord.length
@@ -63,16 +78,11 @@ export default function MapaInventarioInner({ data }: { data: BurbujaSede[] }) {
         .slice()
         .sort((a, b) => b.total - a.total)
         .map((d) => (
-          <CircleMarker
-            key={d.ciudad}
-            center={COORD[d.ciudad]!}
-            radius={radio(d.total)}
-            pathOptions={{ color: "var(--brand)", fillColor: "var(--brand)", fillOpacity: 0.5, weight: 1.6 }}
-          >
+          <Marker key={d.ciudad} position={COORD[d.ciudad]!} icon={icono(d.total)}>
             <Tooltip direction="auto" opacity={1}>
               <div style={{ minWidth: 200 }}>
                 <div style={{ fontWeight: 800, borderBottom: "1px solid #ddd", paddingBottom: 3, marginBottom: 4 }}>
-                  📍 {d.ciudad} · {nf.format(d.total)} ítems
+                  📍 {d.ciudad} · {nf.format(d.total)} ítems · {pctLabel(d.total)}
                 </div>
                 <div className="flag" style={{ fontSize: 11, marginBottom: 5 }}>{d.sede}</div>
 
@@ -95,7 +105,7 @@ export default function MapaInventarioInner({ data }: { data: BurbujaSede[] }) {
                 ))}
               </div>
             </Tooltip>
-          </CircleMarker>
+          </Marker>
         ))}
     </MapContainer>
   );
