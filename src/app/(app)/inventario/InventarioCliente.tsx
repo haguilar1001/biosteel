@@ -17,7 +17,7 @@ export interface Item {
   lote: string | null; estado: Estado; observaciones: string | null;
 }
 export interface Equipo {
-  id: number; sedeId: number; sede: string; ciudad: string; categoria: string;
+  id: number; codigo: string | null; sedeId: number; sede: string; ciudad: string; categoria: string;
   marca: string; nombre: string | null; observaciones: string | null;
   items: Item[]; totalItems: number; estados: Record<Estado, number>;
 }
@@ -175,6 +175,7 @@ function EquipoBloque({ equipo, puedeGestionar, onAddItem, onEditItem, onNovedad
       <tr style={{ background: "var(--brand-tint)" }}>
         <td colSpan={puedeGestionar ? 8 : 7} style={{ padding: "8px 10px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+            {equipo.codigo && <span className="tag" style={{ background: "var(--ink)", color: "var(--surface)", fontFamily: "monospace" }}>{equipo.codigo}</span>}
             <strong>{equipo.categoria}</strong>
             <span className="tag t-blue">{equipo.marca}</span>
             <span className="flag">📍 {equipo.ciudad} · {equipo.sede}</span>

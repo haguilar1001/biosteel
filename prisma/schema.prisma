@@ -729,6 +729,7 @@ model EstadoResultados {
 
 model EquipoInventario {
   id            Int      @id @default(autoincrement())
+  codigo        String?  @unique // Código de inventario correlativo por categoría (MOT-001…)
   sede          Sede     @relation(fields: [sedeId], references: [id])
   sedeId        Int
   categoria     String   // MOTOR, MOTOR SISTEM 8, CRANEOTOMO, REGULADOR…

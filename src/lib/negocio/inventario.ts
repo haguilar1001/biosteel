@@ -26,6 +26,9 @@ export function tipoLabel(t: TipoItemInventario): string {
   return { equipo: "Equipo", accesorio: "Accesorio" }[t];
 }
 
+// Códigos de inventario: helpers puros en @/lib/inventario-codigo (sin server-only).
+export { prefijoCodigo, formatCodigo, siguienteNumero } from "@/lib/inventario-codigo";
+
 export function novedadLabel(t: TipoNovedad): string {
   return {
     compra: "Compra / Alta",
@@ -54,6 +57,7 @@ export interface ItemVista {
 
 export interface EquipoVista {
   id: number;
+  codigo: string | null;
   sedeId: number;
   sede: string;
   ciudad: string;
@@ -84,6 +88,7 @@ export async function listarEquipos(): Promise<EquipoVista[]> {
     }
     return {
       id: e.id,
+      codigo: e.codigo,
       sedeId: e.sedeId,
       sede: e.sede.nombre,
       ciudad: e.sede.ciudad,
@@ -309,7 +314,7 @@ export async function listarNovedades(limite = 200): Promise<NovedadVista[]> {
     id: n.id,
     fecha: n.fecha,
     tipo: n.tipo,
-    equipo: `${n.equipo.categoria} · ${n.equipo.marca}`,
+    equipo: `${n.equipo.codigo ? `${n.equipo.codigo} · ` : ""}${n.equipo.categoria} · ${n.equipo.marca}`,
     ciudad: n.equipo.sede.ciudad,
     itemDescripcion: n.itemId ? itemDesc.get(n.itemId) ?? null : null,
     sedeOrigen: n.sedeOrigenId ? sedeNombre.get(n.sedeOrigenId) ?? null : null,

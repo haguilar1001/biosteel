@@ -9,7 +9,18 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { requireUsuario } from "@/server/auth-context";
 import { exigirPermiso } from "@/lib/rbac/authorize";
-import type { EstadoInventario, TipoNovedad } from "@prisma/client";
+import { prefijoCodigo, formatCodigo, siguienteNumero } from "@/lib/inventario-codigo";
+import type { EstadoInventario, TipoNovedad, Prisma } from "@prisma/client";
+
+/** Genera el siguiente código de inventario para una categoría (MOT-001…). */
+async function generarCodigo(client: Prisma.TransactionClient, categoriaUpper: string): Promise<string> {
+  const prefijo = prefijoCodigo(categoriaUpper);
+  const existentes = await client.equipoInventario.findMany({
+    where: { codigo: { startsWith: `${prefijo}-` } },
+    select: { codigo: true },
+  });
+  return formatCodigo(prefijo, siguienteNumero(prefijo, existentes.map((e) => e.codigo)));
+}
 
 export interface AccionState {
   ok?: boolean;
@@ -59,23 +70,28 @@ export async function crearEquipoAction(_prev: AccionState, fd: FormData): Promi
   });
   if (!p.success) return { error: p.error.issues[0]?.message ?? "Datos inválidos." };
 
-  const equipo = await prisma.equipoInventario.create({
-    data: {
-      sedeId: p.data.sedeId,
-      categoria: p.data.categoria.toUpperCase(),
-      marca: p.data.marca.toUpperCase(),
-      nombre: p.data.nombre || null,
-      observaciones: p.data.observaciones || null,
-    },
-  });
-  if (p.data.esCompra) {
-    await prisma.novedadInventario.create({
+  const categoriaUpper = p.data.categoria.toUpperCase();
+  await prisma.$transaction(async (tx) => {
+    const codigo = await generarCodigo(tx, categoriaUpper);
+    const equipo = await tx.equipoInventario.create({
       data: {
-        tipo: "compra", equipoId: equipo.id, sedeDestinoId: p.data.sedeId,
-        estadoNuevo: "activo", descripcion: "Alta de equipo (compra)", usuarioId: g.usuarioId,
+        codigo,
+        sedeId: p.data.sedeId,
+        categoria: categoriaUpper,
+        marca: p.data.marca.toUpperCase(),
+        nombre: p.data.nombre || null,
+        observaciones: p.data.observaciones || null,
       },
     });
-  }
+    if (p.data.esCompra) {
+      await tx.novedadInventario.create({
+        data: {
+          tipo: "compra", equipoId: equipo.id, sedeDestinoId: p.data.sedeId,
+          estadoNuevo: "activo", descripcion: "Alta de equipo (compra)", usuarioId: g.usuarioId,
+        },
+      });
+    }
+  });
   refresh();
   return { ok: true };
 }
@@ -185,11 +201,14 @@ export async function crearEquipoCompraAction(_prev: AccionState, fd: FormData):
   if (!p.success) return { error: p.error.issues[0]?.message ?? "Datos inválidos." };
   const { sedeId, categoria, marca, nombre, fecha, descripcion, items } = p.data;
 
+  const categoriaUpper = categoria.toUpperCase();
   await prisma.$transaction(async (tx) => {
+    const codigo = await generarCodigo(tx, categoriaUpper);
     const equipo = await tx.equipoInventario.create({
       data: {
+        codigo,
         sedeId,
-        categoria: categoria.toUpperCase(),
+        categoria: categoriaUpper,
         marca: marca.toUpperCase(),
         nombre: nombre || null,
         items: {

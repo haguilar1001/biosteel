@@ -23,7 +23,7 @@ export default async function NovedadesPage() {
   const [novedades, equipos, cat] = await Promise.all([listarNovedades(), listarEquipos(), catalogos()]);
 
   const equiposOpc = equipos.map((e) => ({
-    id: e.id, etiqueta: `${e.categoria} · ${e.marca}`, ciudad: e.ciudad, sedeId: e.sedeId,
+    id: e.id, etiqueta: `${e.codigo ? `${e.codigo} · ` : ""}${e.categoria} · ${e.marca}`, ciudad: e.ciudad, sedeId: e.sedeId,
     categoria: e.categoria, marca: e.marca,
     items: e.items.map((it) => ({
       id: it.id, descripcion: it.descripcion, tipo: it.tipo, cantidad: it.cantidad, lote: it.lote, estado: it.estado,
