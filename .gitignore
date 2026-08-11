@@ -16,6 +16,10 @@ next-env.d.ts
 # SECRETOS — NUNCA subir al repositorio (BIO-SEC-003)
 # ==========================================================
 .env
+
+# Muestras/insumos reales de SIESA (NITs, clientes, montos — Ley 1581).
+# NUNCA subir: son datos reales para diseñar/probar el importador.
+/muestras-siesa/
 .env.local
 .env.*.local
 .env.production
