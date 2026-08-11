@@ -632,6 +632,7 @@ model CategoriaFlujo {
 // se guarda por nombre/NIT tal como viene del ERP (no todos existen como Tercero).
 model MovimientoFlujo {
   id            Int             @id @default(autoincrement())
+  documento     String?         @unique // Nº de comprobante SIESA (OCC-/NGC-/NBA-/PEL-/RDC-…) — idempotencia del importador
   fecha         DateTime        @db.Date
   anio          Int
   mes           Int             // 1–12

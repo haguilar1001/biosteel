@@ -18,6 +18,7 @@ export const PERMISOS = [
   { clave: "cartera.view", modulo: "Cartera", descripcion: "Consultar cuentas por cobrar" },
   { clave: "recaudo.create", modulo: "Tesorería", descripcion: "Registrar recaudos" },
   { clave: "cxp.view", modulo: "Cuentas por Pagar", descripcion: "Consultar cuentas por pagar" },
+  { clave: "flujo.manage", modulo: "Tesorería", descripcion: "Importar movimientos de flujo de caja (SIESA)" },
   { clave: "pago.create", modulo: "Tesorería", descripcion: "Registrar pagos a proveedores" },
   { clave: "nota.manage", modulo: "Cartera", descripcion: "Gestionar notas crédito/débito y glosas" },
   { clave: "reporte.view", modulo: "Reportes", descripcion: "Ver reportes y análisis" },
@@ -54,7 +55,7 @@ export const MATRIZ_ROLES: Record<RolNombre, Partial<Record<PermisoClave, Alcanc
   Administrador: {
     "dashboard.view": T, "cartera.view": T, "recaudo.create": T, "cxp.view": T,
     "pago.create": T, "nota.manage": T, "reporte.view": T, "tercero.manage": T,
-    "inventario.view": T, "inventario.manage": T,
+    "inventario.view": T, "inventario.manage": T, "flujo.manage": T,
     "usuario.manage": T, "rol.manage": T, "parametro.manage": T, "auditoria.view": T,
   },
   Gerente: {
@@ -66,7 +67,7 @@ export const MATRIZ_ROLES: Record<RolNombre, Partial<Record<PermisoClave, Alcanc
   "Tesorería / Cartera": {
     "dashboard.view": T, "cartera.view": T, "recaudo.create": T, "cxp.view": T,
     "pago.create": T, "nota.manage": T, "reporte.view": T, "tercero.manage": T,
-    "inventario.view": T, "inventario.manage": T,
+    "inventario.view": T, "inventario.manage": T, "flujo.manage": T,
     "usuario.manage": N, "rol.manage": N, "parametro.manage": N, "auditoria.view": N,
   },
   Vendedor: {
