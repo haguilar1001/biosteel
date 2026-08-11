@@ -43,7 +43,7 @@ const COLOMBIA: [[number, number], [number, number]] = [[-4.5, -82], [13.5, -66]
 export default function MapaInventarioInner({ data }: { data: BurbujaSede[] }) {
   const conCoord = data.filter((d) => COORD[d.ciudad] && d.total > 0);
   const granTotal = conCoord.reduce((s, d) => s + d.total, 0) || 1;
-  const SIZE = 46; // diámetro fijo de cada burbuja (iguales, no se montan)
+  const SIZE = 40; // diámetro fijo de cada burbuja (iguales, no se montan)
   const pctLabel = (v: number) => {
     const p = (v / granTotal) * 100;
     return p >= 1 ? `${Math.round(p)}%` : "<1%";
@@ -56,22 +56,23 @@ export default function MapaInventarioInner({ data }: { data: BurbujaSede[] }) {
       html:
         `<div style="width:${SIZE}px;height:${SIZE}px;border-radius:50%;background:var(--brand);` +
         `border:2px solid #fff;box-shadow:0 1px 5px rgba(0,0,0,.4);display:flex;align-items:center;` +
-        `justify-content:center;color:#fff;font-weight:800;font-size:12.5px;cursor:pointer;">${pctLabel(v)}</div>`,
+        `justify-content:center;color:#fff;font-weight:800;font-size:11.5px;cursor:pointer;">${pctLabel(v)}</div>`,
     });
 
-  // Encuadra a las sedes con datos (así se ve solo Colombia, no toda la región).
+  // Encuadra ajustado a las sedes con datos → Colombia ocupa casi todo el cuadro.
   const bounds = conCoord.length
-    ? latLngBounds(conCoord.map((d) => COORD[d.ciudad]!)).pad(0.35)
+    ? latLngBounds(conCoord.map((d) => COORD[d.ciudad]!)).pad(0.08)
     : latLngBounds(COLOMBIA);
 
   return (
     <MapContainer
       bounds={bounds}
+      boundsOptions={{ padding: [16, 16] }}
       maxBounds={COLOMBIA}
       maxBoundsViscosity={0.9}
       minZoom={5}
       scrollWheelZoom={false}
-      style={{ height: 500, width: "100%", borderRadius: 10 }}
+      style={{ height: 560, width: "100%", borderRadius: 10 }}
     >
       <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution="&copy; OpenStreetMap" />
       {conCoord
