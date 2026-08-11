@@ -7,6 +7,7 @@ import { requirePermiso } from "@/server/auth-context";
 import { formatCOP, formatNumero, formatFecha } from "@/lib/format";
 import { resumenCxp, listarDocumentosCxp, diasParaVencer } from "@/lib/negocio/cxp";
 import { Buscador } from "../_components/Buscador";
+import { BotonImprimir } from "../_components/BotonImprimir";
 
 function tagVencimiento(dias: number): { clase: string; texto: string } {
   if (dias < 0) return { clase: "t-bad", texto: `Vencido ${Math.abs(dias)}d` };
@@ -38,6 +39,7 @@ export default async function CxpPage({
           <a href="/cxp/facturado-pagado" className="btn">Facturado vs Pagado</a>
           <a href="/cxp/anticipos" className="btn">Anticipos</a>
           <a href={`/cxp/export${q ? `?q=${encodeURIComponent(q)}` : ""}`} className="btn" title="Descargar en Excel el detalle filtrado">⬇️ Excel</a>
+          <BotonImprimir />
         </div>
       </div>
 

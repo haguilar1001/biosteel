@@ -7,6 +7,7 @@ import { formatCOP, formatNumero, formatFecha, formatPorcentaje } from "@/lib/fo
 import { resumenCartera, listarFacturas } from "@/lib/negocio/cartera";
 import { CUBETAS, type CubetaAging } from "@/lib/negocio/aging";
 import { Buscador } from "../_components/Buscador";
+import { BotonImprimir } from "../_components/BotonImprimir";
 
 const CUBETA_TAG: Record<CubetaAging, string> = {
   d1_30: "t-ok", d31_60: "t-w1", d61_90: "t-w2", d91_120: "t-bad", mas120: "t-bad",
@@ -77,6 +78,7 @@ export default async function CarteraPage({
           <a href="/cartera/clientes" className="btn">Por cliente</a>
           <a href="/cartera/ventas-recaudos" className="btn">Ventas vs Recaudos</a>
           <a href={expHref} className="btn" title="Descargar en Excel el detalle filtrado">⬇️ Excel</a>
+          <BotonImprimir />
         </div>
       </div>
 

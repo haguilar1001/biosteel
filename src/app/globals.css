@@ -379,3 +379,34 @@ td.r, th.r { text-align: right; }
 .dlg::backdrop { background: rgba(27,36,52,.45); backdrop-filter: blur(2px); }
 .dlg .form-crear { border: 0; box-shadow: none; }
 .dlg h3 { font-size: 16px; }
+
+/* ==========================================================
+   Impresión / "Guardar como PDF" de listados.
+   Oculta el marco de la app (menús, filtros, botones) y deja
+   solo el título y las tablas. Añade la clase .no-print a lo que
+   quieras excluir manualmente.
+   ========================================================== */
+@media print {
+  /* Marco de la app y controles fuera del PDF */
+  .appbar, .nav-grupos, .appnav, .subnav, .toolbar, .buscador, .no-print,
+  .hact, .ord, .bell, .logout, .avatar { display: none !important; }
+
+  html, body { background: #fff !important; }
+  .wrap { max-width: none !important; margin: 0 !important; padding: 0 !important; }
+  .card { box-shadow: none !important; border: 1px solid #d8e2ef !important; margin: 0 0 10px !important; break-inside: avoid; }
+  .page-head { margin-bottom: 8px !important; }
+
+  /* Tablas legibles y con encabezado repetido por página */
+  table { font-size: 10.5px !important; width: 100% !important; }
+  thead { display: table-header-group; }
+  tr, td, th { break-inside: avoid; }
+  a.th-sort, .th-sort { color: inherit !important; text-decoration: none !important; }
+
+  /* Conservar los colores institucionales de títulos, KPIs y badges */
+  .chart-head, .kpi, .tag, .fila-total {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  @page { size: A4 landscape; margin: 12mm; }
+}

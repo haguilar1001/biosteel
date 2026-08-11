@@ -7,6 +7,7 @@ import { puede } from "@/lib/rbac/authorize";
 import { formatCOP, formatNumero, formatPorcentaje, formatFecha } from "@/lib/format";
 import { listarMovimientos, movimientosPorTercero, categoriasPorTipo, MESES_LABEL, type CampoOrden, type DirOrden } from "@/lib/negocio/flujo";
 import { SelectorCategoria } from "../SelectorCategoria";
+import { BotonImprimir } from "../../_components/BotonImprimir";
 
 const ANIO = 2026;
 const DEF_DIR: Record<string, DirOrden> = { fecha: "desc", tercero: "asc", detalle: "asc", observacion: "asc", valor: "desc", cantidad: "desc" };
@@ -70,6 +71,7 @@ export default async function IngresosPage({
       <button type="submit" className="btn primary">Filtrar</button>
       <a href={base()} className="btn">Limpiar</a>
       <a href={`/flujo/export?tipo=ingreso&anio=${ANIO}${mes ? `&mes=${mes}` : ""}${q ? `&q=${encodeURIComponent(q)}` : ""}`} className="btn" title="Descargar en Excel el listado filtrado">⬇️ Excel</a>
+      <BotonImprimir />
       <span style={{ flex: 1 }} />
       <a href={base({ vista: "detalle" })} className={`btn${vista === "detalle" ? " primary" : ""}`}>Detalle</a>
       <a href={base({ vista: "cliente" })} className={`btn${vista === "cliente" ? " primary" : ""}`}>Por cliente</a>
