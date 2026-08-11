@@ -36,6 +36,7 @@ const EST_CLASE: Record<Estado, string> = { activo: "t-ok", en_reparacion: "t-w1
 const EST_ICONO: Record<Estado, string> = { activo: "✅", en_reparacion: "🔧", de_baja: "🚫", pendiente: "⏳" };
 const TIPO_LABEL: Record<TipoItem, string> = { equipo: "Equipo", accesorio: "Accesorio" };
 const NOV_OP = [
+  { v: "compra", l: "🆕 Compra / Alta" },
   { v: "reparacion", l: "🔧 Enviar a reparación" },
   { v: "retorno_reparacion", l: "↩️ Retorno de reparación" },
   { v: "dano", l: "⚠️ Reportar daño" },

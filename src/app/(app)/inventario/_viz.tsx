@@ -66,7 +66,7 @@ export function DonutConteo({
       </svg>
       <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: 2 }}>
         {segs.map((d) => (
-          <div key={d.label} style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13, padding: "6px 4px", borderTop: "1px solid var(--line)" }}>
+          <div key={d.label} style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13, padding: "6px 8px", borderTop: "1px solid var(--line)" }}>
             <i style={{ width: 12, height: 12, borderRadius: 3, background: d.color, flex: "0 0 auto" }} />
             <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{d.label}</span>
             <span className="num" style={{ fontWeight: 700 }}>{formatNumero(d.valor)}</span>
@@ -91,7 +91,7 @@ export function BarrasApiladas({ filas, leyenda }: { filas: FilaBarra[]; leyenda
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       {leyenda && (
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 12, padding: "0 6px" }}>
           {leyenda.map((l) => (
             <span key={l.label} style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--muted)" }}>
               <i style={{ width: 11, height: 11, borderRadius: 3, background: l.color }} /> {l.label}

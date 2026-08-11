@@ -152,8 +152,8 @@ export async function eliminarItemAction(_prev: AccionState, fd: FormData): Prom
   return { ok: true };
 }
 
-// --- Novedades (baja, daño, reparación, retorno, traslado) ------------------
-const NOVEDADES_OP = ["baja", "dano", "reparacion", "retorno_reparacion", "traslado"] as const;
+// --- Novedades (compra, baja, daño, reparación, retorno, traslado) ----------
+const NOVEDADES_OP = ["compra", "baja", "dano", "reparacion", "retorno_reparacion", "traslado"] as const;
 
 const novedadSchema = z.object({
   equipoId: z.coerce.number().int().positive("Selecciona un equipo."),
@@ -170,8 +170,9 @@ function estadoDestino(tipo: TipoNovedad): EstadoInventario | null {
     case "baja": return "de_baja";
     case "dano":
     case "reparacion": return "en_reparacion";
+    case "compra":
     case "retorno_reparacion": return "activo";
-    default: return null; // traslado / compra no cambian estado
+    default: return null; // traslado no cambia estado
   }
 }
 
@@ -221,7 +222,7 @@ export async function registrarNovedadAction(_prev: AccionState, fd: FormData): 
       } else {
         await tx.itemInventario.updateMany({ where: { equipoId }, data: { estado: nuevoEstado } });
         if (tipo === "baja") await tx.equipoInventario.update({ where: { id: equipoId }, data: { activo: false } });
-        if (tipo === "retorno_reparacion") await tx.equipoInventario.update({ where: { id: equipoId }, data: { activo: true } });
+        if (tipo === "retorno_reparacion" || tipo === "compra") await tx.equipoInventario.update({ where: { id: equipoId }, data: { activo: true } });
       }
     }
   });

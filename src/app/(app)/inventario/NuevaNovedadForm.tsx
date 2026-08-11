@@ -14,6 +14,7 @@ interface EquipoOpc {
 interface Sede { id: number; nombre: string; ciudad: string; }
 
 const NOV_OP = [
+  { v: "compra", l: "🆕 Compra / Alta" },
   { v: "reparacion", l: "🔧 Enviar a reparación" },
   { v: "retorno_reparacion", l: "↩️ Retorno de reparación" },
   { v: "dano", l: "⚠️ Reportar daño" },
