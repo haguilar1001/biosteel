@@ -152,8 +152,76 @@ export async function eliminarItemAction(_prev: AccionState, fd: FormData): Prom
   return { ok: true };
 }
 
-// --- Novedades (compra, baja, daño, reparación, retorno, traslado) ----------
-const NOVEDADES_OP = ["compra", "baja", "dano", "reparacion", "retorno_reparacion", "traslado"] as const;
+// --- Compra: crear equipo nuevo (con ítems) y registrar la novedad ----------
+const compraItemSchema = z.object({
+  descripcion: z.string().trim().min(1, "Cada ítem necesita descripción."),
+  tipo: z.enum(TIPOS_ITEM),
+  cantidad: z.coerce.number().int().min(1, "La cantidad debe ser 1 o más."),
+  lote: z.string().trim().optional(),
+  estado: z.enum(ESTADOS).default("activo"),
+});
+const compraSchema = z.object({
+  sedeId: z.coerce.number().int().positive("Selecciona una sede."),
+  categoria: z.string().trim().min(1, "Indica la categoría."),
+  marca: z.string().trim().min(1, "Indica la marca."),
+  nombre: z.string().trim().optional(),
+  fecha: z.string().trim().optional(),
+  descripcion: z.string().trim().optional(),
+  items: z.array(compraItemSchema).min(1, "Agrega al menos un ítem."),
+});
+
+export async function crearEquipoCompraAction(_prev: AccionState, fd: FormData): Promise<AccionState> {
+  const g = await guard();
+  if ("error" in g) return g;
+
+  let itemsRaw: unknown = [];
+  try { itemsRaw = JSON.parse(String(fd.get("items") ?? "[]")); } catch { return { error: "Lista de ítems inválida." }; }
+
+  const p = compraSchema.safeParse({
+    sedeId: fd.get("sedeId"), categoria: fd.get("categoria"), marca: fd.get("marca"),
+    nombre: fd.get("nombre") || undefined, fecha: fd.get("fecha") || undefined,
+    descripcion: fd.get("descripcion") || undefined, items: itemsRaw,
+  });
+  if (!p.success) return { error: p.error.issues[0]?.message ?? "Datos inválidos." };
+  const { sedeId, categoria, marca, nombre, fecha, descripcion, items } = p.data;
+
+  await prisma.$transaction(async (tx) => {
+    const equipo = await tx.equipoInventario.create({
+      data: {
+        sedeId,
+        categoria: categoria.toUpperCase(),
+        marca: marca.toUpperCase(),
+        nombre: nombre || null,
+        items: {
+          create: items.map((it) => ({
+            descripcion: it.descripcion.toUpperCase(),
+            tipo: it.tipo,
+            cantidad: it.cantidad,
+            lote: it.lote || null,
+            estado: it.estado,
+          })),
+        },
+      },
+    });
+    await tx.novedadInventario.create({
+      data: {
+        tipo: "compra",
+        equipoId: equipo.id,
+        sedeDestinoId: sedeId,
+        estadoNuevo: "activo",
+        descripcion: descripcion || "Compra de equipo nuevo",
+        usuarioId: g.usuarioId,
+        ...(fecha ? { fecha: new Date(fecha) } : {}),
+      },
+    });
+  });
+
+  refresh();
+  return { ok: true };
+}
+
+// --- Novedades sobre equipos existentes (baja, daño, reparación, retorno, traslado) ---
+const NOVEDADES_OP = ["baja", "dano", "reparacion", "retorno_reparacion", "traslado"] as const;
 
 const novedadSchema = z.object({
   equipoId: z.coerce.number().int().positive("Selecciona un equipo."),
@@ -222,7 +290,7 @@ export async function registrarNovedadAction(_prev: AccionState, fd: FormData): 
       } else {
         await tx.itemInventario.updateMany({ where: { equipoId }, data: { estado: nuevoEstado } });
         if (tipo === "baja") await tx.equipoInventario.update({ where: { id: equipoId }, data: { activo: false } });
-        if (tipo === "retorno_reparacion" || tipo === "compra") await tx.equipoInventario.update({ where: { id: equipoId }, data: { activo: true } });
+        if (tipo === "retorno_reparacion") await tx.equipoInventario.update({ where: { id: equipoId }, data: { activo: true } });
       }
     }
   });

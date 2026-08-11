@@ -24,7 +24,10 @@ export default async function NovedadesPage() {
 
   const equiposOpc = equipos.map((e) => ({
     id: e.id, etiqueta: `${e.categoria} · ${e.marca}`, ciudad: e.ciudad, sedeId: e.sedeId,
-    items: e.items.map((it) => ({ id: it.id, descripcion: it.descripcion })),
+    categoria: e.categoria, marca: e.marca,
+    items: e.items.map((it) => ({
+      id: it.id, descripcion: it.descripcion, tipo: it.tipo, cantidad: it.cantidad, lote: it.lote, estado: it.estado,
+    })),
   }));
 
   const conteo = novedades.reduce<Record<string, number>>((acc, n) => {
@@ -40,7 +43,7 @@ export default async function NovedadesPage() {
           <h1>Novedades</h1>
           <p>Bitácora de movimientos · {formatNumero(novedades.length)} registros</p>
         </div>
-        {puedeGestionar && <NuevaNovedadForm equipos={equiposOpc} sedes={cat.sedes} />}
+        {puedeGestionar && <NuevaNovedadForm equipos={equiposOpc} sedes={cat.sedes} categorias={cat.categorias} marcas={cat.marcas} />}
       </div>
 
       <div className="kpis">
