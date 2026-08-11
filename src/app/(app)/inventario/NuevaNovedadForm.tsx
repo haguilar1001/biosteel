@@ -109,8 +109,7 @@ export default function NuevaNovedadForm({ equipos, sedes, categorias, marcas }:
                   </select>
                 </div>
                 <div className="field"><label>Categoría</label>
-                  <input name="categoria" list="cat-nov" required placeholder="MOTOR, CRANEOTOMO…" value={cat} onChange={(e) => setCat(e.target.value)} />
-                  <datalist id="cat-nov">{categorias.map((c) => <option key={c} value={c} />)}</datalist>
+                  <SelectOCrear name="categoria" opciones={categorias} value={cat} onValueChange={setCat} required placeholder="Nueva categoría…" crearLabel="➕ Crear nueva categoría…" />
                 </div>
                 <div className="field"><label>Marca / Modelo</label>
                   <SelectOCrear name="marca" opciones={marcas} value={marca} onValueChange={setMarca} required placeholder="Nueva marca / modelo…" crearLabel="➕ Crear nueva marca…" />

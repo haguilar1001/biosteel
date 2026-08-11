@@ -258,8 +258,7 @@ const DialogEquipo = ({ ref, sedes, categorias, marcas }: {
             </select>
           </div>
           <div className="field"><label>Categoría</label>
-            <input name="categoria" list="cat-list" required placeholder="MOTOR, CRANEOTOMO…" />
-            <datalist id="cat-list">{categorias.map((c) => <option key={c} value={c} />)}</datalist>
+            <SelectOCrear name="categoria" opciones={categorias} required placeholder="Nueva categoría…" crearLabel="➕ Crear nueva categoría…" />
           </div>
           <div className="field"><label>Marca / Modelo</label>
             <SelectOCrear name="marca" opciones={marcas} required placeholder="Nueva marca / modelo…" crearLabel="➕ Crear nueva marca…" />
