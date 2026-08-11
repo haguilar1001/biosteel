@@ -1,7 +1,8 @@
 "use client";
 // Mapa real (Leaflet + OpenStreetMap) con burbujas por sede, dimensionadas
-// por cantidad de ítems y con desglose por estado en el tooltip.
+// por cantidad de ítems y con desglose por tipo y estado en el tooltip.
 import "leaflet/dist/leaflet.css";
+import { latLngBounds } from "leaflet";
 import { MapContainer, TileLayer, CircleMarker, Tooltip } from "react-leaflet";
 
 const COORD: Record<string, [number, number]> = {
@@ -32,15 +33,31 @@ export interface BurbujaSede {
   sede: string;
   total: number;
   estados: Record<string, number>;
+  tipos: { equipo: number; accesorio: number };
 }
+
+// Límite de Colombia para que el mapa no se aleje del país.
+const COLOMBIA: [[number, number], [number, number]] = [[-4.5, -82], [13.5, -66]];
 
 export default function MapaInventarioInner({ data }: { data: BurbujaSede[] }) {
   const conCoord = data.filter((d) => COORD[d.ciudad] && d.total > 0);
   const max = Math.max(1, ...conCoord.map((d) => d.total));
   const radio = (v: number) => 10 + Math.sqrt(v / max) * 34;
 
+  // Encuadra a las sedes con datos (así se ve solo Colombia, no toda la región).
+  const bounds = conCoord.length
+    ? latLngBounds(conCoord.map((d) => COORD[d.ciudad]!)).pad(0.35)
+    : latLngBounds(COLOMBIA);
+
   return (
-    <MapContainer center={[7.5, -74.2]} zoom={5} scrollWheelZoom={false} style={{ height: 460, width: "100%", borderRadius: 10 }}>
+    <MapContainer
+      bounds={bounds}
+      maxBounds={COLOMBIA}
+      maxBoundsViscosity={0.9}
+      minZoom={5}
+      scrollWheelZoom={false}
+      style={{ height: 500, width: "100%", borderRadius: 10 }}
+    >
       <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution="&copy; OpenStreetMap" />
       {conCoord
         .slice()
@@ -53,11 +70,21 @@ export default function MapaInventarioInner({ data }: { data: BurbujaSede[] }) {
             pathOptions={{ color: "var(--brand)", fillColor: "var(--brand)", fillOpacity: 0.5, weight: 1.6 }}
           >
             <Tooltip direction="auto" opacity={1}>
-              <div style={{ minWidth: 190 }}>
+              <div style={{ minWidth: 200 }}>
                 <div style={{ fontWeight: 800, borderBottom: "1px solid #ddd", paddingBottom: 3, marginBottom: 4 }}>
                   📍 {d.ciudad} · {nf.format(d.total)} ítems
                 </div>
-                <div className="flag" style={{ fontSize: 11, marginBottom: 4 }}>{d.sede}</div>
+                <div className="flag" style={{ fontSize: 11, marginBottom: 5 }}>{d.sede}</div>
+
+                <div style={{ fontWeight: 700, fontSize: 10.5, textTransform: "uppercase", letterSpacing: ".4px", opacity: .7, margin: "2px 0" }}>Por tipo</div>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 14, fontSize: 11.5, padding: "1px 0" }}>
+                  <span>🔩 Equipos</span><span style={{ fontWeight: 700 }}>{nf.format(d.tipos.equipo)}</span>
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 14, fontSize: 11.5, padding: "1px 0" }}>
+                  <span>🧩 Accesorios</span><span style={{ fontWeight: 700 }}>{nf.format(d.tipos.accesorio)}</span>
+                </div>
+
+                <div style={{ fontWeight: 700, fontSize: 10.5, textTransform: "uppercase", letterSpacing: ".4px", opacity: .7, margin: "5px 0 2px" }}>Por estado</div>
                 {ESTADO.filter((e) => (d.estados[e.k] ?? 0) > 0).map((e) => (
                   <div key={e.k} style={{ display: "flex", justifyContent: "space-between", gap: 14, fontSize: 11.5, padding: "1px 0" }}>
                     <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>

@@ -22,7 +22,11 @@ export default async function InventarioCiudadesPage() {
     total: c.total,
     partes: ESTADOS.map((e) => ({ label: estadoLabel(e), valor: c.estados[e], color: ESTADO_COLOR[e]! })),
   }));
-  const burbujas = grupos.map((g) => ({ ciudad: g.ciudad, sede: g.sede, total: g.totalItems, estados: g.porEstado }));
+  const burbujas = grupos.map((g) => {
+    const tipos = { equipo: 0, accesorio: 0 };
+    for (const e of g.equipos) for (const it of e.items) tipos[it.tipo] += it.cantidad;
+    return { ciudad: g.ciudad, sede: g.sede, total: g.totalItems, estados: g.porEstado, tipos };
+  });
 
   return (
     <>
@@ -57,20 +61,20 @@ export default async function InventarioCiudadesPage() {
         </div>
       </div>
 
-      <div className="grid" style={{ display: "grid", gridTemplateColumns: "minmax(260px, 340px) 1fr", gap: 12, alignItems: "start", marginBottom: 12 }}>
+      <div className="grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, alignItems: "start", marginBottom: 12 }}>
         <div className="card">
           <div className="chart-head">Composición por categoría</div>
           <DonutConteo data={donutCategorias} centro={{ valor: formatNumero(resumen.totalItems), etiqueta: "ítems" }} />
         </div>
         <div className="card">
-          <div className="chart-head">Ítems por ciudad · desglose por estado</div>
-          <BarrasApiladas filas={barrasCiudad} leyenda={leyendaEstados} />
+          <div className="chart-head">🗺️ Mapa de inventario por sede</div>
+          <MapaInventario data={burbujas} />
         </div>
       </div>
 
       <div className="card" style={{ marginBottom: 12 }}>
-        <div className="chart-head">🗺️ Mapa de inventario por sede</div>
-        <MapaInventario data={burbujas} />
+        <div className="chart-head">Ítems por ciudad · desglose por estado</div>
+        <BarrasApiladas filas={barrasCiudad} leyenda={leyendaEstados} />
       </div>
 
       <div className="subhead">Detalle por sede</div>
