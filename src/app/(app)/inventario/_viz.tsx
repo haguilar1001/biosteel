@@ -48,7 +48,7 @@ export function DonutConteo({
   });
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 14, alignItems: "center" }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 14, alignItems: "center", padding: 16, width: "100%" }}>
       <svg viewBox={`0 0 ${size} ${size}`} width={size} height={size} style={{ maxWidth: "100%" }}>
         {arcos.map(({ d, s, e }) =>
           e <= s ? null : (
@@ -89,9 +89,9 @@ export interface FilaBarra {
 export function BarrasApiladas({ filas, leyenda }: { filas: FilaBarra[]; leyenda?: Segmento[] }) {
   const max = Math.max(1, ...filas.map((f) => f.total));
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 12, padding: 16, width: "100%" }}>
       {leyenda && (
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 12, padding: "0 6px" }}>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
           {leyenda.map((l) => (
             <span key={l.label} style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--muted)" }}>
               <i style={{ width: 11, height: 11, borderRadius: 3, background: l.color }} /> {l.label}

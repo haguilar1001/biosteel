@@ -88,7 +88,7 @@ export default function InventarioCliente({ equipos, sedes, categorias, marcas, 
     <>
       {/* Filtros */}
       <div className="card" style={{ marginBottom: 12 }}>
-        <div className="toolbar" style={{ justifyContent: "space-between" }}>
+        <div className="toolbar" style={{ justifyContent: "space-between", padding: 14 }}>
           <div className="toolbar">
             <select className="select" value={fCiudad} onChange={(e) => setFCiudad(e.target.value)}>
               <option value="">📍 Todas las ciudades</option>

@@ -88,20 +88,22 @@ export default async function InventarioCiudadesPage() {
               <span className="tag t-blue">{formatNumero(g.totalItems)} ítems</span>
             </div>
 
-            {/* Barra de estados */}
-            <div style={{ display: "flex", height: 8, borderRadius: 6, overflow: "hidden", margin: "4px 0 10px" }}>
-              {ESTADOS.map((e) => {
-                const v = g.porEstado[e];
-                if (!v) return null;
-                const pct = (v / g.totalItems) * 100;
-                const color = { activo: "var(--ok)", en_reparacion: "var(--w1)", de_baja: "var(--bad)", pendiente: "var(--brand)" }[e];
-                return <div key={e} title={`${estadoLabel(e)}: ${v}`} style={{ width: `${pct}%`, background: color }} />;
-              })}
-            </div>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 10 }}>
-              {ESTADOS.filter((e) => g.porEstado[e] > 0).map((e) => (
-                <span key={e} className={`tag ${estadoClase(e)}`}>{estadoIcono(e)} {estadoLabel(e)} · {formatNumero(g.porEstado[e])}</span>
-              ))}
+            <div style={{ padding: "12px 14px 0" }}>
+              {/* Barra de estados */}
+              <div style={{ display: "flex", height: 8, borderRadius: 6, overflow: "hidden", margin: "0 0 10px" }}>
+                {ESTADOS.map((e) => {
+                  const v = g.porEstado[e];
+                  if (!v) return null;
+                  const pct = (v / g.totalItems) * 100;
+                  const color = { activo: "var(--ok)", en_reparacion: "var(--w1)", de_baja: "var(--bad)", pendiente: "var(--brand)" }[e];
+                  return <div key={e} title={`${estadoLabel(e)}: ${v}`} style={{ width: `${pct}%`, background: color }} />;
+                })}
+              </div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 12 }}>
+                {ESTADOS.filter((e) => g.porEstado[e] > 0).map((e) => (
+                  <span key={e} className={`tag ${estadoClase(e)}`}>{estadoIcono(e)} {estadoLabel(e)} · {formatNumero(g.porEstado[e])}</span>
+                ))}
+              </div>
             </div>
 
             {/* Equipos de la sede */}
