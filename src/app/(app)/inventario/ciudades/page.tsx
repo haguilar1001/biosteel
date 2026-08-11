@@ -61,14 +61,16 @@ export default async function InventarioCiudadesPage() {
         </div>
       </div>
 
-      <div className="grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, alignItems: "start", marginBottom: 12 }}>
-        <div className="card">
+      <div className="grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, alignItems: "stretch", marginBottom: 12 }}>
+        <div className="card" style={{ display: "flex", flexDirection: "column" }}>
           <div className="chart-head">Composición por categoría</div>
-          <DonutConteo data={donutCategorias} centro={{ valor: formatNumero(resumen.totalItems), etiqueta: "ítems" }} />
+          <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <DonutConteo data={donutCategorias} centro={{ valor: formatNumero(resumen.totalItems), etiqueta: "ítems" }} size={320} />
+          </div>
         </div>
-        <div className="card">
+        <div className="card" style={{ display: "flex", flexDirection: "column" }}>
           <div className="chart-head">🗺️ Mapa de inventario por sede</div>
-          <MapaInventario data={burbujas} />
+          <div style={{ flex: 1 }}><MapaInventario data={burbujas} /></div>
         </div>
       </div>
 

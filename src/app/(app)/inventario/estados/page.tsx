@@ -50,14 +50,18 @@ export default async function InventarioEstadosPage() {
         ))}
       </div>
 
-      <div className="grid" style={{ display: "grid", gridTemplateColumns: "minmax(260px, 340px) 1fr", gap: 12, alignItems: "start" }}>
-        <div className="card">
+      <div className="grid" style={{ display: "grid", gridTemplateColumns: "minmax(280px, 380px) 1fr", gap: 12, alignItems: "stretch" }}>
+        <div className="card" style={{ display: "flex", flexDirection: "column" }}>
           <div className="chart-head">Composición por estado</div>
-          <DonutConteo data={donutEstados} centro={{ valor: formatNumero(inf.total), etiqueta: "ítems" }} />
+          <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <DonutConteo data={donutEstados} centro={{ valor: formatNumero(inf.total), etiqueta: "ítems" }} size={320} />
+          </div>
         </div>
-        <div className="card">
+        <div className="card" style={{ display: "flex", flexDirection: "column" }}>
           <div className="chart-head">Ítems por ciudad · desglose por estado</div>
-          <BarrasApiladas filas={barrasCiudad} leyenda={leyenda} />
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center" }}>
+            <BarrasApiladas filas={barrasCiudad} leyenda={leyenda} />
+          </div>
         </div>
       </div>
 

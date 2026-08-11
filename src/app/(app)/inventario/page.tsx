@@ -56,14 +56,18 @@ export default async function InventarioPage() {
         </div>
       </div>
 
-      <div className="grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
-        <div className="card">
+      <div className="grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12, alignItems: "stretch" }}>
+        <div className="card" style={{ display: "flex", flexDirection: "column" }}>
           <div className="chart-head">Composición por estado</div>
-          <DonutConteo data={donutEstado} centro={{ valor: formatNumero(resumen.totalItems), etiqueta: "ítems" }} size={220} />
+          <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <DonutConteo data={donutEstado} centro={{ valor: formatNumero(resumen.totalItems), etiqueta: "ítems" }} size={280} />
+          </div>
         </div>
-        <div className="card">
+        <div className="card" style={{ display: "flex", flexDirection: "column" }}>
           <div className="chart-head">Composición por categoría</div>
-          <DonutConteo data={donutCategoria} centro={{ valor: formatNumero(resumen.totalEquipos), etiqueta: "equipos" }} size={220} />
+          <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <DonutConteo data={donutCategoria} centro={{ valor: formatNumero(resumen.totalEquipos), etiqueta: "equipos" }} size={280} />
+          </div>
         </div>
       </div>
 
