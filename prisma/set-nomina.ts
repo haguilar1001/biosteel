@@ -59,6 +59,10 @@ async function main() {
   const wb = XLSX.readFile(RUTA);
   const dec = (v: number) => new Prisma.Decimal(Math.round(v * 100) / 100);
 
+  // Limpieza: la nómina solo debe tener empleados de BioSteel.
+  const borrados = await prisma.nomina.deleteMany({ where: { NOT: { empresa: "BIOSTEEL" } } });
+  if (borrados.count > 0) console.log(`   🧹 Eliminados ${borrados.count} registros de otras empresas.`);
+
   let totalFilas = 0;
 
   for (const hoja of wb.SheetNames) {
@@ -79,6 +83,8 @@ async function main() {
 
       // Filas placeholder/plantilla: sin cédula o el marcador "PEDRO PEREZ".
       if (!cedula || /^pedro perez$/i.test(nombre)) { saltadas++; continue; }
+      // Solo BioSteel: el Excel traía empleados de otras empresas por error.
+      if (txt(r[C.empresa]).toUpperCase() !== "BIOSTEEL") { saltadas++; continue; }
       if (vistos.has(cedula)) { saltadas++; continue; }
       vistos.add(cedula);
 

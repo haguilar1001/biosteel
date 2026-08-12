@@ -1,15 +1,15 @@
 // ==========================================================
-// Nómina · Resumen — costo de personal del año. KPIs (costo mensual/anual,
-// empleados, salario promedio), anillo por empresa, composición del costo,
-// ranking por proceso y por ciudad, y comparativo por empresa vs año anterior.
-// Selector de año.
+// Nómina · Resumen — costo de personal del año (solo BioSteel). KPIs (costo
+// mensual/anual, empleados, salario promedio), anillo por tipo de contrato,
+// composición del costo, ranking por proceso y por ciudad, y comparativo por
+// proceso vs año anterior. Selector de año.
 // ==========================================================
 import { requirePermiso } from "@/server/auth-context";
 import { formatNumero } from "@/lib/format";
 import { Monto } from "../_components/Monto";
 import {
-  aniosConNomina, resumenAnual, porEmpresa, porProceso, porCiudad,
-  composicionCosto, comparativoEmpresa,
+  aniosConNomina, resumenAnual, porTipoContrato, porProceso, porCiudad,
+  composicionCosto, comparativoProceso,
 } from "@/lib/negocio/nomina";
 import { Donut } from "../_components/charts/Donut";
 import { TopRanking } from "../_components/charts/TopRanking";
@@ -30,18 +30,17 @@ export default async function NominaPage({ searchParams }: { searchParams: Promi
   const anioAnt = anio - 1;
   const hayAnterior = anios.includes(anioAnt);
 
-  const [kpi, empresas, procesos, ciudades, comp, compEmpresa] = await Promise.all([
+  const [kpi, tipos, procesos, ciudades, comp, compProceso] = await Promise.all([
     resumenAnual(anio),
-    porEmpresa(anio),
+    porTipoContrato(anio),
     porProceso(anio),
     porCiudad(anio),
     composicionCosto(anio),
-    hayAnterior ? comparativoEmpresa(anio, anioAnt) : Promise.resolve([]),
+    hayAnterior ? comparativoProceso(anio, anioAnt) : Promise.resolve([]),
   ]);
 
-  // Anillo por empresa: detalle = procesos dentro de la empresa no lo tenemos
-  // aquí; mostramos headcount como subtítulo vía tooltip de valor.
-  const donutEmpresa = empresas.map((e) => ({ label: e.label, valor: e.costoMensual }));
+  // Anillo por tipo de contrato (INDEFINIDO, OBRA O LABOR, APRENDIZ SENA…).
+  const donutTipo = tipos.map((e) => ({ label: e.label, valor: e.costoMensual }));
 
   // Composición del costo (mensual): salario base + auxilio + aportes + provisiones.
   const donutComp = [
@@ -74,12 +73,12 @@ export default async function NominaPage({ searchParams }: { searchParams: Promi
       </div>
 
       <div className="grid two" style={{ marginBottom: 12, alignItems: "stretch" }}>
-        {/* Anillo por empresa */}
+        {/* Anillo por tipo de contrato */}
         <div className="card">
-          <div className="chart-head">Costo por Empresa <span className="hact">{anio}</span></div>
+          <div className="chart-head">Costo por Tipo de Contrato <span className="hact">{anio}</span></div>
           <div className="card-body" style={{ display: "grid", placeItems: "center" }}>
-            {donutEmpresa.length === 0 ? <div className="empty">Sin datos.</div> : (
-              <Donut azul data={donutEmpresa} size={260} centro={{ valor: mill(kpi.costoMensual), etiqueta: "costo/mes" }} />
+            {donutTipo.length === 0 ? <div className="empty">Sin datos.</div> : (
+              <Donut azul data={donutTipo} size={260} centro={{ valor: mill(kpi.costoMensual), etiqueta: "costo/mes" }} />
             )}
           </div>
         </div>
@@ -111,14 +110,14 @@ export default async function NominaPage({ searchParams }: { searchParams: Promi
         />
       </div>
 
-      {/* Comparativo por empresa vs año anterior */}
-      {hayAnterior && compEmpresa.length > 0 && (
+      {/* Comparativo por proceso vs año anterior */}
+      {hayAnterior && compProceso.length > 0 && (
         <BarrasComparativas
-          titulo="Costo mensual por Empresa · comparativo"
-          items={compEmpresa}
+          titulo="Costo mensual por Proceso · comparativo"
+          items={compProceso}
           labelA={`${anio}`}
           labelB={`${anioAnt}`}
-          inicial={8}
+          inicial={10}
         />
       )}
     </>
