@@ -96,70 +96,12 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      {/* Balances */}
-      <div className="kpis">
-        <div className="kpi">
-          <div className="klabel">Cartera (por cobrar)</div>
-          <div className="kval num">{cartera ? formatCOP(cartera.total) : "—"}</div>
-          <div className="ksub"><span className="flag">{cartera ? `vencida ${formatCOP(cartera.vencido)}` : "sin acceso"}</span></div>
-        </div>
-        <div className="kpi">
-          <div className="klabel">Cuentas por pagar</div>
-          <div className="kval num">{cxp ? formatCOP(cxp.total) : "—"}</div>
-          <div className="ksub"><span className="flag">{cxp ? `vencida ${formatCOP(cxp.vencido)}` : "sin acceso"}</span></div>
-        </div>
-        <div className="kpi k-egreso">
-          <div className="klabel">Obligaciones financieras</div>
-          <div className="kval num">{oblig ? formatCOP(oblig.totalSaldo) : "—"}</div>
-          <div className="ksub"><span className="flag">{oblig ? `cuota mensual ${formatCOP(oblig.totalCuotaMensual)}` : ""}</span></div>
-        </div>
-        <div className="kpi k-ingreso">
-          <div className="klabel">Flujo neto {ANIO}</div>
-          <div className="kval num" style={{ color: tot && tot.neto < 0 ? "var(--bad)" : undefined }}>{tot ? formatCOP(tot.neto) : "—"}</div>
-          <div className="ksub"><span className="flag">{tot ? `ejecución presup. ${formatPorcentaje(tot.ejecucion)}` : ""}</span></div>
-          {meses && meses.length > 1 && (
-            <div style={{ position: "absolute", right: 12, bottom: 10 }}>
-              <Sparkline data={meses.map((m) => m.neto)} color="var(--ingreso)" />
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Título del informe: mes cerrado que reflejan los medidores */}
-      {verCxp && mesCerrado && (
-        <div style={{ margin: "18px 0 10px", display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
-          <h2 style={{ fontSize: 26, fontWeight: 800, margin: 0 }}>Informe de {MESES_FULL[mesCerrado]}</h2>
-          <span className="flag" style={{ fontSize: 14 }}>{ANIO} · mes cerrado</span>
-        </div>
-      )}
-
-      {/* Medidores de indicadores */}
-      {gauges.length > 0 && (
-        <div className="grid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", marginBottom: 12 }}>
-          {gauges.map((i) => {
-            const color = i.cumple == null ? "var(--muted)" : i.cumple ? "var(--ok)" : "var(--bad)";
-            return (
-              <div className="card" key={i.num}>
-                <div className="chart-head" style={{ fontSize: 11.5 }}>{i.nombre}</div>
-                <div className="card-body" style={{ paddingTop: 6 }}>
-                  <Medidor valor={Math.min(i.cumplimiento ?? 0, 160)} color={color} size={150} />
-                  <div style={{ textAlign: "center", marginTop: 2 }}>
-                    <div className="num" style={{ fontSize: 18, fontWeight: 800, color }}>{i.real != null ? fmtInd(i.real, i.unidad) : "—"}</div>
-                    <div className="flag">meta {i.metaTexto}</div>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {/* Mes en curso: venta acumulada, proyección a fin de mes y dif. vs meta */}
+      {/* Fila 1 — Venta del mes en curso: acumulada, proyección y dif. vs meta */}
       {verCxp && ventas && (
         <>
-          <div style={{ margin: "6px 0 8px", display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
-            <div className="eyebrow" style={{ fontSize: 14 }}>Venta · mes en curso</div>
-            <span className="flag">{MESES_FULL[mesActual]} {ANIO} · corte día {diaHoy} de {diasMes}</span>
+          <div style={{ margin: "18px 0 10px", display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
+            <h2 style={{ fontSize: 26, fontWeight: 800, margin: 0 }}>Informe de {MESES_FULL[mesActual]}</h2>
+            <span className="flag" style={{ fontSize: 14 }}>{ANIO} · mes actual · corte día {diaHoy} de {diasMes}</span>
           </div>
           <div className="kpis" style={{ marginBottom: 12 }}>
             <div className="kpi k-ingreso">
@@ -187,6 +129,66 @@ export default async function DashboardPage() {
           </div>
         </>
       )}
+
+      {/* Fila 2 — Informe del mes anterior (mes cerrado): título + medidores */}
+      {verCxp && mesCerrado && (
+        <div style={{ margin: "18px 0 10px", display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
+          <h2 style={{ fontSize: 26, fontWeight: 800, margin: 0 }}>Informe de {MESES_FULL[mesCerrado]}</h2>
+          <span className="flag" style={{ fontSize: 14 }}>{ANIO} · mes anterior</span>
+        </div>
+      )}
+
+      {gauges.length > 0 && (
+        <div className="grid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", marginBottom: 12 }}>
+          {gauges.map((i) => {
+            const color = i.cumple == null ? "var(--muted)" : i.cumple ? "var(--ok)" : "var(--bad)";
+            return (
+              <div className="card" key={i.num}>
+                <div className="chart-head" style={{ fontSize: 11.5 }}>{i.nombre}</div>
+                <div className="card-body" style={{ paddingTop: 6 }}>
+                  <Medidor valor={Math.min(i.cumplimiento ?? 0, 160)} color={color} size={150} />
+                  <div style={{ textAlign: "center", marginTop: 2 }}>
+                    <div className="num" style={{ fontSize: 18, fontWeight: 800, color }}>{i.real != null ? fmtInd(i.real, i.unidad) : "—"}</div>
+                    <div className="flag">meta {i.metaTexto}</div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Fila 3 — Indicadores clave (balances al corte) */}
+      <div style={{ margin: "18px 0 10px" }}>
+        <h2 style={{ fontSize: 26, fontWeight: 800, margin: 0 }}>Indicadores Claves</h2>
+      </div>
+      <div className="kpis">
+        <div className="kpi">
+          <div className="klabel">Cartera (por cobrar)</div>
+          <div className="kval num">{cartera ? formatCOP(cartera.total) : "—"}</div>
+          <div className="ksub"><span className="flag">{cartera ? `vencida ${formatCOP(cartera.vencido)}` : "sin acceso"}</span></div>
+        </div>
+        <div className="kpi">
+          <div className="klabel">Cuentas por pagar</div>
+          <div className="kval num">{cxp ? formatCOP(cxp.total) : "—"}</div>
+          <div className="ksub"><span className="flag">{cxp ? `vencida ${formatCOP(cxp.vencido)}` : "sin acceso"}</span></div>
+        </div>
+        <div className="kpi k-egreso">
+          <div className="klabel">Obligaciones financieras</div>
+          <div className="kval num">{oblig ? formatCOP(oblig.totalSaldo) : "—"}</div>
+          <div className="ksub"><span className="flag">{oblig ? `cuota mensual ${formatCOP(oblig.totalCuotaMensual)}` : ""}</span></div>
+        </div>
+        <div className="kpi k-ingreso">
+          <div className="klabel">Flujo neto {ANIO}</div>
+          <div className="kval num" style={{ color: tot && tot.neto < 0 ? "var(--bad)" : undefined }}>{tot ? formatCOP(tot.neto) : "—"}</div>
+          <div className="ksub"><span className="flag">{tot ? `ejecución presup. ${formatPorcentaje(tot.ejecucion)}` : ""}</span></div>
+          {meses && meses.length > 1 && (
+            <div style={{ position: "absolute", right: 12, bottom: 10 }}>
+              <Sparkline data={meses.map((m) => m.neto)} color="var(--ingreso)" />
+            </div>
+          )}
+        </div>
+      </div>
 
       {/* Anillo egresos por grupo + barras ingresos/egresos */}
       {verCxp && (
