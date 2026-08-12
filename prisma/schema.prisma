@@ -744,6 +744,24 @@ model ProveedorEstado {
   @@index([estado])
 }
 
+// Personalización del menú (sobre el catálogo del código). Campos nulos = usar
+// el valor por defecto del código. No pueden crear rutas ni permisos nuevos.
+model MenuGrupoCfg {
+  clave   String  @id // id del grupo (tesoreria, comercial, admin…)
+  label   String?
+  icon    String?
+  orden   Int?
+  visible Boolean @default(true)
+}
+
+model MenuItemCfg {
+  href        String  @id // ruta del ítem (clave estable)
+  label       String?
+  grupoClave  String? // grupo destino (mover entre grupos)
+  orden       Int?
+  visible     Boolean @default(true)
+}
+
 // Ajuste manual de venta neta por período (para cuadrar con Power BI cuando las
 // exclusiones exactas no se conocen). Al reliquidar se suma como una línea
 // sintética a los agregados. `valor` positivo sube la venta neta, negativo la baja.

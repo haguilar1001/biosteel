@@ -20,6 +20,7 @@ export const ADMIN_SECCIONES: AdminSeccion[] = [
   ] },
   { id: "config", label: "🎛️ Configuración", tabs: [
     { href: "/admin/parametrizacion", label: "🎨 Fuente y tamaño", permiso: "parametro.manage" },
+    { href: "/admin/menu", label: "🧭 Editor de menú", permiso: "parametro.manage" },
   ] },
   { id: "varios", label: "🧰 Varios", tabs: [
     { href: "/admin/varios/importar", label: "⬆️ Importar ventas", permiso: "ventas.manage" },
