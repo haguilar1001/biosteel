@@ -8,6 +8,7 @@ import { formatCOP, formatNumero, formatPorcentaje, formatFecha } from "@/lib/fo
 import { listarMovimientos, movimientosPorTercero, categoriasPorTipo, MESES_LABEL, type CampoOrden, type DirOrden } from "@/lib/negocio/flujo";
 import { SelectorCategoria } from "../SelectorCategoria";
 import { BotonImprimir } from "../../_components/BotonImprimir";
+import { FiltroAuto } from "../../_components/FiltroAuto";
 
 const ANIO = 2026;
 const DEF_DIR: Record<string, DirOrden> = { fecha: "desc", tercero: "asc", detalle: "asc", observacion: "asc", valor: "desc", cantidad: "desc" };
@@ -57,7 +58,7 @@ export default async function IngresosPage({
   };
 
   const filtros = (
-    <form method="get" className="toolbar">
+    <FiltroAuto className="toolbar">
       {vista === "cliente" && <input type="hidden" name="vista" value="cliente" />}
       {sp.orden && <input type="hidden" name="orden" value={campo} />}
       {sp.orden && <input type="hidden" name="dir" value={dir} />}
@@ -75,7 +76,7 @@ export default async function IngresosPage({
       <span style={{ flex: 1 }} />
       <a href={base({ vista: "detalle" })} className={`btn${vista === "detalle" ? " primary" : ""}`}>Detalle</a>
       <a href={base({ vista: "cliente" })} className={`btn${vista === "cliente" ? " primary" : ""}`}>Por cliente</a>
-    </form>
+    </FiltroAuto>
   );
 
   if (vista === "cliente") {

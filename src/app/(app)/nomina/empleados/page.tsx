@@ -6,6 +6,7 @@
 import { requirePermiso } from "@/server/auth-context";
 import { formatCOP } from "@/lib/format";
 import { aniosConNomina, empleados } from "@/lib/negocio/nomina";
+import { FiltroAuto } from "../../_components/FiltroAuto";
 
 export default async function NominaEmpleadosPage({ searchParams }: { searchParams: Promise<{ anio?: string; q?: string }> }) {
   await requirePermiso("cxp.view");
@@ -34,7 +35,7 @@ export default async function NominaEmpleadosPage({ searchParams }: { searchPara
       <div className="card" style={{ marginBottom: 12 }}>
         <div className="card-body" style={{ paddingBottom: 12, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
           <div className="eyebrow" style={{ fontSize: 15 }}>Empleados · {anio} <span className="flag">({filas.length})</span></div>
-          <form method="get" className="toolbar" role="search">
+          <FiltroAuto className="toolbar" role="search">
             <label className="flag" style={{ alignSelf: "center" }}>Año:</label>
             <select name="anio" defaultValue={anio} className="select">
               {anios.map((a) => <option key={a} value={a}>{a}</option>)}
@@ -42,7 +43,7 @@ export default async function NominaEmpleadosPage({ searchParams }: { searchPara
             <input type="search" name="q" defaultValue={q ?? ""} placeholder="Nombre, cargo, proceso, empresa…" className="select" style={{ minWidth: 240 }} aria-label="Buscar" />
             <button type="submit" className="btn primary">Buscar</button>
             {q ? <a href={`/nomina/empleados?anio=${anio}`} className="btn">Limpiar</a> : null}
-          </form>
+          </FiltroAuto>
         </div>
       </div>
 

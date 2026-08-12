@@ -13,6 +13,7 @@ import {
 import { Donut } from "../_components/charts/Donut";
 import { TopRanking } from "../_components/charts/TopRanking";
 import { BarrasComparativas } from "../_components/charts/BarrasComparativas";
+import { FiltroAuto } from "../_components/FiltroAuto";
 
 const mill = (v: number) => `${new Intl.NumberFormat("es-CO", { maximumFractionDigits: 0 }).format(Math.round(v / 1e6))} MM`;
 
@@ -54,13 +55,12 @@ export default async function NominaPage({ searchParams }: { searchParams: Promi
       <div className="card" style={{ marginBottom: 12 }}>
         <div className="card-body" style={{ paddingBottom: 12, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
           <div className="eyebrow" style={{ fontSize: 15 }}>Costo de Personal · {anio}</div>
-          <form method="get" className="toolbar">
+          <FiltroAuto className="toolbar">
             <label className="flag" style={{ alignSelf: "center" }}>Año:</label>
             <select name="anio" defaultValue={anio} className="select">
               {anios.map((a) => <option key={a} value={a}>{a}</option>)}
             </select>
-            <button type="submit" className="btn primary">Ver</button>
-          </form>
+          </FiltroAuto>
         </div>
       </div>
 

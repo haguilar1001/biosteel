@@ -14,6 +14,7 @@ import { ventaMensualDetalle } from "@/lib/negocio/ventas";
 import { Medidor } from "../_components/charts/Medidor";
 import { MapaCartera } from "../_components/charts/MapaCartera";
 import { Sparkline } from "../_components/charts/Sparkline";
+import { FiltroAuto } from "../_components/FiltroAuto";
 
 const ANIO = 2026;
 const PRESUPUESTO_VENTA_MES = 2_000_000_000; // meta mensual de venta (COP)
@@ -212,7 +213,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           <div className="card">
             <div className="chart-head">¿En qué se va la plata? <span className="hact">egresos por grupo · {mesEgr ? MESES_FULL[mesEgr] : ANIO}</span></div>
             <div className="card-body">
-              <form method="get" className="toolbar" style={{ marginBottom: 8 }}>
+              <FiltroAuto className="toolbar" style={{ marginBottom: 8 }}>
                 <label className="flag" style={{ alignSelf: "center" }}>Mes:</label>
                 <select name="mes" defaultValue={mesEgr ?? ""} className="select">
                   <option value="">Todos los meses</option>
@@ -220,9 +221,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                     <option key={m} value={m}>{MESES_FULL[m]}</option>
                   ))}
                 </select>
-                <button type="submit" className="btn primary">Ver</button>
                 {mesEgr ? <a href="/dashboard" className="btn">Todos</a> : null}
-              </form>
+              </FiltroAuto>
               {grupos.length === 0 ? <div className="empty">Sin egresos{mesEgr ? ` en ${MESES_FULL[mesEgr]}` : ""}.</div> : (
                 <>
                   <div className="flag" style={{ marginBottom: 10 }}>Total egresos: <strong className="num">{formatCOP(totalEgresos)}</strong></div>

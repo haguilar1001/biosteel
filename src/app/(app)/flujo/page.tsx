@@ -2,6 +2,7 @@
 import { requirePermiso } from "@/server/auth-context";
 import { formatCOP, formatPorcentaje } from "@/lib/format";
 import { flujoMensual, MESES_LABEL } from "@/lib/negocio/flujo";
+import { FiltroAuto } from "../_components/FiltroAuto";
 
 const ANIO = 2026;
 
@@ -34,7 +35,7 @@ export default async function FlujoResumenPage({
     <>
       <div className="card" style={{ marginBottom: 12 }}>
         <div className="card-body" style={{ paddingBottom: 12 }}>
-          <form method="get" className="toolbar">
+          <FiltroAuto className="toolbar">
             <label className="flag" style={{ alignSelf: "center" }}>Mes:</label>
             <select name="mes" defaultValue={mes ?? ""} className="select">
               <option value="">Todos los meses</option>
@@ -42,9 +43,8 @@ export default async function FlujoResumenPage({
                 <option key={m} value={m}>{MESES_LABEL[m]}</option>
               ))}
             </select>
-            <button type="submit" className="btn primary">Ver</button>
             {mes ? <a href="/flujo" className="btn">Todos los meses</a> : null}
-          </form>
+          </FiltroAuto>
         </div>
       </div>
 

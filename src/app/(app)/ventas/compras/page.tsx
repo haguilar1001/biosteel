@@ -6,6 +6,7 @@ import { requirePermiso } from "@/server/auth-context";
 import { formatCOP, formatNumero } from "@/lib/format";
 import { comprasPorProveedorMes } from "@/lib/negocio/cxp";
 import { aniosConVenta } from "@/lib/negocio/ventas";
+import { FiltroAuto } from "../../_components/FiltroAuto";
 
 const MES_ABBR = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
 const mill = (v: number) => (v === 0 ? "—" : `${new Intl.NumberFormat("es-CO", { maximumFractionDigits: 0 }).format(Math.round(v / 1e6))}`);
@@ -27,12 +28,11 @@ export default async function ComprasPage({ searchParams }: { searchParams: Prom
       <div className="card" style={{ marginBottom: 12 }}>
         <div className="card-body" style={{ paddingBottom: 12, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
           <div className="eyebrow" style={{ fontSize: 15 }}>Compras por Proveedor × Mes · {anio} · {formatNumero(filas.length)} proveedores</div>
-          <form method="get" className="toolbar">
+          <FiltroAuto className="toolbar">
             <label className="flag" style={{ alignSelf: "center" }}>Año:</label>
             <select name="anio" defaultValue={anio} className="select">{anios.map((a) => <option key={a} value={a}>{a}</option>)}</select>
-            <button type="submit" className="btn primary">Ver</button>
             <a href={`/ventas/compras/export?anio=${anio}`} className="btn" title="Descargar compras por proveedor × mes en Excel">⬇️ Excel</a>
-          </form>
+          </FiltroAuto>
         </div>
       </div>
 

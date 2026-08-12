@@ -2,6 +2,7 @@
 import { requirePermiso } from "@/server/auth-context";
 import { formatCOP, formatPorcentaje } from "@/lib/format";
 import { presupuestoVsReal, flujoMensual, MESES_LABEL } from "@/lib/negocio/flujo";
+import { FiltroAuto } from "../../_components/FiltroAuto";
 
 const ANIO = 2026;
 
@@ -86,16 +87,15 @@ export default async function PresupuestoPage({
           Ejecución por grupo <span className="hact">{mes ? MESES_LABEL[mes] : "año corrido"}</span>
         </div>
         <div className="card-body" style={{ paddingBottom: 0 }}>
-          <form method="get" className="toolbar">
+          <FiltroAuto className="toolbar">
             <select name="mes" defaultValue={mes ?? ""} className="select">
               <option value="">Año corrido</option>
               {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
                 <option key={m} value={m}>{MESES_LABEL[m]}</option>
               ))}
             </select>
-            <button type="submit" className="btn primary">Ver</button>
             <a href="/flujo/presupuesto" className="btn">Año corrido</a>
-          </form>
+          </FiltroAuto>
         </div>
         <div className="tbl-wrap">
           <table>

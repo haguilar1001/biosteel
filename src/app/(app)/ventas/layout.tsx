@@ -1,16 +1,23 @@
 // Módulo Ventas: sub-navegación. Cada página valida su permiso.
 import { requireUsuario } from "@/server/auth-context";
+import { puede } from "@/lib/rbac/authorize";
 import { SubNav } from "../_components/SubNav";
 
-const ITEMS = [
+const BASE = [
   { href: "/ventas", label: "Ventas x Mes" },
   { href: "/ventas/historico", label: "Históricas" },
   { href: "/ventas/clientes", label: "Por Cliente" },
   { href: "/ventas/compras", label: "Compras x Proveedor" },
 ];
+const GESTION = [
+  { href: "/ventas/importar", label: "Importar" },
+  { href: "/ventas/exclusiones", label: "Exclusiones" },
+  { href: "/ventas/parametros", label: "Parámetros" },
+];
 
 export default async function VentasLayout({ children }: { children: React.ReactNode }) {
-  await requireUsuario();
+  const usuario = await requireUsuario();
+  const items = (await puede(usuario, "ventas.manage")) ? [...BASE, ...GESTION] : BASE;
   return (
     <>
       <div className="page-head" style={{ marginBottom: 8 }}>
@@ -19,7 +26,7 @@ export default async function VentasLayout({ children }: { children: React.React
           <h1>Ventas</h1>
         </div>
       </div>
-      <SubNav items={ITEMS} />
+      <SubNav items={items} />
       {children}
     </>
   );

@@ -8,6 +8,7 @@ import { formatCOP, formatPorcentaje } from "@/lib/format";
 import { resumenAnual, ventaMensualDetalle, ventaPorCiudad, aniosConVenta } from "@/lib/negocio/ventas";
 import { Donut } from "../_components/charts/Donut";
 import { LineasMensuales } from "../_components/charts/LineasMensuales";
+import { FiltroAuto } from "../_components/FiltroAuto";
 
 const MESES = ["", "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 const MES_ABBR = ["", "Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
@@ -72,14 +73,13 @@ export default async function VentasPage({ searchParams }: { searchParams: Promi
       <div className="card" style={{ marginBottom: 12 }}>
         <div className="card-body" style={{ paddingBottom: 12, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
           <div className="eyebrow" style={{ fontSize: 15 }}>Informe de Ventas · {anio}</div>
-          <form method="get" className="toolbar">
+          <FiltroAuto className="toolbar">
             <label className="flag" style={{ alignSelf: "center" }}>Año:</label>
             <select name="anio" defaultValue={anio} className="select">
               {anios.map((a) => <option key={a} value={a}>{a}</option>)}
             </select>
-            <button type="submit" className="btn primary">Ver</button>
             <a href={`/ventas/export?anio=${anio}`} className="btn" title="Descargar ventas por mes en Excel">⬇️ Excel</a>
-          </form>
+          </FiltroAuto>
         </div>
       </div>
 

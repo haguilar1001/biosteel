@@ -10,6 +10,7 @@ import { formatCOP, formatNumero } from "@/lib/format";
 import { ventaPorCliente } from "@/lib/negocio/ventas";
 import { movimientosPorTercero, mesesConMovimiento, nombresInternos, MESES_LABEL } from "@/lib/negocio/flujo";
 import { BarrasComparativas, type BarraItem } from "../../_components/charts/BarrasComparativas";
+import { FiltroAuto } from "../../_components/FiltroAuto";
 
 const ANIO = 2026;
 
@@ -87,15 +88,14 @@ export default async function VentasRecaudosPage({
 
       <div className="card" style={{ marginBottom: 12 }}>
         <div className="card-body" style={{ paddingBottom: 12 }}>
-          <form method="get" className="toolbar">
+          <FiltroAuto className="toolbar">
             <label className="flag" style={{ alignSelf: "center" }}>Mes:</label>
             <select name="mes" defaultValue={mes} className="select">
               {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
                 <option key={m} value={m}>{MESES_LABEL[m]}</option>
               ))}
             </select>
-            <button type="submit" className="btn primary">Ver</button>
-          </form>
+          </FiltroAuto>
         </div>
       </div>
 

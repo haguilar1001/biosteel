@@ -5,6 +5,7 @@ import { requirePermiso } from "@/server/auth-context";
 import { formatCOP, formatPorcentaje, formatNumero } from "@/lib/format";
 import { ventaPorCliente, resumenAnual, aniosConVenta } from "@/lib/negocio/ventas";
 import { TopRanking, type RankItem } from "../../_components/charts/TopRanking";
+import { FiltroAuto } from "../../_components/FiltroAuto";
 
 export default async function VentasClientesPage({ searchParams }: { searchParams: Promise<{ anio?: string }> }) {
   await requirePermiso("cxp.view");
@@ -24,12 +25,11 @@ export default async function VentasClientesPage({ searchParams }: { searchParam
       <div className="card" style={{ marginBottom: 12 }}>
         <div className="card-body" style={{ paddingBottom: 12, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
           <div className="eyebrow" style={{ fontSize: 15 }}>Ventas por Cliente · {anio} · {formatNumero(clientes.length)} clientes</div>
-          <form method="get" className="toolbar">
+          <FiltroAuto className="toolbar">
             <label className="flag" style={{ alignSelf: "center" }}>Año:</label>
             <select name="anio" defaultValue={anio} className="select">{anios.map((a) => <option key={a} value={a}>{a}</option>)}</select>
-            <button type="submit" className="btn primary">Ver</button>
             <a href={`/ventas/clientes/export?anio=${anio}`} className="btn" title="Descargar ventas por cliente en Excel">⬇️ Excel</a>
-          </form>
+          </FiltroAuto>
         </div>
       </div>
 

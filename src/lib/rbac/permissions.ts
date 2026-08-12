@@ -18,6 +18,7 @@ export const PERMISOS = [
   { clave: "cartera.view", modulo: "Cartera", descripcion: "Consultar cuentas por cobrar" },
   { clave: "recaudo.create", modulo: "Tesorería", descripcion: "Registrar recaudos" },
   { clave: "cxp.view", modulo: "Cuentas por Pagar", descripcion: "Consultar cuentas por pagar" },
+  { clave: "ventas.manage", modulo: "Comercial", descripcion: "Importar ventas y gestionar descuentos NC (parámetros/exclusiones)" },
   { clave: "flujo.manage", modulo: "Tesorería", descripcion: "Importar movimientos de flujo de caja (SIESA)" },
   { clave: "pago.create", modulo: "Tesorería", descripcion: "Registrar pagos a proveedores" },
   { clave: "nota.manage", modulo: "Cartera", descripcion: "Gestionar notas crédito/débito y glosas" },
@@ -55,25 +56,25 @@ export const MATRIZ_ROLES: Record<RolNombre, Partial<Record<PermisoClave, Alcanc
   Administrador: {
     "dashboard.view": T, "cartera.view": T, "recaudo.create": T, "cxp.view": T,
     "pago.create": T, "nota.manage": T, "reporte.view": T, "tercero.manage": T,
-    "inventario.view": T, "inventario.manage": T, "flujo.manage": T,
+    "inventario.view": T, "inventario.manage": T, "flujo.manage": T, "ventas.manage": T,
     "usuario.manage": T, "rol.manage": T, "parametro.manage": T, "auditoria.view": T,
   },
   Gerente: {
     "dashboard.view": T, "cartera.view": T, "recaudo.create": N, "cxp.view": T,
     "pago.create": N, "nota.manage": N, "reporte.view": T, "tercero.manage": N,
-    "inventario.view": T, "inventario.manage": N,
+    "inventario.view": T, "inventario.manage": N, "ventas.manage": T,
     "usuario.manage": N, "rol.manage": N, "parametro.manage": N, "auditoria.view": T,
   },
   "Tesorería / Cartera": {
     "dashboard.view": T, "cartera.view": T, "recaudo.create": T, "cxp.view": T,
     "pago.create": T, "nota.manage": T, "reporte.view": T, "tercero.manage": T,
-    "inventario.view": T, "inventario.manage": T, "flujo.manage": T,
+    "inventario.view": T, "inventario.manage": T, "flujo.manage": T, "ventas.manage": T,
     "usuario.manage": N, "rol.manage": N, "parametro.manage": N, "auditoria.view": N,
   },
   Vendedor: {
     "dashboard.view": T, "cartera.view": P, "recaudo.create": N, "cxp.view": N,
     "pago.create": N, "nota.manage": N, "reporte.view": P, "tercero.manage": N,
-    "inventario.view": N, "inventario.manage": N,
+    "inventario.view": N, "inventario.manage": N, "ventas.manage": N,
     "usuario.manage": N, "rol.manage": N, "parametro.manage": N, "auditoria.view": N,
   },
 };
