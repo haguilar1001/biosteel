@@ -5,6 +5,7 @@ import { requirePermiso } from "@/server/auth-context";
 import { formatCOP, formatNumero } from "@/lib/format";
 import { resumenAnticipos, anticiposPorTercero, type TipoProveedorFiltro } from "@/lib/negocio/cxp";
 import { Buscador } from "../../_components/Buscador";
+import { BotonImprimir } from "../../_components/BotonImprimir";
 
 export default async function AnticiposPage({
   searchParams,
@@ -34,6 +35,8 @@ export default async function AnticiposPage({
           <a href={filtro(undefined)} className={`btn${!tipo ? " primary" : ""}`}>Todos</a>
           <a href={filtro("externo")} className={`btn${tipo === "externo" ? " primary" : ""}`}>Externos</a>
           <a href={filtro("interno")} className={`btn${tipo === "interno" ? " primary" : ""}`}>Internos</a>
+          <a href={`/cxp/anticipos/export?${new URLSearchParams({ ...(tipo ? { tipo } : {}), ...(q ? { q } : {}) }).toString()}`} className="btn" title="Descargar en Excel">⬇️ Excel</a>
+          <BotonImprimir />
           <a href="/cxp" className="btn">← Documentos</a>
         </div>
       </div>

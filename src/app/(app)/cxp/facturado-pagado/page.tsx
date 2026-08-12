@@ -8,6 +8,7 @@ import { formatCOP, formatNumero } from "@/lib/format";
 import { facturadoVsPagado } from "@/lib/negocio/cxp";
 import { mesesConMovimiento, MESES_LABEL } from "@/lib/negocio/flujo";
 import { BarrasComparativas, type BarraItem } from "../../_components/charts/BarrasComparativas";
+import { BotonImprimir } from "../../_components/BotonImprimir";
 
 const ANIO = 2026;
 
@@ -52,12 +53,14 @@ export default async function FacturadoPagadoPage({
           <p>Por proveedor · {etiqueta} · facturado (CxP) contra pagado (flujo)</p>
         </div>
         <div className="toolbar">
+          <a href={`/cxp/facturado-pagado/export?mes=${todos ? "all" : mes}`} className="btn" title="Descargar en Excel">⬇️ Excel</a>
+          <BotonImprimir />
           <a href="/cxp/proveedores" className="btn">Por proveedor (saldo)</a>
           <a href="/cxp" className="btn">← Documentos</a>
         </div>
       </div>
 
-      <div className="card" style={{ marginBottom: 12 }}>
+      <div className="card no-print" style={{ marginBottom: 12 }}>
         <div className="card-body" style={{ paddingBottom: 12 }}>
           <form method="get" className="toolbar">
             <label className="flag" style={{ alignSelf: "center" }}>Mes:</label>
@@ -90,7 +93,7 @@ export default async function FacturadoPagadoPage({
         </div>
       </div>
 
-      <div style={{ marginBottom: 12 }}>
+      <div className="no-print" style={{ marginBottom: 12 }}>
         <BarrasComparativas
           titulo={`Facturado vs Pagado · ${etiquetaCorta}`}
           items={items}
