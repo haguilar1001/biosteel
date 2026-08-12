@@ -123,7 +123,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
             </div>
             <div className="kpi">
               <div className="klabel">Diferencia vs presupuesto</div>
-              <div className="kval num" style={{ color: difPresupuesto >= 0 ? "var(--ok)" : "var(--bad)" }}>
+              <div className="kval num">
                 {difPresupuesto >= 0 ? "+" : "−"}{formatCOP(Math.abs(difPresupuesto))}
               </div>
               <div className="ksub"><span className="flag">proyectado − presupuesto</span></div>
@@ -182,7 +182,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         </div>
         <div className="kpi">
           <div className="klabel">Flujo neto {ANIO}</div>
-          <div className="kval num" style={{ color: tot && tot.neto < 0 ? "var(--bad)" : undefined }}>{tot ? formatCOP(tot.neto) : "—"}</div>
+          <div className="kval num">{tot ? formatCOP(tot.neto) : "—"}</div>
           <div className="ksub"><span className="flag">{tot ? `ejecución presup. ${formatPorcentaje(tot.ejecucion)}` : ""}</span></div>
           {meses && meses.length > 1 && (
             <div style={{ position: "absolute", right: 12, bottom: 10 }}>
