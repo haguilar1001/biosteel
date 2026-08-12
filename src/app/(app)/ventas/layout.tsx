@@ -4,6 +4,7 @@ import { SubNav } from "../_components/SubNav";
 
 const ITEMS = [
   { href: "/ventas", label: "Ventas x Mes" },
+  { href: "/ventas/historico", label: "Históricas" },
   { href: "/ventas/clientes", label: "Por Cliente" },
   { href: "/ventas/compras", label: "Compras x Proveedor" },
 ];

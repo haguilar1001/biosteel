@@ -819,3 +819,32 @@ model Nomina {
   @@index([empresa])
   @@index([proceso])
 }
+
+// =============== 13. NOTAS CRÉDITO (descuento financiero por IPS) ===============
+// Parámetros de descuento comercial por IPS/concepto con vigencia (fuente:
+// "Parametros Nota Crédito.xlsx"). Los consume el motor de reliquidación de
+// ventas para calcular el NOTA_CREDITO por renglón (ver lib/negocio/nota-credito).
+model ParametroNotaCredito {
+  id          Int      @id @default(autoincrement())
+  ips         String   // CAMPBELL, BARU, MOVID, VALLE, AZALUD, CM BAHIA, OTRAS_IPS
+  concepto    String   // BRACE, ALTO_COSTO, MAXILO, APROVECHAMIENTO, MOS, ADRES
+  pct         Decimal  @db.Decimal(7, 4)
+  fechaInicio DateTime @db.Date
+  fechaFin    DateTime @db.Date
+  createdAt   DateTime @default(now())
+
+  @@index([ips, concepto])
+}
+
+// Facturas excluidas manualmente de cualquier descuento NC (Concepto = "TODOS").
+// Editable desde la app; se respeta al reliquidar.
+model ExclusionNC {
+  id           Int      @id @default(autoincrement())
+  nroDocumento String
+  concepto     String   @default("TODOS")
+  motivo       String?
+  createdAt    DateTime @default(now())
+
+  @@unique([nroDocumento, concepto])
+  @@index([nroDocumento])
+}

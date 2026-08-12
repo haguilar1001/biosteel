@@ -21,6 +21,7 @@
     "db:obligaciones": "tsx prisma/set-obligaciones.ts",
     "db:grupo": "tsx prisma/set-grupo.ts",
     "db:ventas": "node --max-old-space-size=8192 node_modules/tsx/dist/cli.mjs prisma/set-ventas.ts",
+    "db:params-nc": "tsx prisma/set-parametros-nc.ts",
     "db:pyg": "tsx prisma/set-pyg.ts",
     "db:inventario": "tsx prisma/set-inventario.ts",
     "db:codigos": "tsx prisma/set-codigos.ts",
