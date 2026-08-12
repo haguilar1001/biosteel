@@ -106,7 +106,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
             <span className="flag" style={{ fontSize: 14 }}>{ANIO} · mes actual · corte día {diaHoy} de {diasMes}</span>
           </div>
           <div className="kpis" style={{ marginBottom: 12 }}>
-            <div className="kpi k-ingreso">
+            <div className="kpi">
               <div className="klabel">Venta del mes</div>
               <div className="kval num">{formatCOP(ventaMesActual)}</div>
               <div className="ksub"><span className="flag">acumulada al día {diaHoy}</span></div>
@@ -121,7 +121,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
               <div className="kval num">{formatCOP(PRESUPUESTO_VENTA_MES)}</div>
               <div className="ksub"><span className="flag">$2.000M / mes</span></div>
             </div>
-            <div className="kpi" style={{ borderLeftColor: difPresupuesto >= 0 ? "var(--ok)" : "var(--bad)" }}>
+            <div className="kpi">
               <div className="klabel">Diferencia vs presupuesto</div>
               <div className="kval num" style={{ color: difPresupuesto >= 0 ? "var(--ok)" : "var(--bad)" }}>
                 {difPresupuesto >= 0 ? "+" : "−"}{formatCOP(Math.abs(difPresupuesto))}
@@ -175,12 +175,12 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           <div className="kval num">{cxp ? formatCOP(cxp.total) : "—"}</div>
           <div className="ksub"><span className="flag">{cxp ? `vencida ${formatCOP(cxp.vencido)}` : "sin acceso"}</span></div>
         </div>
-        <div className="kpi k-egreso">
+        <div className="kpi">
           <div className="klabel">Obligaciones financieras</div>
           <div className="kval num">{oblig ? formatCOP(oblig.totalSaldo) : "—"}</div>
           <div className="ksub"><span className="flag">{oblig ? `cuota mensual ${formatCOP(oblig.totalCuotaMensual)}` : ""}</span></div>
         </div>
-        <div className="kpi k-ingreso">
+        <div className="kpi">
           <div className="klabel">Flujo neto {ANIO}</div>
           <div className="kval num" style={{ color: tot && tot.neto < 0 ? "var(--bad)" : undefined }}>{tot ? formatCOP(tot.neto) : "—"}</div>
           <div className="ksub"><span className="flag">{tot ? `ejecución presup. ${formatPorcentaje(tot.ejecucion)}` : ""}</span></div>
