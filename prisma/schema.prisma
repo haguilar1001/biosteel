@@ -700,6 +700,20 @@ model VentaCliente {
   @@index([anio, mes])
 }
 
+// Venta neta y costo por MARCA (proveedor/casa del producto) y mes.
+// Alimenta el "Informe de Consumos" (% Utilidad por proveedor).
+model VentaMarca {
+  id     Int     @id @default(autoincrement())
+  anio   Int
+  mes    Int     // 1–12
+  marca  String  // p.ej. "1003 - SAMPEDRO"
+  valor  Decimal @db.Decimal(18, 2) // venta neta
+  costo  Decimal @default(0) @db.Decimal(18, 2)
+
+  @@unique([anio, mes, marca])
+  @@index([anio, mes])
+}
+
 // =============== 10. ESTADO DE RESULTADOS (PyG) ===============
 // Un registro por mes. Los totales principales quedan en columnas; el árbol
 // completo de cuentas (para la vista detallada) se guarda en `detalle` (JSON).

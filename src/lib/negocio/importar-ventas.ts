@@ -14,6 +14,7 @@ export interface FilaVenta extends VentaRow {
   costo: number;
   cliente: string;
   nit: string | null;
+  marca: string;
 }
 
 /** "$ 1,234.00" / "(1,234)" → número. Tolerante a formato es-CO con símbolo. */
@@ -55,6 +56,7 @@ export function leerRenglones(buffer: Buffer | ArrayBuffer): RenglonesLeidos {
     suc: ix("Desc. sucursal factura"), bod: ix("Desc. bodega"), notas: ix("Notas ítem"),
     conv: ix("Convenio"), costo: ix("Costo promedio total"), sub: ix("Valor subtotal local"),
     proc: ix("Procedimiento"), linea: ix("LÍNEA"), fbd: ix("Factura base devolución"),
+    marca: ix("MARCA"),
   };
   if (C.doc < 0 || C.fecha < 0 || C.sub < 0) {
     throw new Error("No parece un reporte SIESA de ventas: faltan columnas 'Nro documento' / 'Fecha' / 'Valor subtotal local'.");
@@ -83,6 +85,7 @@ export function leerRenglones(buffer: Buffer | ArrayBuffer): RenglonesLeidos {
       costo: limpiarMonto(r[C.costo]),
       cliente: cliente || "(sin cliente)",
       nit: C.nit >= 0 && r[C.nit] != null ? String(r[C.nit]).trim() : null,
+      marca: (C.marca >= 0 ? String(r[C.marca] ?? "").trim() : "") || "(sin marca)",
     });
   }
   return { filas, sinFecha, hoja: nombreHoja };
@@ -90,11 +93,13 @@ export function leerRenglones(buffer: Buffer | ArrayBuffer): RenglonesLeidos {
 
 export interface FilaLineaAgg { anio: number; mes: number; linea: string; valor: number; costo: number }
 export interface FilaClienteAgg { anio: number; mes: number; clienteNombre: string; nit: string | null; valor: number; costo: number }
+export interface FilaMarcaAgg { anio: number; mes: number; marca: string; valor: number; costo: number }
 
 export interface AgregadosVenta {
   anios: number[];
   porLinea: FilaLineaAgg[];
   porCliente: FilaClienteAgg[];
+  porMarca: FilaMarcaAgg[];
   /** Venta neta total por año. */
   netoPorAnio: Map<number, number>;
   totalNC: number;
@@ -122,6 +127,7 @@ export function agregarVentas(filas: FilaVenta[], params: ParamNC[], excluidos: 
   const ctx: CtxNC = { params, nanMeses: construirNanMeses(filas), excluidos };
   const porLinea = new Map<string, FilaLineaAgg>();
   const porCliente = new Map<string, FilaClienteAgg>();
+  const porMarca = new Map<string, FilaMarcaAgg>();
   const anios = new Set<number>();
   const netoPorAnio = new Map<number, number>();
   let totalNC = 0;
@@ -143,12 +149,18 @@ export function agregarVentas(filas: FilaVenta[], params: ParamNC[], excluidos: 
     const eC = porCliente.get(kC) ?? { anio: r.anio, mes: r.mes, clienteNombre: r.cliente, nit: r.nit, valor: 0, costo: 0 };
     eC.valor += neto; eC.costo += r.costo;
     porCliente.set(kC, eC);
+
+    const kM = `${r.anio}|${r.mes}|${r.marca}`;
+    const eM = porMarca.get(kM) ?? { anio: r.anio, mes: r.mes, marca: r.marca, valor: 0, costo: 0 };
+    eM.valor += neto; eM.costo += r.costo;
+    porMarca.set(kM, eM);
   }
 
   return {
     anios: [...anios].sort((a, b) => a - b),
     porLinea: [...porLinea.values()],
     porCliente: [...porCliente.values()],
+    porMarca: [...porMarca.values()],
     netoPorAnio, totalNC, renglones: filas.length,
   };
 }

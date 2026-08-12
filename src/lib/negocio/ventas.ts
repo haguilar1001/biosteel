@@ -63,6 +63,17 @@ export async function resumenAnual(anio: number): Promise<ResumenAnual> {
   return { venta, costo, utilidad, margen: venta > 0 ? (utilidad / venta) * 100 : 0 };
 }
 
+export interface FilaMarcaVenta { marca: string; valor: number; costo: number }
+
+/** Venta neta y costo por MARCA (proveedor), opcionalmente por meses, desc. */
+export async function ventaPorMarca(anio: number, meses?: number[]): Promise<FilaMarcaVenta[]> {
+  const where: Prisma.VentaMarcaWhereInput = { anio, ...(meses && meses.length ? { mes: { in: meses } } : {}) };
+  const grupos = await prisma.ventaMarca.groupBy({ by: ["marca"], where, _sum: { valor: true, costo: true } });
+  return grupos
+    .map((g) => ({ marca: g.marca, valor: g._sum.valor?.toNumber() ?? 0, costo: g._sum.costo?.toNumber() ?? 0 }))
+    .sort((a, b) => b.valor - a.valor);
+}
+
 /** Años con ventas cargadas, ascendente. */
 export async function aniosConVenta(): Promise<number[]> {
   const grupos = await prisma.ventaLinea.groupBy({ by: ["anio"], _sum: { valor: true } });
