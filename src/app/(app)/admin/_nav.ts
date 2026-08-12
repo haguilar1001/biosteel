@@ -21,4 +21,10 @@ export const ADMIN_SECCIONES: AdminSeccion[] = [
   { id: "config", label: "🎛️ Configuración", tabs: [
     { href: "/admin/parametrizacion", label: "🎨 Fuente y tamaño", permiso: "parametro.manage" },
   ] },
+  { id: "varios", label: "🧰 Varios", tabs: [
+    { href: "/admin/varios/importar", label: "⬆️ Importar ventas", permiso: "ventas.manage" },
+    { href: "/admin/varios/exclusiones", label: "🚫 Exclusiones NC", permiso: "ventas.manage" },
+    { href: "/admin/varios/parametros", label: "⚙️ Parámetros NC", permiso: "ventas.manage" },
+    { href: "/admin/varios/ajustes", label: "➕ Ajustes de venta", permiso: "ventas.manage" },
+  ] },
 ];

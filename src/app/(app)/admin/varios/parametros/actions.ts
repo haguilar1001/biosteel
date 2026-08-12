@@ -31,7 +31,7 @@ export async function agregarParametro(fd: FormData): Promise<void> {
   if (!ips || !concepto || !pct || !fechaInicio || !fechaFin) return;
   await prisma.parametroNotaCredito.create({ data: { ips, concepto, pct, fechaInicio, fechaFin } });
   await auditar({ usuarioId: u.id, accion: "ventas.parametro.crear", entidad: "ParametroNotaCredito", entidadId: `${ips}/${concepto}` });
-  revalidatePath("/ventas/parametros");
+  revalidatePath("/admin/varios/parametros");
 }
 
 export async function editarParametro(fd: FormData): Promise<void> {
@@ -44,7 +44,7 @@ export async function editarParametro(fd: FormData): Promise<void> {
   if (!Number.isFinite(id) || !pct || !fechaInicio || !fechaFin) return;
   await prisma.parametroNotaCredito.update({ where: { id }, data: { pct, fechaInicio, fechaFin } });
   await auditar({ usuarioId: u.id, accion: "ventas.parametro.editar", entidad: "ParametroNotaCredito", entidadId: String(id) });
-  revalidatePath("/ventas/parametros");
+  revalidatePath("/admin/varios/parametros");
 }
 
 export async function quitarParametro(fd: FormData): Promise<void> {
@@ -54,5 +54,5 @@ export async function quitarParametro(fd: FormData): Promise<void> {
   if (!Number.isFinite(id)) return;
   await prisma.parametroNotaCredito.delete({ where: { id } });
   await auditar({ usuarioId: u.id, accion: "ventas.parametro.quitar", entidad: "ParametroNotaCredito", entidadId: String(id) });
-  revalidatePath("/ventas/parametros");
+  revalidatePath("/admin/varios/parametros");
 }

@@ -5,7 +5,7 @@
 import { requirePermiso } from "@/server/auth-context";
 import { prisma } from "@/lib/db";
 import { formatFecha } from "@/lib/format";
-import { Monto } from "../../_components/Monto";
+import { Monto } from "../../../_components/Monto";
 import { agregarAjuste, quitarAjuste } from "./actions";
 
 const MESES = ["", "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];

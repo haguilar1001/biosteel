@@ -18,7 +18,7 @@ export async function agregarExclusion(fd: FormData): Promise<void> {
     create: { nroDocumento, concepto: "TODOS", motivo },
   });
   await auditar({ usuarioId: usuario.id, accion: "ventas.exclusion.crear", entidad: "ExclusionNC", entidadId: nroDocumento });
-  revalidatePath("/ventas/exclusiones");
+  revalidatePath("/admin/varios/exclusiones");
 }
 
 export async function quitarExclusion(fd: FormData): Promise<void> {
@@ -28,5 +28,5 @@ export async function quitarExclusion(fd: FormData): Promise<void> {
   if (!Number.isFinite(id)) return;
   await prisma.exclusionNC.delete({ where: { id } });
   await auditar({ usuarioId: usuario.id, accion: "ventas.exclusion.quitar", entidad: "ExclusionNC", entidadId: String(id) });
-  revalidatePath("/ventas/exclusiones");
+  revalidatePath("/admin/varios/exclusiones");
 }

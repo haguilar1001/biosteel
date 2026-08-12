@@ -17,7 +17,7 @@ export async function agregarAjuste(fd: FormData): Promise<void> {
   if (!Number.isFinite(anio) || !Number.isInteger(mes) || mes < 1 || mes > 12 || !Number.isFinite(valor) || valor === 0) return;
   await prisma.ajusteVenta.create({ data: { anio, mes, concepto, valor: new Prisma.Decimal(valor) } });
   await auditar({ usuarioId: u.id, accion: "ventas.ajuste.crear", entidad: "AjusteVenta", entidadId: `${anio}-${mes}` });
-  revalidatePath("/ventas/ajustes");
+  revalidatePath("/admin/varios/ajustes");
 }
 
 export async function quitarAjuste(fd: FormData): Promise<void> {
@@ -27,5 +27,5 @@ export async function quitarAjuste(fd: FormData): Promise<void> {
   if (!Number.isFinite(id)) return;
   await prisma.ajusteVenta.delete({ where: { id } });
   await auditar({ usuarioId: u.id, accion: "ventas.ajuste.quitar", entidad: "AjusteVenta", entidadId: String(id) });
-  revalidatePath("/ventas/ajustes");
+  revalidatePath("/admin/varios/ajustes");
 }
