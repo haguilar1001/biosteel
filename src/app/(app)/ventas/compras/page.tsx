@@ -31,6 +31,7 @@ export default async function ComprasPage({ searchParams }: { searchParams: Prom
             <label className="flag" style={{ alignSelf: "center" }}>Año:</label>
             <select name="anio" defaultValue={anio} className="select">{anios.map((a) => <option key={a} value={a}>{a}</option>)}</select>
             <button type="submit" className="btn primary">Ver</button>
+            <a href={`/ventas/compras/export?anio=${anio}`} className="btn" title="Descargar compras por proveedor × mes en Excel">⬇️ Excel</a>
           </form>
         </div>
       </div>
