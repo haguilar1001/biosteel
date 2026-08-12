@@ -105,28 +105,34 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
             <h2 style={{ fontSize: 26, fontWeight: 800, margin: 0 }}>Informe de {MESES_FULL[mesActual]}</h2>
             <span className="flag" style={{ fontSize: 14 }}>{ANIO} · mes actual · corte día {diaHoy} de {diasMes}</span>
           </div>
-          <div className="kpis" style={{ marginBottom: 12 }}>
-            <div className="kpi">
-              <div className="klabel">Venta del mes</div>
-              <div className="kval num">{formatCOP(ventaMesActual)}</div>
-              <div className="ksub"><span className="flag">acumulada al día {diaHoy}</span></div>
-            </div>
-            <div className="kpi">
-              <div className="klabel">Proyectado a fin de mes</div>
-              <div className="kval num">{formatCOP(ventaProyectada)}</div>
-              <div className="ksub"><span className="flag">al ritmo actual ({diaHoy}/{diasMes} días)</span></div>
-            </div>
-            <div className="kpi">
-              <div className="klabel">Presupuesto (meta)</div>
-              <div className="kval num">{formatCOP(PRESUPUESTO_VENTA_MES)}</div>
-              <div className="ksub"><span className="flag">$2.000M / mes</span></div>
-            </div>
-            <div className="kpi">
-              <div className="klabel">Diferencia vs presupuesto</div>
-              <div className="kval num">
-                {difPresupuesto >= 0 ? "+" : "−"}{formatCOP(Math.abs(difPresupuesto))}
+          <div className="grid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", marginBottom: 12 }}>
+            <div className="card">
+              <div className="chart-head">Venta del mes</div>
+              <div className="card-body kpi-body">
+                <div className="num kpi-val">{formatCOP(ventaMesActual)}</div>
+                <div className="ksub" style={{ justifyContent: "center" }}><span className="flag">acumulada al día {diaHoy}</span></div>
               </div>
-              <div className="ksub"><span className="flag">proyectado − presupuesto</span></div>
+            </div>
+            <div className="card">
+              <div className="chart-head">Proyectado a fin de mes</div>
+              <div className="card-body kpi-body">
+                <div className="num kpi-val">{formatCOP(ventaProyectada)}</div>
+                <div className="ksub" style={{ justifyContent: "center" }}><span className="flag">al ritmo actual ({diaHoy}/{diasMes} días)</span></div>
+              </div>
+            </div>
+            <div className="card">
+              <div className="chart-head">Presupuesto (meta)</div>
+              <div className="card-body kpi-body">
+                <div className="num kpi-val">{formatCOP(PRESUPUESTO_VENTA_MES)}</div>
+                <div className="ksub" style={{ justifyContent: "center" }}><span className="flag">$2.000M / mes</span></div>
+              </div>
+            </div>
+            <div className="card">
+              <div className="chart-head">Diferencia vs presupuesto</div>
+              <div className="card-body kpi-body">
+                <div className="num kpi-val">{difPresupuesto >= 0 ? "+" : "−"}{formatCOP(Math.abs(difPresupuesto))}</div>
+                <div className="ksub" style={{ justifyContent: "center" }}><span className="flag">proyectado − presupuesto</span></div>
+              </div>
             </div>
           </div>
         </>
@@ -164,31 +170,39 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       <div style={{ margin: "18px 0 10px" }}>
         <h2 style={{ fontSize: 26, fontWeight: 800, margin: 0 }}>Indicadores Claves</h2>
       </div>
-      <div className="kpis">
-        <div className="kpi">
-          <div className="klabel">Cartera (por cobrar)</div>
-          <div className="kval num">{cartera ? formatCOP(cartera.total) : "—"}</div>
-          <div className="ksub"><span className="flag">{cartera ? `vencida ${formatCOP(cartera.vencido)}` : "sin acceso"}</span></div>
+      <div className="grid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", marginBottom: 12 }}>
+        <div className="card">
+          <div className="chart-head">Cartera (por cobrar)</div>
+          <div className="card-body kpi-body">
+            <div className="num kpi-val">{cartera ? formatCOP(cartera.total) : "—"}</div>
+            <div className="ksub" style={{ justifyContent: "center" }}><span className="flag">{cartera ? `vencida ${formatCOP(cartera.vencido)}` : "sin acceso"}</span></div>
+          </div>
         </div>
-        <div className="kpi">
-          <div className="klabel">Cuentas por pagar</div>
-          <div className="kval num">{cxp ? formatCOP(cxp.total) : "—"}</div>
-          <div className="ksub"><span className="flag">{cxp ? `vencida ${formatCOP(cxp.vencido)}` : "sin acceso"}</span></div>
+        <div className="card">
+          <div className="chart-head">Cuentas por pagar</div>
+          <div className="card-body kpi-body">
+            <div className="num kpi-val">{cxp ? formatCOP(cxp.total) : "—"}</div>
+            <div className="ksub" style={{ justifyContent: "center" }}><span className="flag">{cxp ? `vencida ${formatCOP(cxp.vencido)}` : "sin acceso"}</span></div>
+          </div>
         </div>
-        <div className="kpi">
-          <div className="klabel">Obligaciones financieras</div>
-          <div className="kval num">{oblig ? formatCOP(oblig.totalSaldo) : "—"}</div>
-          <div className="ksub"><span className="flag">{oblig ? `cuota mensual ${formatCOP(oblig.totalCuotaMensual)}` : ""}</span></div>
+        <div className="card">
+          <div className="chart-head">Obligaciones financieras</div>
+          <div className="card-body kpi-body">
+            <div className="num kpi-val">{oblig ? formatCOP(oblig.totalSaldo) : "—"}</div>
+            <div className="ksub" style={{ justifyContent: "center" }}><span className="flag">{oblig ? `cuota mensual ${formatCOP(oblig.totalCuotaMensual)}` : ""}</span></div>
+          </div>
         </div>
-        <div className="kpi">
-          <div className="klabel">Flujo neto {ANIO}</div>
-          <div className="kval num">{tot ? formatCOP(tot.neto) : "—"}</div>
-          <div className="ksub"><span className="flag">{tot ? `ejecución presup. ${formatPorcentaje(tot.ejecucion)}` : ""}</span></div>
-          {meses && meses.length > 1 && (
-            <div style={{ position: "absolute", right: 12, bottom: 10 }}>
-              <Sparkline data={meses.map((m) => m.neto)} color="var(--ingreso)" />
-            </div>
-          )}
+        <div className="card">
+          <div className="chart-head">Flujo neto {ANIO}</div>
+          <div className="card-body kpi-body" style={{ position: "relative" }}>
+            <div className="num kpi-val">{tot ? formatCOP(tot.neto) : "—"}</div>
+            <div className="ksub" style={{ justifyContent: "center" }}><span className="flag">{tot ? `ejecución presup. ${formatPorcentaje(tot.ejecucion)}` : ""}</span></div>
+            {meses && meses.length > 1 && (
+              <div style={{ position: "absolute", right: 12, bottom: 8 }}>
+                <Sparkline data={meses.map((m) => m.neto)} color="var(--ingreso)" />
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
