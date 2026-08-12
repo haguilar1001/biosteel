@@ -791,3 +791,31 @@ model NovedadInventario {
   @@index([tipo])
   @@index([fecha])
 }
+
+// =============== 12. NÓMINA ===============
+// Maestro de nómina por empleado y año (hojas "SALARIOS <año>" del Excel).
+// `total` = costo mensual cargado (salario + aportes patronales + provisiones).
+model Nomina {
+  id              Int      @id @default(autoincrement())
+  anio            Int
+  cedula          String
+  nombre          String
+  proceso         String   // área: ADMINISTRATIVO, ALMACEN, ASISTENCIAL, ...
+  cargo           String
+  empresa         String   // BIOSTEEL, SANITHELP, PROVEMEDICS, SELSALUD, COMERCIAL
+  ciudad          String
+  baseSalarial    Decimal  @db.Decimal(18, 2)
+  auxTransporte   Decimal  @default(0) @db.Decimal(18, 2)
+  noPrestacional  Decimal  @default(0) @db.Decimal(18, 2)
+  totalDevengado  Decimal  @db.Decimal(18, 2)
+  seguridadSocial Decimal  @db.Decimal(18, 2) // aportes patronales (subtotal)
+  prestaciones    Decimal  @db.Decimal(18, 2) // provisiones (subtotal)
+  total           Decimal  @db.Decimal(18, 2) // costo mensual total
+  tipoContrato    String
+  createdAt       DateTime @default(now())
+
+  @@unique([anio, cedula])
+  @@index([anio])
+  @@index([empresa])
+  @@index([proceso])
+}

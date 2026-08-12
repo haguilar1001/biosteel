@@ -28,6 +28,10 @@ const GRUPOS_DEF: { id: string; label: string; icon: string; items: { href: stri
     { href: "/ventas", label: "💹 Ventas", permiso: "cxp.view" },
     { href: "/cartera", label: "📥 Cartera", permiso: "cartera.view" },
   ] },
+  { id: "nomina", label: "Nómina", icon: "👥", items: [
+    { href: "/nomina", label: "👥 Resumen", permiso: "cxp.view" },
+    { href: "/nomina/empleados", label: "🧑‍💼 Empleados", permiso: "cxp.view" },
+  ] },
   { id: "analisis", label: "Análisis", icon: "📊", items: [
     { href: "/indicadores", label: "📈 Indicadores", permiso: "cxp.view" },
     { href: "/pyg", label: "📄 PyG", permiso: "cxp.view" },

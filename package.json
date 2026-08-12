@@ -24,6 +24,7 @@
     "db:pyg": "tsx prisma/set-pyg.ts",
     "db:inventario": "tsx prisma/set-inventario.ts",
     "db:codigos": "tsx prisma/set-codigos.ts",
+    "db:nomina": "tsx prisma/set-nomina.ts",
     "db:check": "tsx prisma/check-datos.ts",
     "db:studio": "prisma studio",
     "audit": "npm audit --audit-level=high",
