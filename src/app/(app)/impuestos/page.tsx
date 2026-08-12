@@ -3,6 +3,7 @@
 // ==========================================================
 import { requirePermiso } from "@/server/auth-context";
 import { formatCOP, formatNumero, formatFecha } from "@/lib/format";
+import { Monto } from "../_components/Monto";
 import { listarImpuestos, resumenImpuestos, type AlertaImpuesto } from "@/lib/negocio/impuestos";
 
 const MES = ["", "Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
@@ -35,17 +36,17 @@ export default async function ImpuestosPage() {
       <div className="kpis">
         <div className="kpi">
           <div className="klabel">Total pendiente</div>
-          <div className="kval num">{formatCOP(resumen.totalPendiente)}</div>
+          <div className="kval num"><Monto value={resumen.totalPendiente} /></div>
           <div className="ksub"><span className="flag">{resumen.mesesConSaldo} meses con saldo</span></div>
         </div>
         <div className="kpi k-bad">
           <div className="klabel">Vencido</div>
-          <div className="kval num">{formatCOP(resumen.vencido)}</div>
+          <div className="kval num"><Monto value={resumen.vencido} /></div>
           <div className="ksub"><span className="flag">vencimiento pasado</span></div>
         </div>
         <div className="kpi">
           <div className="klabel">Renta</div>
-          <div className="kval num">{formatCOP(resumen.renta)}</div>
+          <div className="kval num"><Monto value={resumen.renta} /></div>
           <div className="ksub"><span className="flag">del total pendiente</span></div>
         </div>
         <div className="kpi k-w">
@@ -70,11 +71,11 @@ export default async function ImpuestosPage() {
             <tbody>
               <tr className="fila-total">
                 <td style={{ fontWeight: 800 }}>Total pendiente</td>
-                <td className="r num" style={{ fontWeight: 800 }}>{formatCOP(resumen.retencion)}</td>
-                <td className="r num" style={{ fontWeight: 800 }}>{formatCOP(resumen.iva)}</td>
-                <td className="r num" style={{ fontWeight: 800 }}>{formatCOP(resumen.ica)}</td>
-                <td className="r num" style={{ fontWeight: 800 }}>{formatCOP(resumen.renta)}</td>
-                <td className="r num" style={{ fontWeight: 800 }}>{formatCOP(resumen.totalPendiente)}</td>
+                <td className="r num" style={{ fontWeight: 800 }}><Monto value={resumen.retencion} /></td>
+                <td className="r num" style={{ fontWeight: 800 }}><Monto value={resumen.iva} /></td>
+                <td className="r num" style={{ fontWeight: 800 }}><Monto value={resumen.ica} /></td>
+                <td className="r num" style={{ fontWeight: 800 }}><Monto value={resumen.renta} /></td>
+                <td className="r num" style={{ fontWeight: 800 }}><Monto value={resumen.totalPendiente} /></td>
                 <td></td>
               </tr>
               {pendientes.map((f) => {
@@ -86,7 +87,7 @@ export default async function ImpuestosPage() {
                     <td className="r num">{f.iva ? formatCOP(f.iva) : "—"}</td>
                     <td className="r num">{f.ica ? formatCOP(f.ica) : "—"}</td>
                     <td className="r num">{f.renta ? formatCOP(f.renta) : "—"}</td>
-                    <td className="r num" style={{ fontWeight: 700 }}>{formatCOP(f.total)}</td>
+                    <td className="r num" style={{ fontWeight: 700 }}><Monto value={f.total} /></td>
                     <td>{f.vencimiento ? <>{formatFecha(f.vencimiento)} {b && <span className={`tag ${b.clase}`}>{b.texto}</span>}</> : <span className="flag">—</span>}</td>
                   </tr>
                 );

@@ -5,7 +5,8 @@
 // Selector de año.
 // ==========================================================
 import { requirePermiso } from "@/server/auth-context";
-import { formatCOP, formatNumero } from "@/lib/format";
+import { formatNumero } from "@/lib/format";
+import { Monto } from "../_components/Monto";
 import {
   aniosConNomina, resumenAnual, porEmpresa, porProceso, porCiudad,
   composicionCosto, comparativoEmpresa,
@@ -66,10 +67,10 @@ export default async function NominaPage({ searchParams }: { searchParams: Promi
 
       {/* KPIs */}
       <div className="kpis" style={{ marginBottom: 12 }}>
-        <div className="kpi kc k-egreso"><div className="klabel">Costo mensual</div><div className="kval num">{mill(kpi.costoMensual)}</div><div className="ksub"><span className="flag">{formatCOP(kpi.costoMensual)}</span></div></div>
-        <div className="kpi kc k-egreso"><div className="klabel">Costo anual (×12)</div><div className="kval num">{mill(kpi.costoAnual)}</div><div className="ksub"><span className="flag">{formatCOP(kpi.costoAnual)}</span></div></div>
+        <div className="kpi kc k-egreso"><div className="klabel">Costo mensual</div><div className="kval num">{mill(kpi.costoMensual)}</div><div className="ksub"><span className="flag"><Monto value={kpi.costoMensual} /></span></div></div>
+        <div className="kpi kc k-egreso"><div className="klabel">Costo anual (×12)</div><div className="kval num">{mill(kpi.costoAnual)}</div><div className="ksub"><span className="flag"><Monto value={kpi.costoAnual} /></span></div></div>
         <div className="kpi kc"><div className="klabel">Empleados</div><div className="kval num">{formatNumero(kpi.headcount)}</div></div>
-        <div className="kpi kc k-w"><div className="klabel">Salario base prom.</div><div className="kval num">{mill(kpi.salarioPromedio)}</div><div className="ksub"><span className="flag">{formatCOP(kpi.salarioPromedio)}</span></div></div>
+        <div className="kpi kc k-w"><div className="klabel">Salario base prom.</div><div className="kval num">{mill(kpi.salarioPromedio)}</div><div className="ksub"><span className="flag"><Monto value={kpi.salarioPromedio} /></span></div></div>
       </div>
 
       <div className="grid two" style={{ marginBottom: 12, alignItems: "stretch" }}>

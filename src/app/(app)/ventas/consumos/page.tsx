@@ -4,7 +4,8 @@
 // Filtros de año y mes (auto-envío).
 // ==========================================================
 import { requirePermiso } from "@/server/auth-context";
-import { formatCOP, formatPorcentaje } from "@/lib/format";
+import { formatPorcentaje } from "@/lib/format";
+import { Monto } from "../../_components/Monto";
 import { aniosConVenta, mesesConVenta, ventaPorMarcaConIps } from "@/lib/negocio/ventas";
 import { FiltroAuto } from "../../_components/FiltroAuto";
 
@@ -58,15 +59,15 @@ export default async function ConsumosPage({ searchParams }: { searchParams: Pro
       <div className="grid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", marginBottom: 12 }}>
         <div className="card">
           <div className="chart-head">Venta Neta</div>
-          <div className="card-body kpi-body"><div className="num kpi-val">{mill(venta)}</div><div className="ksub" style={{ justifyContent: "center" }}><span className="flag">{formatCOP(venta)}</span></div></div>
+          <div className="card-body kpi-body"><div className="num kpi-val">{mill(venta)}</div><div className="ksub" style={{ justifyContent: "center" }}><span className="flag"><Monto value={venta} /></span></div></div>
         </div>
         <div className="card">
           <div className="chart-head">Costo</div>
-          <div className="card-body kpi-body"><div className="num kpi-val">{mill(costo)}</div><div className="ksub" style={{ justifyContent: "center" }}><span className="flag">{formatCOP(costo)}</span></div></div>
+          <div className="card-body kpi-body"><div className="num kpi-val">{mill(costo)}</div><div className="ksub" style={{ justifyContent: "center" }}><span className="flag"><Monto value={costo} /></span></div></div>
         </div>
         <div className="card">
           <div className="chart-head">Utilidad Bruta</div>
-          <div className="card-body kpi-body"><div className="num kpi-val">{mill(utilidad)}</div><div className="ksub" style={{ justifyContent: "center" }}><span className="flag">{formatCOP(utilidad)}</span></div></div>
+          <div className="card-body kpi-body"><div className="num kpi-val">{mill(utilidad)}</div><div className="ksub" style={{ justifyContent: "center" }}><span className="flag"><Monto value={utilidad} /></span></div></div>
         </div>
         <div className="card">
           <div className="chart-head">% Utilidad</div>
@@ -97,9 +98,9 @@ export default async function ConsumosPage({ searchParams }: { searchParams: Pro
                   <summary>
                     <div style={{ display: "grid", gridTemplateColumns: GRID, gap: 8, alignItems: "center", padding: "9px 12px" }}>
                       <span style={{ fontWeight: 600 }}><span className="cons-chev">▸</span> {m.marca} <span className="flag">({m.ips.length} IPS)</span></span>
-                      <span className="num" style={{ textAlign: "right" }}>{formatCOP(m.valor)}</span>
-                      <span className="num flag" style={{ textAlign: "right" }}>{formatCOP(m.costo)}</span>
-                      <span className="num" style={{ textAlign: "right" }}>{formatCOP(m.valor - m.costo)}</span>
+                      <span className="num" style={{ textAlign: "right" }}><Monto value={m.valor} /></span>
+                      <span className="num flag" style={{ textAlign: "right" }}><Monto value={m.costo} /></span>
+                      <span className="num" style={{ textAlign: "right" }}><Monto value={m.valor - m.costo} /></span>
                       <span className="num" style={{ textAlign: "right", fontWeight: 700, color: pct < 0 ? "var(--bad)" : undefined }}>{formatPorcentaje(pct)}</span>
                       <span><div className="rank-bar"><div style={{ width: `${Math.max(2, (m.valor / maxVenta) * 100)}%`, background: "var(--az-2)" }} /></div></span>
                     </div>
@@ -110,9 +111,9 @@ export default async function ConsumosPage({ searchParams }: { searchParams: Pro
                       return (
                         <div key={x.ips} style={{ display: "grid", gridTemplateColumns: GRID, gap: 8, alignItems: "center", padding: "5px 12px", fontSize: 12.5 }}>
                           <span style={{ paddingLeft: 26 }}>{x.ips}</span>
-                          <span className="num" style={{ textAlign: "right" }}>{formatCOP(x.valor)}</span>
-                          <span className="num flag" style={{ textAlign: "right" }}>{formatCOP(x.costo)}</span>
-                          <span className="num" style={{ textAlign: "right" }}>{formatCOP(x.valor - x.costo)}</span>
+                          <span className="num" style={{ textAlign: "right" }}><Monto value={x.valor} /></span>
+                          <span className="num flag" style={{ textAlign: "right" }}><Monto value={x.costo} /></span>
+                          <span className="num" style={{ textAlign: "right" }}><Monto value={x.valor - x.costo} /></span>
                           <span className="num" style={{ textAlign: "right", fontWeight: 600, color: p < 0 ? "var(--bad)" : undefined }}>{formatPorcentaje(p)}</span>
                           <span />
                         </div>

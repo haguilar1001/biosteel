@@ -4,6 +4,7 @@
 // ==========================================================
 import { requirePermiso } from "@/server/auth-context";
 import { formatCOP, formatPorcentaje, formatNumero } from "@/lib/format";
+import { Monto } from "../_components/Monto";
 import { recaudoPorVendedor, diasPromedioPorCategoria, recaudoMensual } from "@/lib/negocio/reportes";
 
 export default async function ReportesPage() {
@@ -48,7 +49,7 @@ export default async function ReportesPage() {
                   <div key={c.categoria}>
                     <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 4 }}>
                       <span style={{ color: "var(--muted)" }}>{c.categoria}</span>
-                      <span style={{ fontWeight: 700 }}>{formatNumero(c.diasPromedio)} días · {formatCOP(c.saldo)}</span>
+                      <span style={{ fontWeight: 700 }}>{formatNumero(c.diasPromedio)} días · <Monto value={c.saldo} /></span>
                     </div>
                     <div style={{ height: 10, borderRadius: 6, background: "var(--brand-tint)", overflow: "hidden" }}>
                       <div style={{ width: `${Math.round((c.diasPromedio / maxDias) * 100)}%`, height: "100%", background: "var(--brand-2)" }} />
@@ -90,8 +91,8 @@ export default async function ReportesPage() {
               {vendedores.length > 0 && (
                 <tr className="fila-total">
                   <td style={{ fontWeight: 800 }}>Total · {formatNumero(vendedores.length)} vendedores</td>
-                  <td className="r num" style={{ fontWeight: 800 }}>{formatCOP(totCartera)}</td>
-                  <td className="r num" style={{ fontWeight: 800 }}>{formatCOP(totRecaudo)}</td>
+                  <td className="r num" style={{ fontWeight: 800 }}><Monto value={totCartera} /></td>
+                  <td className="r num" style={{ fontWeight: 800 }}><Monto value={totRecaudo} /></td>
                   <td className="num" style={{ fontWeight: 800 }}>{formatPorcentaje(efecTotal)}</td>
                 </tr>
               )}
@@ -101,8 +102,8 @@ export default async function ReportesPage() {
                 vendedores.map((v) => (
                   <tr key={v.vendedor}>
                     <td style={{ fontWeight: 600 }}>{v.vendedor}</td>
-                    <td className="r num">{formatCOP(v.carteraAsignada)}</td>
-                    <td className="r num" style={{ color: "var(--ok)" }}>{formatCOP(v.recaudado)}</td>
+                    <td className="r num"><Monto value={v.carteraAsignada} /></td>
+                    <td className="r num" style={{ color: "var(--ok)" }}><Monto value={v.recaudado} /></td>
                     <td>
                       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                         <div style={{ width: 90, height: 8, borderRadius: 4, background: "var(--brand-tint)", overflow: "hidden" }}>

@@ -5,6 +5,7 @@
 // ==========================================================
 import { requirePermiso } from "@/server/auth-context";
 import { formatCOP, formatPorcentaje } from "@/lib/format";
+import { Monto } from "../_components/Monto";
 import { listarPyg, acumuladoPyg, type PygMes } from "@/lib/negocio/pyg";
 import { analizarPyg, type Conclusion, type Tono } from "@/lib/negocio/pyg-analisis";
 import { MESES_LABEL } from "@/lib/negocio/flujo";
@@ -118,22 +119,22 @@ export default async function PygPage({
       <div className="kpis" style={{ marginBottom: 12 }}>
         <div className="kpi kc">
           <div className="klabel">Ventas netas (acum.)</div>
-          <div className="kval num">{formatCOP(acc.ventasNetas)}</div>
+          <div className="kval num"><Monto value={acc.ventasNetas} /></div>
           <div className="ksub"><Sparkline data={trendVentas} width={120} /></div>
         </div>
         <div className="kpi kc k-ok">
           <div className="klabel">Utilidad bruta</div>
-          <div className="kval num">{formatCOP(acc.utilidadBruta)}</div>
+          <div className="kval num"><Monto value={acc.utilidadBruta} /></div>
           <div className="ksub"><Sparkline data={trendBruta} width={120} /> <span className="flag">margen {formatPorcentaje(acc.margenBruto)}</span></div>
         </div>
         <div className="kpi kc">
           <div className="klabel">Utilidad operacional</div>
-          <div className="kval num">{formatCOP(acc.utilidadOperacional)}</div>
+          <div className="kval num"><Monto value={acc.utilidadOperacional} /></div>
           <div className="ksub"><Sparkline data={trendOper} width={120} /> <span className="flag">margen {formatPorcentaje(acc.margenOperacional)}</span></div>
         </div>
         <div className={`kpi kc ${acc.utilidadNeta >= 0 ? "k-ok" : "k-bad"}`}>
           <div className="klabel">Utilidad neta</div>
-          <div className="kval num">{formatCOP(acc.utilidadNeta)}</div>
+          <div className="kval num"><Monto value={acc.utilidadNeta} /></div>
           <div className="ksub"><Sparkline data={trendNeta} color="var(--ok)" width={120} /> <span className="flag">margen {formatPorcentaje(acc.margenNeto)}</span></div>
         </div>
       </div>
@@ -214,7 +215,7 @@ export default async function PygPage({
             <div className="card" key={am.mes}>
               <div className="chart-head">
                 <span>{MESES_LABEL[am.mes]} {ANIO}</span>
-                <span className="hact">neta {formatCOP(m.utilidadNeta)} · {formatPorcentaje(m.margenNeto)}</span>
+                <span className="hact">neta <Monto value={m.utilidadNeta} /> · {formatPorcentaje(m.margenNeto)}</span>
               </div>
               <div className="card-body"><ListaConclusiones items={am.conclusiones} /></div>
             </div>

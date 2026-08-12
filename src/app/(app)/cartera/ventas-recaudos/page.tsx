@@ -7,6 +7,7 @@
 // ==========================================================
 import { requirePermiso } from "@/server/auth-context";
 import { formatCOP, formatNumero } from "@/lib/format";
+import { Monto } from "../../_components/Monto";
 import { ventaPorCliente } from "@/lib/negocio/ventas";
 import { movimientosPorTercero, mesesConMovimiento, nombresInternos, MESES_LABEL } from "@/lib/negocio/flujo";
 import { BarrasComparativas, type BarraItem } from "../../_components/charts/BarrasComparativas";
@@ -102,17 +103,17 @@ export default async function VentasRecaudosPage({
       <div className="kpis" style={{ marginBottom: 12 }}>
         <div className="kpi">
           <div className="klabel">Ventas del mes</div>
-          <div className="kval num" style={{ color: "var(--cat-1)" }}>{formatCOP(totVentas)}</div>
+          <div className="kval num" style={{ color: "var(--cat-1)" }}><Monto value={totVentas} /></div>
           <div className="ksub"><span className="flag">facturación neta (por línea)</span></div>
         </div>
         <div className="kpi">
           <div className="klabel">Recaudos del mes</div>
-          <div className="kval num" style={{ color: "var(--cat-3)" }}>{formatCOP(totRecaudos)}</div>
+          <div className="kval num" style={{ color: "var(--cat-3)" }}><Monto value={totRecaudos} /></div>
           <div className="ksub"><span className="flag">abonos a cartera</span></div>
         </div>
         <div className={`kpi ${totRecaudos - totVentas >= 0 ? "k-ok" : "k-w"}`}>
           <div className="klabel">Recaudo − Venta</div>
-          <div className="kval num">{formatCOP(totRecaudos - totVentas)}</div>
+          <div className="kval num"><Monto value={totRecaudos - totVentas} /></div>
           <div className="ksub"><span className="flag">{totRecaudos >= totVentas ? "se recaudó más de lo vendido" : "se vendió más de lo recaudado"}</span></div>
         </div>
       </div>
@@ -138,9 +139,9 @@ export default async function VentasRecaudosPage({
               {items.length > 0 && (
                 <tr className="fila-total">
                   <td style={{ fontWeight: 800 }}>Total · {formatNumero(items.length)} clientes</td>
-                  <td className="r num" style={{ fontWeight: 800 }}>{formatCOP(totVentas)}</td>
-                  <td className="r num" style={{ fontWeight: 800 }}>{formatCOP(totRecaudos)}</td>
-                  <td className="r num" style={{ fontWeight: 800 }}>{formatCOP(totRecaudos - totVentas)}</td>
+                  <td className="r num" style={{ fontWeight: 800 }}><Monto value={totVentas} /></td>
+                  <td className="r num" style={{ fontWeight: 800 }}><Monto value={totRecaudos} /></td>
+                  <td className="r num" style={{ fontWeight: 800 }}><Monto value={totRecaudos - totVentas} /></td>
                 </tr>
               )}
               {filas.length === 0 ? (
@@ -151,7 +152,7 @@ export default async function VentasRecaudosPage({
                     <td style={{ fontWeight: 600 }} title={f.label}>{f.label}</td>
                     <td className="r num" style={{ color: "var(--cat-1)" }}>{f.ventas ? formatCOP(f.ventas) : "—"}</td>
                     <td className="r num" style={{ color: "var(--cat-3)" }}>{f.recaudos ? formatCOP(f.recaudos) : "—"}</td>
-                    <td className="r num" style={{ fontWeight: 700, color: f.recaudos - f.ventas < 0 ? "var(--w1)" : "var(--ok)" }}>{formatCOP(f.recaudos - f.ventas)}</td>
+                    <td className="r num" style={{ fontWeight: 700, color: f.recaudos - f.ventas < 0 ? "var(--w1)" : "var(--ok)" }}><Monto value={f.recaudos - f.ventas} /></td>
                   </tr>
                 ))
               )}

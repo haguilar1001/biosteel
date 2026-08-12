@@ -2,7 +2,8 @@
 // Anticipos / saldos a favor (aparte de CxP), por tercero.
 // ==========================================================
 import { requirePermiso } from "@/server/auth-context";
-import { formatCOP, formatNumero } from "@/lib/format";
+import { formatNumero } from "@/lib/format";
+import { Monto } from "../../_components/Monto";
 import { resumenAnticipos, anticiposPorTercero, type TipoProveedorFiltro } from "@/lib/negocio/cxp";
 import { Buscador } from "../../_components/Buscador";
 import { BotonImprimir } from "../../_components/BotonImprimir";
@@ -44,16 +45,16 @@ export default async function AnticiposPage({
       <div className="kpis">
         <div className="kpi k-ok">
           <div className="klabel">Total anticipos</div>
-          <div className="kval num">{formatCOP(resumen.total)}</div>
+          <div className="kval num"><Monto value={resumen.total} /></div>
           <div className="ksub"><span className="flag">{formatNumero(resumen.cantidad)} documentos</span></div>
         </div>
         <div className="kpi">
           <div className="klabel">A internos</div>
-          <div className="kval num">{formatCOP(resumen.internos)}</div>
+          <div className="kval num"><Monto value={resumen.internos} /></div>
         </div>
         <div className="kpi">
           <div className="klabel">A externos</div>
-          <div className="kval num">{formatCOP(resumen.externos)}</div>
+          <div className="kval num"><Monto value={resumen.externos} /></div>
         </div>
       </div>
 
@@ -74,7 +75,7 @@ export default async function AnticiposPage({
                   <td style={{ fontWeight: 800 }}>Total · {formatNumero(filas.length)} terceros</td>
                   <td></td><td></td>
                   <td className="r num" style={{ fontWeight: 800 }}>{totFiltrado.docs}</td>
-                  <td className="r num" style={{ fontWeight: 800 }}>{formatCOP(totFiltrado.ant)}</td>
+                  <td className="r num" style={{ fontWeight: 800 }}><Monto value={totFiltrado.ant} /></td>
                 </tr>
               )}
               {filas.length === 0 ? (
@@ -86,7 +87,7 @@ export default async function AnticiposPage({
                     <td className="num flag">{f.nit}</td>
                     <td><span className={`tag ${f.interno ? "t-w1" : "t-blue"}`}>{f.interno ? "Interno" : "Externo"}</span></td>
                     <td className="r num">{formatNumero(f.documentos)}</td>
-                    <td className="r num" style={{ fontWeight: 700, color: "var(--ok)" }}>{formatCOP(f.anticipo)}</td>
+                    <td className="r num" style={{ fontWeight: 700, color: "var(--ok)" }}><Monto value={f.anticipo} /></td>
                   </tr>
                 ))
               )}

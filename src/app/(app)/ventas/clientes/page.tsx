@@ -2,7 +2,8 @@
 // Ventas por Cliente (anual). Venta neta, costo, utilidad y % por cliente.
 // ==========================================================
 import { requirePermiso } from "@/server/auth-context";
-import { formatCOP, formatPorcentaje, formatNumero } from "@/lib/format";
+import { formatPorcentaje, formatNumero } from "@/lib/format";
+import { Monto } from "../../_components/Monto";
 import { ventaPorCliente, resumenAnual, aniosConVenta } from "@/lib/negocio/ventas";
 import { TopRanking, type RankItem } from "../../_components/charts/TopRanking";
 import { FiltroAuto } from "../../_components/FiltroAuto";
@@ -47,10 +48,10 @@ export default async function VentasClientesPage({ searchParams }: { searchParam
             <tbody>
               <tr className="fila-total">
                 <td style={{ fontWeight: 800 }}>Total · {formatNumero(clientes.length)} clientes</td><td></td>
-                <td className="r num" style={{ fontWeight: 800 }}>{formatCOP(kpi.venta)}</td>
+                <td className="r num" style={{ fontWeight: 800 }}><Monto value={kpi.venta} /></td>
                 <td className="r num" style={{ fontWeight: 800 }}>{formatPorcentaje(100)}</td>
-                <td className="r num" style={{ fontWeight: 800 }}>{formatCOP(kpi.costo)}</td>
-                <td className="r num" style={{ fontWeight: 800 }}>{formatCOP(kpi.utilidad)}</td>
+                <td className="r num" style={{ fontWeight: 800 }}><Monto value={kpi.costo} /></td>
+                <td className="r num" style={{ fontWeight: 800 }}><Monto value={kpi.utilidad} /></td>
                 <td className="r num" style={{ fontWeight: 800 }}>{formatPorcentaje(kpi.margen)}</td>
               </tr>
               {clientes.map((c) => {
@@ -59,10 +60,10 @@ export default async function VentasClientesPage({ searchParams }: { searchParam
                   <tr key={c.clienteNombre}>
                     <td style={{ fontWeight: 600 }} title={c.clienteNombre}>{c.clienteNombre}</td>
                     <td className="num flag">{c.nit}</td>
-                    <td className="r num" style={{ fontWeight: 700 }}>{formatCOP(c.valor)}</td>
+                    <td className="r num" style={{ fontWeight: 700 }}><Monto value={c.valor} /></td>
                     <td className="r num">{kpi.venta > 0 ? formatPorcentaje((c.valor / kpi.venta) * 100) : "—"}</td>
-                    <td className="r num flag">{formatCOP(c.costo)}</td>
-                    <td className="r num" style={{ color: util >= 0 ? "var(--ok)" : "var(--bad)" }}>{formatCOP(util)}</td>
+                    <td className="r num flag"><Monto value={c.costo} /></td>
+                    <td className="r num" style={{ color: util >= 0 ? "var(--ok)" : "var(--bad)" }}><Monto value={util} /></td>
                     <td className="r num">{c.valor > 0 ? formatPorcentaje((util / c.valor) * 100) : "—"}</td>
                   </tr>
                 );

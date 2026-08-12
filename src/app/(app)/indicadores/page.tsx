@@ -6,6 +6,7 @@
 import { requirePermiso } from "@/server/auth-context";
 import { alcanceDe } from "@/lib/rbac/authorize";
 import { formatCOP, formatPorcentaje, formatNumero } from "@/lib/format";
+import { Monto } from "../_components/Monto";
 import { calcularIndicadores, type IndicadorCalc } from "@/lib/negocio/indicadores";
 import { flujoMensual } from "@/lib/negocio/flujo";
 import { ventaPorLinea } from "@/lib/negocio/ventas";
@@ -157,7 +158,7 @@ export default async function IndicadoresPage({
       <div className="card" style={{ marginTop: 12 }}>
         <div className="chart-head">
           Venta por Línea
-          <span className="hact">{periodoLabel || "sin datos"} · {formatCOP(totalLineas)}</span>
+          <span className="hact">{periodoLabel || "sin datos"} · <Monto value={totalLineas} /></span>
         </div>
         <div className="card-body">
           {lineas.length === 0 ? (
@@ -176,13 +177,13 @@ export default async function IndicadoresPage({
                   <tbody>
                     <tr className="fila-total">
                       <td style={{ fontWeight: 800 }}>Total · {formatNumero(lineas.length)} líneas</td>
-                      <td className="r num" style={{ fontWeight: 800 }}>{formatCOP(totalLineas)}</td>
+                      <td className="r num" style={{ fontWeight: 800 }}><Monto value={totalLineas} /></td>
                       <td className="r num" style={{ fontWeight: 800 }}>{formatPorcentaje(100)}</td>
                     </tr>
                     {lineas.map((l) => (
                       <tr key={l.linea}>
                         <td style={{ fontWeight: 600 }} title={l.linea}>{l.linea}</td>
-                        <td className="r num">{formatCOP(l.valor)}</td>
+                        <td className="r num"><Monto value={l.valor} /></td>
                         <td className="r num" style={{ color: "var(--muted)" }}>{formatPorcentaje(totalLineas > 0 ? (l.valor / totalLineas) * 100 : 0)}</td>
                       </tr>
                     ))}

@@ -9,6 +9,7 @@ import { puede } from "@/lib/rbac/authorize";
 import type { PermisoClave } from "@/lib/rbac/permissions";
 import { logoutAction } from "../login/actions";
 import { GruposBar, SubMenu, type Grupo } from "./_components/GroupNav";
+import { MontosToggle } from "./_components/MontosToggle";
 import { ADMIN_SECCIONES } from "./admin/_nav";
 
 // Menú en dos niveles: grupo → módulos. Cada módulo se filtra por permiso;
@@ -90,6 +91,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         <div className="sep" />
         <div className="ctx">
           <span className="chip-ctx" title={usuario.rol.nombre}>{usuario.rol.nombre}</span>
+          <MontosToggle />
           {(await puede(usuario, "cxp.view")) && (
             <a href="/notificaciones" className="bell" title="Notificaciones" aria-label="Notificaciones">🔔</a>
           )}

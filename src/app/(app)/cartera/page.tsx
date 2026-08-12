@@ -3,7 +3,8 @@
 // KPIs + aging por edades (clicable) + detalle con buscador.
 // ==========================================================
 import { requirePermiso } from "@/server/auth-context";
-import { formatCOP, formatNumero, formatFecha, formatPorcentaje } from "@/lib/format";
+import { formatNumero, formatFecha, formatPorcentaje } from "@/lib/format";
+import { Monto } from "../_components/Monto";
 import { resumenCartera, listarFacturas } from "@/lib/negocio/cartera";
 import { CUBETAS, type CubetaAging } from "@/lib/negocio/aging";
 import { Buscador } from "../_components/Buscador";
@@ -85,21 +86,21 @@ export default async function CarteraPage({
       <div className="kpis">
         <div className="kpi kc">
           <div className="klabel">CxC neta</div>
-          <div className="kval num">{formatCOP(resumen.total)}</div>
+          <div className="kval num"><Monto value={resumen.total} /></div>
           <div className="ksub"><span className="flag">{resumen.cantidadFacturas} facturas</span></div>
         </div>
         <div className="kpi kc k-bad">
           <div className="klabel">Vencida</div>
-          <div className="kval num">{formatCOP(resumen.vencido)}</div>
+          <div className="kval num"><Monto value={resumen.vencido} /></div>
           <div className="ksub"><span className="flag">facturas con mora</span></div>
         </div>
         <div className="kpi kc k-ok">
           <div className="klabel">Al día / por vencer</div>
-          <div className="kval num">{formatCOP(resumen.alDia)}</div>
+          <div className="kval num"><Monto value={resumen.alDia} /></div>
         </div>
         <div className="kpi kc k-w">
           <div className="klabel">Notas / a favor</div>
-          <div className="kval num">{formatCOP(resumen.anticipos)}</div>
+          <div className="kval num"><Monto value={resumen.anticipos} /></div>
           <div className="ksub"><span className="flag">{resumen.anticiposCantidad} documentos</span></div>
         </div>
       </div>
@@ -115,7 +116,7 @@ export default async function CarteraPage({
               <tr className="fila-total">
                 <td style={{ fontWeight: 800 }}>Total por cobrar</td>
                 <td className="r num" style={{ fontWeight: 800 }}>{formatNumero(facturasAging)}</td>
-                <td className="r num" style={{ fontWeight: 800 }}>{formatCOP(carteraPositiva)}</td>
+                <td className="r num" style={{ fontWeight: 800 }}><Monto value={carteraPositiva} /></td>
                 <td className="r num" style={{ fontWeight: 800 }}>{formatPorcentaje(100)}</td>
               </tr>
               {CUBETAS.map((c) => {
@@ -132,7 +133,7 @@ export default async function CarteraPage({
                       </a>
                     </td>
                     <td className="r num">{formatNumero(celda.cantidad)}</td>
-                    <td className="r num" style={{ fontWeight: 700 }}>{formatCOP(celda.monto)}</td>
+                    <td className="r num" style={{ fontWeight: 700 }}><Monto value={celda.monto} /></td>
                     <td className="r num" style={{ color: "var(--muted)" }}>{formatPorcentaje(pct)}</td>
                   </tr>
                 );
@@ -175,7 +176,7 @@ export default async function CarteraPage({
               {filas.length > 0 && (
                 <tr className="fila-total">
                   <td colSpan={4} style={{ fontWeight: 800 }}>Total neto · {formatNumero(total)} factura{total === 1 ? "" : "s"}</td>
-                  <td className="r num" style={{ fontWeight: 800 }}>{formatCOP(suma)}</td>
+                  <td className="r num" style={{ fontWeight: 800 }}><Monto value={suma} /></td>
                   <td colSpan={2}></td>
                 </tr>
               )}
@@ -188,7 +189,7 @@ export default async function CarteraPage({
                     <td title={f.cliente}>{f.cliente}</td>
                     <td className="num flag">{f.nit}</td>
                     <td className="flag" title={f.concepto ?? ""}>{f.concepto}</td>
-                    <td className="r num" style={{ fontWeight: 700, color: f.saldo < 0 ? "var(--ok)" : undefined }}>{formatCOP(f.saldo)}</td>
+                    <td className="r num" style={{ fontWeight: 700, color: f.saldo < 0 ? "var(--ok)" : undefined }}><Monto value={f.saldo} /></td>
                     <td>{formatFecha(f.fechaVencimiento)}</td>
                     <td>{f.saldo > 0 ? <span className={`tag ${CUBETA_TAG[f.cubeta]}`}>{CUBETA_LABEL[f.cubeta]}{f.dias > 0 ? ` · ${formatNumero(f.dias)}d` : ""}</span> : <span className="flag">—</span>}</td>
                   </tr>

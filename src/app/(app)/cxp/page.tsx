@@ -4,7 +4,8 @@
 // concepto y acceso al informe por proveedor.
 // ==========================================================
 import { requirePermiso } from "@/server/auth-context";
-import { formatCOP, formatNumero, formatFecha } from "@/lib/format";
+import { formatNumero, formatFecha } from "@/lib/format";
+import { Monto } from "../_components/Monto";
 import { resumenCxp, listarDocumentosCxp, diasParaVencer } from "@/lib/negocio/cxp";
 import { Buscador } from "../_components/Buscador";
 import { BotonImprimir } from "../_components/BotonImprimir";
@@ -46,22 +47,22 @@ export default async function CxpPage({
       <div className="kpis">
         <div className="kpi">
           <div className="klabel">CxP neta</div>
-          <div className="kval num">{formatCOP(resumen.total)}</div>
+          <div className="kval num"><Monto value={resumen.total} /></div>
           <div className="ksub"><span className="flag">{formatNumero(resumen.cantidad)} documentos</span></div>
         </div>
         <div className="kpi k-bad">
           <div className="klabel">Vencida</div>
-          <div className="kval num">{formatCOP(resumen.vencido)}</div>
+          <div className="kval num"><Monto value={resumen.vencido} /></div>
           <div className="ksub"><span className="flag">documentos con mora</span></div>
         </div>
         <div className="kpi k-ok">
           <div className="klabel">Al día / por vencer</div>
-          <div className="kval num">{formatCOP(resumen.alDia)}</div>
+          <div className="kval num"><Monto value={resumen.alDia} /></div>
           <div className="ksub"><span className="flag">sin mora</span></div>
         </div>
         <a href="/cxp/anticipos" className="kpi k-w" style={{ textDecoration: "none" }}>
           <div className="klabel">Anticipos (incluidos)</div>
-          <div className="kval num">{formatCOP(resumen.anticipos)}</div>
+          <div className="kval num"><Monto value={resumen.anticipos} /></div>
           <div className="ksub"><span className="flag">{formatNumero(resumen.anticiposCantidad)} docs · ver detalle →</span></div>
         </a>
       </div>
@@ -93,7 +94,7 @@ export default async function CxpPage({
               {filas.length > 0 && (
                 <tr className="fila-total">
                   <td colSpan={4} style={{ fontWeight: 800 }}>Total neto · {formatNumero(total)} documento{total === 1 ? "" : "s"}</td>
-                  <td className="r num" style={{ fontWeight: 800 }}>{formatCOP(suma)}</td>
+                  <td className="r num" style={{ fontWeight: 800 }}><Monto value={suma} /></td>
                   <td colSpan={2}></td>
                 </tr>
               )}
@@ -108,7 +109,7 @@ export default async function CxpPage({
                       <td title={d.proveedor}>{d.proveedor}</td>
                       <td className="num flag">{d.nit}</td>
                       <td className="flag" title={d.concepto ?? ""}>{d.concepto}</td>
-                      <td className="r num" style={{ fontWeight: 700, color: d.saldo < 0 ? "var(--ok)" : undefined }}>{formatCOP(d.saldo)}</td>
+                      <td className="r num" style={{ fontWeight: 700, color: d.saldo < 0 ? "var(--ok)" : undefined }}><Monto value={d.saldo} /></td>
                       <td>{formatFecha(d.fechaVencimiento)} <span className={`tag ${t.clase}`}>{t.texto}</span></td>
                       <td>{d.estado}</td>
                     </tr>

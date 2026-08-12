@@ -1,6 +1,7 @@
 // Informe de Cartera por Cliente (neto), con buscador, % participación y total arriba.
 import { requirePermiso } from "@/server/auth-context";
 import { formatCOP, formatPorcentaje, formatNumero } from "@/lib/format";
+import { Monto } from "../../_components/Monto";
 import { carteraPorCliente } from "@/lib/negocio/cartera";
 import { Buscador } from "../../_components/Buscador";
 import { BotonImprimir } from "../../_components/BotonImprimir";
@@ -25,7 +26,7 @@ export default async function CarteraPorClientePage({
         <div>
           <div className="eyebrow">Cartera</div>
           <h1>Informe por cliente</h1>
-          <p>{formatNumero(filas.length)} clientes · saldo neto {formatCOP(tot.saldo)}</p>
+          <p>{formatNumero(filas.length)} clientes · saldo neto <Monto value={tot.saldo} /></p>
         </div>
         <div className="toolbar">
           <a href={`/cartera/clientes/export${q ? `?q=${encodeURIComponent(q)}` : ""}`} className="btn" title="Descargar en Excel">⬇️ Excel</a>
@@ -53,9 +54,9 @@ export default async function CarteraPorClientePage({
                   <td style={{ fontWeight: 800 }}>Total · {formatNumero(filas.length)} clientes</td>
                   <td></td>
                   <td className="r num" style={{ fontWeight: 800 }}>{tot.docs}</td>
-                  <td className="r num" style={{ fontWeight: 800 }}>{formatCOP(tot.saldo)}</td>
+                  <td className="r num" style={{ fontWeight: 800 }}><Monto value={tot.saldo} /></td>
                   <td className="r num" style={{ fontWeight: 800 }}>{formatPorcentaje(100)}</td>
-                  <td className="r num">{formatCOP(tot.vencido)}</td>
+                  <td className="r num"><Monto value={tot.vencido} /></td>
                   <td></td>
                 </tr>
               )}
@@ -67,7 +68,7 @@ export default async function CarteraPorClientePage({
                     <td style={{ fontWeight: 600 }}>{f.cliente}</td>
                     <td className="num flag">{f.nit}</td>
                     <td className="r num">{formatNumero(f.documentos)}</td>
-                    <td className="r num" style={{ fontWeight: 700 }}>{formatCOP(f.saldoNeto)}</td>
+                    <td className="r num" style={{ fontWeight: 700 }}><Monto value={f.saldoNeto} /></td>
                     <td className="r num">{tot.saldo !== 0 ? formatPorcentaje((f.saldoNeto / tot.saldo) * 100) : "—"}</td>
                     <td className="r num" style={{ color: f.vencido > 0 ? "var(--bad)" : undefined }}>{f.vencido !== 0 ? formatCOP(f.vencido) : "—"}</td>
                     <td className="r num">{f.diasMax > 0 ? `${f.diasMax}d` : "—"}</td>

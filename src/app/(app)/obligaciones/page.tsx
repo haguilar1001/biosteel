@@ -4,6 +4,7 @@
 // ==========================================================
 import { requirePermiso } from "@/server/auth-context";
 import { formatCOP, formatPorcentaje, formatNumero, formatFecha } from "@/lib/format";
+import { Monto } from "../_components/Monto";
 import { listarObligaciones, resumenObligaciones, tipoLabel, type NivelAlerta } from "@/lib/negocio/obligaciones";
 
 function badgeAlerta(alerta: NivelAlerta, dias: number | null): { clase: string; texto: string } {
@@ -34,12 +35,12 @@ export default async function ObligacionesPage() {
       <div className="kpis">
         <div className="kpi">
           <div className="klabel">Saldo total</div>
-          <div className="kval num">{formatCOP(resumen.totalSaldo)}</div>
+          <div className="kval num"><Monto value={resumen.totalSaldo} /></div>
           <div className="ksub"><span className="flag">{formatNumero(resumen.cantidad)} obligaciones</span></div>
         </div>
         <div className="kpi k-egreso">
           <div className="klabel">Cuota mensual</div>
-          <div className="kval num">{formatCOP(resumen.totalCuotaMensual)}</div>
+          <div className="kval num"><Monto value={resumen.totalCuotaMensual} /></div>
           <div className="ksub"><span className="flag">suma de cuotas</span></div>
         </div>
         <div className="kpi k-w">
@@ -67,9 +68,9 @@ export default async function ObligacionesPage() {
             <tbody>
               <tr className="fila-total">
                 <td colSpan={3} style={{ fontWeight: 800 }}>Total · {formatNumero(resumen.cantidad)} obligaciones</td>
-                <td className="r num" style={{ fontWeight: 800 }}>{formatCOP(resumen.totalSaldo)}</td>
+                <td className="r num" style={{ fontWeight: 800 }}><Monto value={resumen.totalSaldo} /></td>
                 <td></td>
-                <td className="r num" style={{ fontWeight: 800 }}>{formatCOP(resumen.totalCuotaMensual)}</td>
+                <td className="r num" style={{ fontWeight: 800 }}><Monto value={resumen.totalCuotaMensual} /></td>
                 <td colSpan={2}></td>
               </tr>
               {filas.map((o) => {
@@ -79,7 +80,7 @@ export default async function ObligacionesPage() {
                     <td style={{ fontWeight: 600 }} title={o.notas ?? ""}>{o.entidad}</td>
                     <td><span className="tag t-blue">{tipoLabel(o.tipo)}</span></td>
                     <td className="num flag">{o.numero}</td>
-                    <td className="r num" style={{ fontWeight: 700 }}>{formatCOP(o.saldoCapital)}</td>
+                    <td className="r num" style={{ fontWeight: 700 }}><Monto value={o.saldoCapital} /></td>
                     <td className="r num">{o.tasaEA != null ? formatPorcentaje(o.tasaEA) : "—"}</td>
                     <td className="r num">{o.cuotaMensual != null ? formatCOP(o.cuotaMensual) : "—"}</td>
                     <td>

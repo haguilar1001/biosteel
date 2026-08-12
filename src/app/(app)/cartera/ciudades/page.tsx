@@ -3,7 +3,7 @@
 // (cada ciudad se expande y muestra el saldo por IPS con % sobre la ciudad).
 // ==========================================================
 import { requirePermiso } from "@/server/auth-context";
-import { formatCOP } from "@/lib/format";
+import { Monto } from "../../_components/Monto";
 import { carteraPorCiudad } from "@/lib/negocio/cartera";
 import { MapaCartera } from "../../_components/charts/MapaCartera";
 import { BotonImprimir } from "../../_components/BotonImprimir";
@@ -47,7 +47,7 @@ export default async function CarteraPorCiudadPage() {
       </div>
 
       <div className="card no-print" style={{ marginBottom: 12 }}>
-        <div className="chart-head">Mapa de cartera <span className="hact">{ciudades.length} ciudades · {formatCOP(total)}</span></div>
+        <div className="chart-head">Mapa de cartera <span className="hact">{ciudades.length} ciudades · <Monto value={total} /></span></div>
         <div className="card-body"><MapaCartera data={mapaData} /></div>
       </div>
 

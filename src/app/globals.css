@@ -289,6 +289,10 @@ h1, h2, h3 { margin: 0; }
 .cons-det > summary:hover { background: var(--surface-2, #f6f8fc); }
 .cons-chev { display: inline-block; width: 14px; transition: transform .12s; color: var(--muted); }
 .cons-det[open] > summary .cons-chev { transform: rotate(90deg); }
+/* Toggle de montos completos/resumidos (data-montos en <html>). */
+.monto-short { display: none; }
+:root[data-montos="resumido"] .monto-full { display: none; }
+:root[data-montos="resumido"] .monto-short { display: inline; }
 /* .kc queda como alias: el centrado ya es el comportamiento por defecto. */
 .flag { font-size: 11px; color: var(--muted); }
 .delta { display: inline-flex; align-items: center; gap: 3px; font-weight: 700; padding: 2px 7px; border-radius: 20px; font-size: 11px; }

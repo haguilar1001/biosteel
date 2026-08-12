@@ -5,6 +5,7 @@
 import { requirePermiso } from "@/server/auth-context";
 import { puede, alcanceDe } from "@/lib/rbac/authorize";
 import { formatCOP, formatPorcentaje, formatNumero, formatFecha } from "@/lib/format";
+import { Monto } from "../_components/Monto";
 import { flujoMensual, totalesFlujo, presupuestoVsReal, MESES_LABEL } from "@/lib/negocio/flujo";
 import { resumenCxp } from "@/lib/negocio/cxp";
 import { resumenCartera, carteraPorCiudad } from "@/lib/negocio/cartera";
@@ -110,28 +111,28 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
             <div className="card">
               <div className="chart-head">Venta del mes</div>
               <div className="card-body kpi-body">
-                <div className="num kpi-val">{formatCOP(ventaMesActual)}</div>
+                <div className="num kpi-val"><Monto value={ventaMesActual} /></div>
                 <div className="ksub" style={{ justifyContent: "center" }}><span className="flag">acumulada al día {diaHoy}</span></div>
               </div>
             </div>
             <div className="card">
               <div className="chart-head">Proyectado a fin de mes</div>
               <div className="card-body kpi-body">
-                <div className="num kpi-val">{formatCOP(ventaProyectada)}</div>
+                <div className="num kpi-val"><Monto value={ventaProyectada} /></div>
                 <div className="ksub" style={{ justifyContent: "center" }}><span className="flag">al ritmo actual ({diaHoy}/{diasMes} días)</span></div>
               </div>
             </div>
             <div className="card">
               <div className="chart-head">Presupuesto (meta)</div>
               <div className="card-body kpi-body">
-                <div className="num kpi-val">{formatCOP(PRESUPUESTO_VENTA_MES)}</div>
+                <div className="num kpi-val"><Monto value={PRESUPUESTO_VENTA_MES} /></div>
                 <div className="ksub" style={{ justifyContent: "center" }}><span className="flag">$2.000M / mes</span></div>
               </div>
             </div>
             <div className="card">
               <div className="chart-head">Diferencia vs presupuesto</div>
               <div className="card-body kpi-body">
-                <div className="num kpi-val">{difPresupuesto >= 0 ? "+" : "−"}{formatCOP(Math.abs(difPresupuesto))}</div>
+                <div className="num kpi-val">{difPresupuesto >= 0 ? "+" : "−"}<Monto value={Math.abs(difPresupuesto)} /></div>
                 <div className="ksub" style={{ justifyContent: "center" }}><span className="flag">proyectado − presupuesto</span></div>
               </div>
             </div>
@@ -225,7 +226,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
               </FiltroAuto>
               {grupos.length === 0 ? <div className="empty">Sin egresos{mesEgr ? ` en ${MESES_FULL[mesEgr]}` : ""}.</div> : (
                 <>
-                  <div className="flag" style={{ marginBottom: 10 }}>Total egresos: <strong className="num">{formatCOP(totalEgresos)}</strong></div>
+                  <div className="flag" style={{ marginBottom: 10 }}>Total egresos: <strong className="num"><Monto value={totalEgresos} /></strong></div>
                   <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
                     {grupos.map((g, idx) => {
                       const pct = totalEgresos > 0 ? (g.real / totalEgresos) * 100 : 0;
@@ -233,7 +234,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                         <div key={g.categoria}>
                           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8, marginBottom: 3 }}>
                             <span className="rank-label" title={g.categoria} style={{ fontSize: 12.5, fontWeight: 600 }}>{g.categoria}</span>
-                            <span className="num" style={{ fontSize: 12.5, whiteSpace: "nowrap" }}>{formatCOP(g.real)} <span className="flag">· {pct.toFixed(1).replace(".", ",")}%</span></span>
+                            <span className="num" style={{ fontSize: 12.5, whiteSpace: "nowrap" }}><Monto value={g.real} /> <span className="flag">· {pct.toFixed(1).replace(".", ",")}%</span></span>
                           </div>
                           <div className="rank-bar"><div style={{ width: `${Math.max(2, (g.real / maxEgr) * 100)}%`, background: AZULES[idx % AZULES.length] }} /></div>
                         </div>
@@ -284,7 +285,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                     return (
                       <tr key={o.id}>
                         <td style={{ fontWeight: 600 }}><span style={{ textTransform: "uppercase" }}>{o.entidad}</span> <span className="flag">· {tipoLabel(o.tipo)}</span></td>
-                        <td className="r num">{formatCOP(o.saldoCapital)}</td>
+                        <td className="r num"><Monto value={o.saldoCapital} /></td>
                         <td>{o.proximaFecha ? <>{formatFecha(o.proximaFecha)} <span className={`tag ${b.clase}`}>{b.texto}</span></> : "—"}</td>
                         <td className="r num">{o.cuotaMensual != null ? formatCOP(o.cuotaMensual) : "—"}</td>
                       </tr>

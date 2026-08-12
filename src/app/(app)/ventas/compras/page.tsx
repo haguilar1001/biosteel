@@ -4,6 +4,7 @@
 // ==========================================================
 import { requirePermiso } from "@/server/auth-context";
 import { formatCOP, formatNumero } from "@/lib/format";
+import { Monto } from "../../_components/Monto";
 import { comprasPorProveedorMes } from "@/lib/negocio/cxp";
 import { aniosConVenta } from "@/lib/negocio/ventas";
 import { FiltroAuto } from "../../_components/FiltroAuto";
@@ -37,7 +38,7 @@ export default async function ComprasPage({ searchParams }: { searchParams: Prom
       </div>
 
       <div className="card">
-        <div className="chart-head">Compras (facturado CxP) · valores en millones COP <span className="hact">total {formatCOP(total)}</span></div>
+        <div className="chart-head">Compras (facturado CxP) · valores en millones COP <span className="hact">total <Monto value={total} /></span></div>
         <div className="tbl-wrap">
           <table className="tabla-fit" style={{ fontSize: 12.5 }}>
             <thead>

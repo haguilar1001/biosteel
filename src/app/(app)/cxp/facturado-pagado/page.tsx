@@ -4,7 +4,8 @@
 //   Pagado    = egresos del Flujo de Caja al proveedor en el mes.
 // ==========================================================
 import { requirePermiso } from "@/server/auth-context";
-import { formatCOP, formatNumero } from "@/lib/format";
+import { formatNumero } from "@/lib/format";
+import { Monto } from "../../_components/Monto";
 import { facturadoVsPagado } from "@/lib/negocio/cxp";
 import { mesesConMovimiento, MESES_LABEL } from "@/lib/negocio/flujo";
 import { BarrasComparativas, type BarraItem } from "../../_components/charts/BarrasComparativas";
@@ -78,17 +79,17 @@ export default async function FacturadoPagadoPage({
       <div className="kpis" style={{ marginBottom: 12 }}>
         <div className="kpi">
           <div className="klabel">Facturado {todos ? "en el año" : "en el mes"}</div>
-          <div className="kval num" style={{ color: "var(--cat-1)" }}>{formatCOP(totFact)}</div>
+          <div className="kval num" style={{ color: "var(--cat-1)" }}><Monto value={totFact} /></div>
           <div className="ksub"><span className="flag">documentos emitidos (CxP)</span></div>
         </div>
         <div className="kpi">
           <div className="klabel">Pagado {todos ? "en el año" : "en el mes"}</div>
-          <div className="kval num" style={{ color: "var(--cat-3)" }}>{formatCOP(totPag)}</div>
+          <div className="kval num" style={{ color: "var(--cat-3)" }}><Monto value={totPag} /></div>
           <div className="ksub"><span className="flag">egresos a proveedores</span></div>
         </div>
         <div className={`kpi ${totPag - totFact >= 0 ? "k-ok" : "k-bad"}`}>
           <div className="klabel">Pagado − Facturado</div>
-          <div className="kval num">{formatCOP(totPag - totFact)}</div>
+          <div className="kval num"><Monto value={totPag - totFact} /></div>
           <div className="ksub"><span className="flag">{totPag >= totFact ? "se pagó más de lo facturado" : "se facturó más de lo pagado"}</span></div>
         </div>
       </div>
@@ -118,9 +119,9 @@ export default async function FacturadoPagadoPage({
                 <tr className="fila-total">
                   <td style={{ fontWeight: 800 }}>Total · {formatNumero(items.length)} proveedores</td>
                   <td></td>
-                  <td className="r num" style={{ fontWeight: 800 }}>{formatCOP(totFact)}</td>
-                  <td className="r num" style={{ fontWeight: 800 }}>{formatCOP(totPag)}</td>
-                  <td className="r num" style={{ fontWeight: 800 }}>{formatCOP(totPag - totFact)}</td>
+                  <td className="r num" style={{ fontWeight: 800 }}><Monto value={totFact} /></td>
+                  <td className="r num" style={{ fontWeight: 800 }}><Monto value={totPag} /></td>
+                  <td className="r num" style={{ fontWeight: 800 }}><Monto value={totPag - totFact} /></td>
                   <td className="r">{pctTag(totFact, totPag)}</td>
                 </tr>
               )}
@@ -131,9 +132,9 @@ export default async function FacturadoPagadoPage({
                   <tr key={f.proveedor}>
                     <td style={{ fontWeight: 600 }} title={f.proveedor}>{f.proveedor}</td>
                     <td className="num flag">{f.nit}</td>
-                    <td className="r num" style={{ color: "var(--cat-1)" }}>{formatCOP(f.facturado)}</td>
-                    <td className="r num" style={{ color: "var(--cat-3)" }}>{formatCOP(f.pagado)}</td>
-                    <td className="r num" style={{ fontWeight: 700, color: f.pagado - f.facturado < 0 ? "var(--bad)" : "var(--ok)" }}>{formatCOP(f.pagado - f.facturado)}</td>
+                    <td className="r num" style={{ color: "var(--cat-1)" }}><Monto value={f.facturado} /></td>
+                    <td className="r num" style={{ color: "var(--cat-3)" }}><Monto value={f.pagado} /></td>
+                    <td className="r num" style={{ fontWeight: 700, color: f.pagado - f.facturado < 0 ? "var(--bad)" : "var(--ok)" }}><Monto value={f.pagado - f.facturado} /></td>
                     <td className="r">{pctTag(f.facturado, f.pagado)}</td>
                   </tr>
                 ))

@@ -1,6 +1,7 @@
 // Resumen del Flujo de Caja: ingresos vs egresos vs presupuesto por mes.
 import { requirePermiso } from "@/server/auth-context";
 import { formatCOP, formatPorcentaje } from "@/lib/format";
+import { Monto } from "../_components/Monto";
 import { flujoMensual, MESES_LABEL } from "@/lib/negocio/flujo";
 import { FiltroAuto } from "../_components/FiltroAuto";
 
@@ -51,15 +52,15 @@ export default async function FlujoResumenPage({
       <div className="kpis">
         <div className="kpi k-ingreso">
           <div className="klabel">Ingresos {alcance}</div>
-          <div className="kval num">{formatCOP(tot.ingresos)}</div>
+          <div className="kval num"><Monto value={tot.ingresos} /></div>
         </div>
         <div className="kpi k-egreso">
           <div className="klabel">Egresos {alcance}</div>
-          <div className="kval num">{formatCOP(tot.egresos)}</div>
+          <div className="kval num"><Monto value={tot.egresos} /></div>
         </div>
         <div className="kpi">
           <div className="klabel">Flujo neto</div>
-          <div className="kval num" style={{ color: tot.neto >= 0 ? "var(--ok)" : "var(--bad)" }}>{formatCOP(tot.neto)}</div>
+          <div className="kval num" style={{ color: tot.neto >= 0 ? "var(--ok)" : "var(--bad)" }}><Monto value={tot.neto} /></div>
           <div className="ksub"><span className="flag">ingresos − egresos</span></div>
         </div>
         <div className="kpi k-w">
@@ -100,19 +101,19 @@ export default async function FlujoResumenPage({
             <tbody>
               <tr className="fila-total">
                 <td style={{ fontWeight: 800 }}>{mes ? MESES_LABEL[mes]!.toUpperCase() : `Total ${ANIO}`}</td>
-                <td className="r num" style={{ fontWeight: 800 }}>{formatCOP(tot.ingresos)}</td>
-                <td className="r num" style={{ fontWeight: 800 }}>{formatCOP(tot.egresos)}</td>
-                <td className="r num" style={{ fontWeight: 800 }}>{formatCOP(tot.neto)}</td>
-                <td className="r num" style={{ fontWeight: 800 }}>{formatCOP(tot.presupuesto)}</td>
+                <td className="r num" style={{ fontWeight: 800 }}><Monto value={tot.ingresos} /></td>
+                <td className="r num" style={{ fontWeight: 800 }}><Monto value={tot.egresos} /></td>
+                <td className="r num" style={{ fontWeight: 800 }}><Monto value={tot.neto} /></td>
+                <td className="r num" style={{ fontWeight: 800 }}><Monto value={tot.presupuesto} /></td>
                 <td className="r num" style={{ fontWeight: 800 }}>{formatPorcentaje(tot.ejecucion)}</td>
               </tr>
               {!mes && meses.map((m) => (
                 <tr key={m.mes}>
                   <td style={{ fontWeight: 600, textTransform: "uppercase" }}>{MESES_LABEL[m.mes]}</td>
-                  <td className="r num" style={{ color: "var(--ingreso)" }}>{formatCOP(m.ingresos)}</td>
-                  <td className="r num" style={{ color: "var(--egreso)" }}>{formatCOP(m.egresos)}</td>
-                  <td className="r num" style={{ color: m.neto >= 0 ? undefined : "var(--bad)" }}>{formatCOP(m.neto)}</td>
-                  <td className="r num">{formatCOP(m.presupuesto)}</td>
+                  <td className="r num" style={{ color: "var(--ingreso)" }}><Monto value={m.ingresos} /></td>
+                  <td className="r num" style={{ color: "var(--egreso)" }}><Monto value={m.egresos} /></td>
+                  <td className="r num" style={{ color: m.neto >= 0 ? undefined : "var(--bad)" }}><Monto value={m.neto} /></td>
+                  <td className="r num"><Monto value={m.presupuesto} /></td>
                   <td className="r num">{m.presupuesto > 0 ? formatPorcentaje((m.egresos / m.presupuesto) * 100) : "—"}</td>
                 </tr>
               ))}

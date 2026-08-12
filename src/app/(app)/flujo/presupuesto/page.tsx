@@ -1,6 +1,7 @@
 // Presupuesto vs Real: cumplimiento por mes y ejecución por grupo.
 import { requirePermiso } from "@/server/auth-context";
-import { formatCOP, formatPorcentaje } from "@/lib/format";
+import { formatPorcentaje } from "@/lib/format";
+import { Monto } from "../../_components/Monto";
 import { presupuestoVsReal, flujoMensual, MESES_LABEL } from "@/lib/negocio/flujo";
 import { FiltroAuto } from "../../_components/FiltroAuto";
 
@@ -59,9 +60,9 @@ export default async function PresupuestoPage({
             <tbody>
               <tr className="fila-total">
                 <td style={{ fontWeight: 800 }}>Total {ANIO}</td>
-                <td className="r num" style={{ fontWeight: 800 }}>{formatCOP(totMes.pres)}</td>
-                <td className="r num" style={{ fontWeight: 800 }}>{formatCOP(totMes.real)}</td>
-                <td className="r num" style={{ fontWeight: 800, color: totMes.real > totMes.pres ? "var(--bad)" : "var(--ok)" }}>{formatCOP(totMes.real - totMes.pres)}</td>
+                <td className="r num" style={{ fontWeight: 800 }}><Monto value={totMes.pres} /></td>
+                <td className="r num" style={{ fontWeight: 800 }}><Monto value={totMes.real} /></td>
+                <td className="r num" style={{ fontWeight: 800, color: totMes.real > totMes.pres ? "var(--bad)" : "var(--ok)" }}><Monto value={totMes.real - totMes.pres} /></td>
                 <td className="r num" style={{ fontWeight: 800 }}>{formatPorcentaje(cumplMesTot)}</td>
               </tr>
               {meses.map((m) => {
@@ -69,9 +70,9 @@ export default async function PresupuestoPage({
                 return (
                   <tr key={m.mes}>
                     <td style={{ fontWeight: 600, textTransform: "uppercase" }}>{MESES_LABEL[m.mes]}</td>
-                    <td className="r num">{formatCOP(m.presupuesto)}</td>
-                    <td className="r num">{formatCOP(m.egresos)}</td>
-                    <td className="r num" style={{ color: desv > 0 ? "var(--bad)" : desv < 0 ? "var(--ok)" : undefined }}>{formatCOP(desv)}</td>
+                    <td className="r num"><Monto value={m.presupuesto} /></td>
+                    <td className="r num"><Monto value={m.egresos} /></td>
+                    <td className="r num" style={{ color: desv > 0 ? "var(--bad)" : desv < 0 ? "var(--ok)" : undefined }}><Monto value={desv} /></td>
                     <td className="r"><CeldaCumplimiento presupuesto={m.presupuesto} real={m.egresos} /></td>
                   </tr>
                 );
@@ -108,9 +109,9 @@ export default async function PresupuestoPage({
             <tbody>
               <tr className="fila-total">
                 <td style={{ fontWeight: 800 }}>Total</td>
-                <td className="r num" style={{ fontWeight: 800 }}>{formatCOP(totGrupo.pres)}</td>
-                <td className="r num" style={{ fontWeight: 800 }}>{formatCOP(totGrupo.real)}</td>
-                <td className="r num" style={{ fontWeight: 800, color: totGrupo.real > totGrupo.pres ? "var(--bad)" : "var(--ok)" }}>{formatCOP(totGrupo.real - totGrupo.pres)}</td>
+                <td className="r num" style={{ fontWeight: 800 }}><Monto value={totGrupo.pres} /></td>
+                <td className="r num" style={{ fontWeight: 800 }}><Monto value={totGrupo.real} /></td>
+                <td className="r num" style={{ fontWeight: 800, color: totGrupo.real > totGrupo.pres ? "var(--bad)" : "var(--ok)" }}><Monto value={totGrupo.real - totGrupo.pres} /></td>
                 <td className="r num" style={{ fontWeight: 800 }}>{formatPorcentaje(cumplGrupoTot)}</td>
               </tr>
               {filas.length === 0 ? (
@@ -119,9 +120,9 @@ export default async function PresupuestoPage({
                 filas.map((f) => (
                   <tr key={f.categoria}>
                     <td style={{ fontWeight: 600 }}>{f.categoria}</td>
-                    <td className="r num">{formatCOP(f.presupuesto)}</td>
-                    <td className="r num">{formatCOP(f.real)}</td>
-                    <td className="r num" style={{ color: f.desviacion > 0 ? "var(--bad)" : f.desviacion < 0 ? "var(--ok)" : undefined }}>{formatCOP(f.desviacion)}</td>
+                    <td className="r num"><Monto value={f.presupuesto} /></td>
+                    <td className="r num"><Monto value={f.real} /></td>
+                    <td className="r num" style={{ color: f.desviacion > 0 ? "var(--bad)" : f.desviacion < 0 ? "var(--ok)" : undefined }}><Monto value={f.desviacion} /></td>
                     <td className="r"><CeldaCumplimiento presupuesto={f.presupuesto} real={f.real} /></td>
                   </tr>
                 ))

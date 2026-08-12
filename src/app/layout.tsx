@@ -27,7 +27,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             (evita el parpadeo). Se configuran en Admin ▸ Parametrización. */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `try{var f=localStorage.getItem('ui.font');var z=localStorage.getItem('ui.zoom');var r=document.documentElement;if(f)r.style.setProperty('--app-font',f);if(z)r.style.setProperty('--app-zoom',z);}catch(e){}`,
+            __html: `try{var f=localStorage.getItem('ui.font');var z=localStorage.getItem('ui.zoom');var r=document.documentElement;if(f)r.style.setProperty('--app-font',f);if(z)r.style.setProperty('--app-zoom',z);var m=localStorage.getItem('montos');if(m)r.setAttribute('data-montos',m);}catch(e){}`,
           }}
         />
       </head>

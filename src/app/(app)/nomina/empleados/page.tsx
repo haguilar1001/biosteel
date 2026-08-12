@@ -4,7 +4,7 @@
 // prestaciones, total mensual y tipo de contrato. Fila de totales.
 // ==========================================================
 import { requirePermiso } from "@/server/auth-context";
-import { formatCOP } from "@/lib/format";
+import { Monto } from "../../_components/Monto";
 import { aniosConNomina, empleados } from "@/lib/negocio/nomina";
 import { FiltroAuto } from "../../_components/FiltroAuto";
 
@@ -75,10 +75,10 @@ export default async function NominaEmpleadosPage({ searchParams }: { searchPara
                     <td>{f.proceso}</td>
                     <td>{f.cargo}</td>
                     <td className="flag">{f.ciudad}</td>
-                    <td className="r num">{formatCOP(f.baseSalarial)}</td>
-                    <td className="r num flag">{formatCOP(f.seguridadSocial)}</td>
-                    <td className="r num flag">{formatCOP(f.prestaciones)}</td>
-                    <td className="r num" style={{ fontWeight: 700 }}>{formatCOP(f.total)}</td>
+                    <td className="r num"><Monto value={f.baseSalarial} /></td>
+                    <td className="r num flag"><Monto value={f.seguridadSocial} /></td>
+                    <td className="r num flag"><Monto value={f.prestaciones} /></td>
+                    <td className="r num" style={{ fontWeight: 700 }}><Monto value={f.total} /></td>
                     <td className="flag">{f.tipoContrato}</td>
                   </tr>
                 ))
@@ -88,10 +88,10 @@ export default async function NominaEmpleadosPage({ searchParams }: { searchPara
               <tfoot>
                 <tr className="fila-total">
                   <td style={{ fontWeight: 800 }} colSpan={5}>Total ({filas.length})</td>
-                  <td className="r num" style={{ fontWeight: 800 }}>{formatCOP(tot.base)}</td>
-                  <td className="r num" style={{ fontWeight: 800 }}>{formatCOP(tot.seg)}</td>
-                  <td className="r num" style={{ fontWeight: 800 }}>{formatCOP(tot.prest)}</td>
-                  <td className="r num" style={{ fontWeight: 800 }}>{formatCOP(tot.total)}</td>
+                  <td className="r num" style={{ fontWeight: 800 }}><Monto value={tot.base} /></td>
+                  <td className="r num" style={{ fontWeight: 800 }}><Monto value={tot.seg} /></td>
+                  <td className="r num" style={{ fontWeight: 800 }}><Monto value={tot.prest} /></td>
+                  <td className="r num" style={{ fontWeight: 800 }}><Monto value={tot.total} /></td>
                   <td />
                 </tr>
               </tfoot>

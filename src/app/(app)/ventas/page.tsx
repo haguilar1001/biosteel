@@ -5,6 +5,7 @@
 // ==========================================================
 import { requirePermiso } from "@/server/auth-context";
 import { formatCOP, formatPorcentaje } from "@/lib/format";
+import { Monto } from "../_components/Monto";
 import { resumenAnual, ventaMensualDetalle, ventaPorCiudad, aniosConVenta } from "@/lib/negocio/ventas";
 import { Donut } from "../_components/charts/Donut";
 import { LineasMensuales } from "../_components/charts/LineasMensuales";
@@ -85,9 +86,9 @@ export default async function VentasPage({ searchParams }: { searchParams: Promi
 
       {/* KPIs — centrados */}
       <div className="kpis" style={{ marginBottom: 12 }}>
-        <div className="kpi kc"><div className="klabel">Venta Neta</div><div className="kval num">{mill(kpi.venta)}</div><div className="ksub"><span className="flag">{formatCOP(kpi.venta)}</span></div></div>
-        <div className="kpi kc k-egreso"><div className="klabel">Costo</div><div className="kval num">{mill(kpi.costo)}</div><div className="ksub"><span className="flag">{formatCOP(kpi.costo)}</span></div></div>
-        <div className="kpi kc k-ok"><div className="klabel">Utilidad</div><div className="kval num">{mill(kpi.utilidad)}</div><div className="ksub"><span className="flag">{formatCOP(kpi.utilidad)}</span></div></div>
+        <div className="kpi kc"><div className="klabel">Venta Neta</div><div className="kval num">{mill(kpi.venta)}</div><div className="ksub"><span className="flag"><Monto value={kpi.venta} /></span></div></div>
+        <div className="kpi kc k-egreso"><div className="klabel">Costo</div><div className="kval num">{mill(kpi.costo)}</div><div className="ksub"><span className="flag"><Monto value={kpi.costo} /></span></div></div>
+        <div className="kpi kc k-ok"><div className="klabel">Utilidad</div><div className="kval num">{mill(kpi.utilidad)}</div><div className="ksub"><span className="flag"><Monto value={kpi.utilidad} /></span></div></div>
         <div className="kpi kc k-w"><div className="klabel">% Utilidad</div><div className="kval num">{formatPorcentaje(kpi.margen)}</div></div>
       </div>
 
@@ -123,8 +124,8 @@ export default async function VentasPage({ searchParams }: { searchParams: Promi
                 })}
                 <tr className="fila-total">
                   <td style={{ fontWeight: 800 }}>Total</td>
-                  <td className="r num" style={{ fontWeight: 800 }}>{formatCOP(kpi.venta)}</td>
-                  <td className="r num" style={{ fontWeight: 800 }}>{formatCOP(totalAnt)}</td>
+                  <td className="r num" style={{ fontWeight: 800 }}><Monto value={kpi.venta} /></td>
+                  <td className="r num" style={{ fontWeight: 800 }}><Monto value={totalAnt} /></td>
                   <td className="r num" style={{ fontWeight: 800, color: difC >= 0 ? "var(--ok)" : "var(--bad)" }}>
                     {`${difC >= 0 ? "+" : "−"}${formatCOP(Math.abs(difC))}`}
                   </td>
@@ -134,8 +135,8 @@ export default async function VentasPage({ searchParams }: { searchParams: Promi
                 </tr>
                 <tr>
                   <td style={{ fontWeight: 700, fontStyle: "italic", color: "var(--muted)" }}>Promedio mes ({nMeses})</td>
-                  <td className="r num" style={{ fontWeight: 700 }}>{formatCOP(prom26)}</td>
-                  <td className="r num flag">{formatCOP(prom25)}</td>
+                  <td className="r num" style={{ fontWeight: 700 }}><Monto value={prom26} /></td>
+                  <td className="r num flag"><Monto value={prom25} /></td>
                   <td className="r num" style={{ fontWeight: 700, color: difProm >= 0 ? "var(--ok)" : "var(--bad)" }}>
                     {`${difProm >= 0 ? "+" : "−"}${formatCOP(Math.abs(difProm))}`}
                   </td>

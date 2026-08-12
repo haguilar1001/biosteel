@@ -4,7 +4,8 @@
 // con o sin filtros.
 import { requirePermiso } from "@/server/auth-context";
 import { puede } from "@/lib/rbac/authorize";
-import { formatCOP, formatNumero, formatPorcentaje, formatFecha } from "@/lib/format";
+import { formatNumero, formatPorcentaje, formatFecha } from "@/lib/format";
+import { Monto } from "../../_components/Monto";
 import { listarMovimientos, movimientosPorTercero, listarCategorias, categoriasPorTipo, MESES_LABEL, type CampoOrden, type DirOrden } from "@/lib/negocio/flujo";
 import { SelectorCategoria } from "../SelectorCategoria";
 import { BotonImprimir } from "../../_components/BotonImprimir";
@@ -104,7 +105,7 @@ export default async function EgresosPage({
             <tbody>
               <tr className="fila-total">
                 <td></td><td style={{ fontWeight: 800 }}>Total · {formatNumero(filas.length)} proveedor{filas.length === 1 ? "" : "es"}</td>
-                <td></td><td className="r num" style={{ fontWeight: 800 }}>{formatCOP(total)}</td>
+                <td></td><td className="r num" style={{ fontWeight: 800 }}><Monto value={total} /></td>
                 <td className="r num" style={{ fontWeight: 800 }}>{formatPorcentaje(100)}</td>
               </tr>
               {filas.length === 0 ? (
@@ -115,7 +116,7 @@ export default async function EgresosPage({
                     <td className="num flag">{i + 1}</td>
                     <td style={{ fontWeight: 600 }} title={f.terceroNombre}>{f.terceroNombre}</td>
                     <td className="r num">{formatNumero(f.movimientos)}</td>
-                    <td className="r num" style={{ fontWeight: 700 }}>{formatCOP(f.total)}</td>
+                    <td className="r num" style={{ fontWeight: 700 }}><Monto value={f.total} /></td>
                     <td className="r num">{total > 0 ? formatPorcentaje((f.total / total) * 100) : "—"}</td>
                   </tr>
                 ))
@@ -145,7 +146,7 @@ export default async function EgresosPage({
           <tbody>
             <tr className="fila-total">
               <td colSpan={5} style={{ fontWeight: 800 }}>Total · {formatNumero(total)} movimiento{total === 1 ? "" : "s"}{filas.length < total ? ` (mostrando ${formatNumero(filas.length)})` : ""}</td>
-              <td className="r num" style={{ fontWeight: 800 }}>{formatCOP(suma)}</td>
+              <td className="r num" style={{ fontWeight: 800 }}><Monto value={suma} /></td>
             </tr>
             {filas.length === 0 ? (
               <tr><td colSpan={6} className="empty">Sin movimientos.</td></tr>
@@ -161,7 +162,7 @@ export default async function EgresosPage({
                   <td style={{ fontWeight: 600 }} title={m.terceroNombre}>{m.terceroNombre}</td>
                   <td className="flag" title={m.detalle ?? ""}>{m.detalle}</td>
                   <td className="flag" title={m.observacion ?? ""}>{m.observacion}</td>
-                  <td className="r num" style={{ fontWeight: 700 }}>{formatCOP(m.valor)}</td>
+                  <td className="r num" style={{ fontWeight: 700 }}><Monto value={m.valor} /></td>
                 </tr>
               ))
             )}
