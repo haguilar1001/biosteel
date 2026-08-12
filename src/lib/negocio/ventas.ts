@@ -74,6 +74,28 @@ export async function ventaPorMarca(anio: number, meses?: number[]): Promise<Fil
     .sort((a, b) => b.valor - a.valor);
 }
 
+export interface MarcaConIps {
+  marca: string; valor: number; costo: number;
+  ips: { ips: string; valor: number; costo: number }[];
+}
+
+/** Venta neta y costo por MARCA (proveedor), con desglose por IPS (cliente). */
+export async function ventaPorMarcaConIps(anio: number, meses?: number[]): Promise<MarcaConIps[]> {
+  const where: Prisma.VentaMarcaIpsWhereInput = { anio, ...(meses && meses.length ? { mes: { in: meses } } : {}) };
+  const grupos = await prisma.ventaMarcaIps.groupBy({ by: ["marca", "ips"], where, _sum: { valor: true, costo: true } });
+  const map = new Map<string, MarcaConIps>();
+  for (const g of grupos) {
+    const v = g._sum.valor?.toNumber() ?? 0, c = g._sum.costo?.toNumber() ?? 0;
+    const m = map.get(g.marca) ?? { marca: g.marca, valor: 0, costo: 0, ips: [] };
+    m.valor += v; m.costo += c;
+    m.ips.push({ ips: g.ips, valor: v, costo: c });
+    map.set(g.marca, m);
+  }
+  const arr = [...map.values()];
+  for (const m of arr) m.ips.sort((a, b) => b.valor - a.valor);
+  return arr.sort((a, b) => b.valor - a.valor);
+}
+
 /** Años con ventas cargadas, ascendente. */
 export async function aniosConVenta(): Promise<number[]> {
   const grupos = await prisma.ventaLinea.groupBy({ by: ["anio"], _sum: { valor: true } });

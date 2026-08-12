@@ -65,10 +65,12 @@ export async function importarVentasAction(_prev: ImportVentasState, fd: FormDat
     const lineas = agg.porLinea.filter((e) => e.anio === a);
     const clientes = agg.porCliente.filter((e) => e.anio === a);
     const marcas = agg.porMarca.filter((e) => e.anio === a);
+    const marcaIps = agg.porMarcaIps.filter((e) => e.anio === a);
     await prisma.$transaction([
       prisma.ventaLinea.deleteMany({ where: { anio: a } }),
       prisma.ventaCliente.deleteMany({ where: { anio: a } }),
       prisma.ventaMarca.deleteMany({ where: { anio: a } }),
+      prisma.ventaMarcaIps.deleteMany({ where: { anio: a } }),
     ]);
     for (let i = 0; i < lineas.length; i += 1000) {
       await prisma.ventaLinea.createMany({ data: lineas.slice(i, i + 1000).map((e) => ({ anio: e.anio, mes: e.mes, linea: e.linea, valor: dec(e.valor), costo: dec(e.costo) })) });
@@ -78,6 +80,9 @@ export async function importarVentasAction(_prev: ImportVentasState, fd: FormDat
     }
     for (let i = 0; i < marcas.length; i += 1000) {
       await prisma.ventaMarca.createMany({ data: marcas.slice(i, i + 1000).map((e) => ({ anio: e.anio, mes: e.mes, marca: e.marca, valor: dec(e.valor), costo: dec(e.costo) })) });
+    }
+    for (let i = 0; i < marcaIps.length; i += 1000) {
+      await prisma.ventaMarcaIps.createMany({ data: marcaIps.slice(i, i + 1000).map((e) => ({ anio: e.anio, mes: e.mes, marca: e.marca, ips: e.ips, valor: dec(e.valor), costo: dec(e.costo) })) });
     }
   }
   await auditar({ usuarioId: usuario.id, accion: "ventas.importar", entidad: "VentaLinea", entidadId: agg.anios.join(",") });

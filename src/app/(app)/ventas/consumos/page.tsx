@@ -5,7 +5,7 @@
 // ==========================================================
 import { requirePermiso } from "@/server/auth-context";
 import { formatCOP, formatPorcentaje } from "@/lib/format";
-import { aniosConVenta, mesesConVenta, ventaPorMarca } from "@/lib/negocio/ventas";
+import { aniosConVenta, mesesConVenta, ventaPorMarcaConIps } from "@/lib/negocio/ventas";
 import { FiltroAuto } from "../../_components/FiltroAuto";
 
 const MESES = ["", "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
@@ -24,12 +24,13 @@ export default async function ConsumosPage({ searchParams }: { searchParams: Pro
   const mesesDisp = await mesesConVenta(anio);
   const mesSel = sp.mes && mesesDisp.includes(Number(sp.mes)) ? Number(sp.mes) : undefined;
 
-  const marcas = await ventaPorMarca(anio, mesSel ? [mesSel] : undefined);
+  const marcas = await ventaPorMarcaConIps(anio, mesSel ? [mesSel] : undefined);
   const venta = marcas.reduce((s, m) => s + m.valor, 0);
   const costo = marcas.reduce((s, m) => s + m.costo, 0);
   const utilidad = venta - costo;
   const maxVenta = marcas.length ? Math.max(...marcas.map((m) => m.valor)) : 1;
   const periodo = mesSel ? `${MESES[mesSel]} ${anio}` : `${anio}`;
+  const GRID = "minmax(160px, 2fr) 150px 150px 150px 90px 90px";
 
   return (
     <>
@@ -73,37 +74,55 @@ export default async function ConsumosPage({ searchParams }: { searchParams: Pro
         </div>
       </div>
 
-      {/* % Utilidad por proveedor (MARCA) */}
+      {/* % Utilidad por proveedor (MARCA), desplegable por IPS */}
       <div className="card">
-        <div className="chart-head">Utilidad por Proveedor <span className="hact">{periodo}</span></div>
-        <div className="tbl-wrap">
-          <table className="tabla-fit">
-            <thead>
-              <tr><th>Proveedor (marca)</th><th className="r">Venta neta</th><th className="r">Costo</th><th className="r">Utilidad</th><th className="r">% Utilidad</th><th></th></tr>
-            </thead>
-            <tbody>
-              {marcas.length === 0 ? (
-                <tr><td colSpan={6}><div className="empty">Sin datos por proveedor{mesSel ? ` en ${MESES[mesSel]}` : ""}.</div></td></tr>
-              ) : (
-                marcas.map((m) => {
-                  const util = m.valor - m.costo;
-                  const pct = margen(m.valor, m.costo);
-                  return (
-                    <tr key={m.marca}>
-                      <td style={{ fontWeight: 600 }}>{m.marca}</td>
-                      <td className="r num">{formatCOP(m.valor)}</td>
-                      <td className="r num flag">{formatCOP(m.costo)}</td>
-                      <td className="r num">{formatCOP(util)}</td>
-                      <td className="r num" style={{ fontWeight: 700, color: pct < 0 ? "var(--bad)" : undefined }}>{formatPorcentaje(pct)}</td>
-                      <td style={{ width: 120 }}>
-                        <div className="rank-bar"><div style={{ width: `${Math.max(2, (m.valor / maxVenta) * 100)}%`, background: "var(--az-2)" }} /></div>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
+        <div className="chart-head">Utilidad por Proveedor <span className="hact">{periodo} · clic para ver por IPS</span></div>
+        <div style={{ overflowX: "auto" }}>
+          {/* Encabezado */}
+          <div style={{ display: "grid", gridTemplateColumns: GRID, gap: 8, alignItems: "center", padding: "8px 12px", fontWeight: 700, fontSize: 11, textTransform: "uppercase", letterSpacing: ".5px", color: "var(--muted)", borderBottom: "1px solid var(--line)" }}>
+            <span>Proveedor (marca)</span>
+            <span style={{ textAlign: "right" }}>Venta neta</span>
+            <span style={{ textAlign: "right" }}>Costo</span>
+            <span style={{ textAlign: "right" }}>Utilidad</span>
+            <span style={{ textAlign: "right" }}>% Utilidad</span>
+            <span />
+          </div>
+          {marcas.length === 0 ? (
+            <div className="empty">Sin datos por proveedor{mesSel ? ` en ${MESES[mesSel]}` : ""}.</div>
+          ) : (
+            marcas.map((m) => {
+              const pct = margen(m.valor, m.costo);
+              return (
+                <details key={m.marca} className="cons-det">
+                  <summary>
+                    <div style={{ display: "grid", gridTemplateColumns: GRID, gap: 8, alignItems: "center", padding: "9px 12px" }}>
+                      <span style={{ fontWeight: 600 }}><span className="cons-chev">▸</span> {m.marca} <span className="flag">({m.ips.length} IPS)</span></span>
+                      <span className="num" style={{ textAlign: "right" }}>{formatCOP(m.valor)}</span>
+                      <span className="num flag" style={{ textAlign: "right" }}>{formatCOP(m.costo)}</span>
+                      <span className="num" style={{ textAlign: "right" }}>{formatCOP(m.valor - m.costo)}</span>
+                      <span className="num" style={{ textAlign: "right", fontWeight: 700, color: pct < 0 ? "var(--bad)" : undefined }}>{formatPorcentaje(pct)}</span>
+                      <span><div className="rank-bar"><div style={{ width: `${Math.max(2, (m.valor / maxVenta) * 100)}%`, background: "var(--az-2)" }} /></div></span>
+                    </div>
+                  </summary>
+                  <div style={{ background: "var(--surface-2, #f6f8fc)", paddingBottom: 4 }}>
+                    {m.ips.map((x) => {
+                      const p = margen(x.valor, x.costo);
+                      return (
+                        <div key={x.ips} style={{ display: "grid", gridTemplateColumns: GRID, gap: 8, alignItems: "center", padding: "5px 12px", fontSize: 12.5 }}>
+                          <span style={{ paddingLeft: 26 }}>{x.ips}</span>
+                          <span className="num" style={{ textAlign: "right" }}>{formatCOP(x.valor)}</span>
+                          <span className="num flag" style={{ textAlign: "right" }}>{formatCOP(x.costo)}</span>
+                          <span className="num" style={{ textAlign: "right" }}>{formatCOP(x.valor - x.costo)}</span>
+                          <span className="num" style={{ textAlign: "right", fontWeight: 600, color: p < 0 ? "var(--bad)" : undefined }}>{formatPorcentaje(p)}</span>
+                          <span />
+                        </div>
+                      );
+                    })}
+                  </div>
+                </details>
+              );
+            })
+          )}
         </div>
       </div>
     </>

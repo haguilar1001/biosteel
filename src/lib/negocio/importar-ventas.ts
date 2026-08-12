@@ -94,12 +94,14 @@ export function leerRenglones(buffer: Buffer | ArrayBuffer): RenglonesLeidos {
 export interface FilaLineaAgg { anio: number; mes: number; linea: string; valor: number; costo: number }
 export interface FilaClienteAgg { anio: number; mes: number; clienteNombre: string; nit: string | null; valor: number; costo: number }
 export interface FilaMarcaAgg { anio: number; mes: number; marca: string; valor: number; costo: number }
+export interface FilaMarcaIpsAgg { anio: number; mes: number; marca: string; ips: string; valor: number; costo: number }
 
 export interface AgregadosVenta {
   anios: number[];
   porLinea: FilaLineaAgg[];
   porCliente: FilaClienteAgg[];
   porMarca: FilaMarcaAgg[];
+  porMarcaIps: FilaMarcaIpsAgg[];
   /** Venta neta total por año. */
   netoPorAnio: Map<number, number>;
   totalNC: number;
@@ -128,6 +130,7 @@ export function agregarVentas(filas: FilaVenta[], params: ParamNC[], excluidos: 
   const porLinea = new Map<string, FilaLineaAgg>();
   const porCliente = new Map<string, FilaClienteAgg>();
   const porMarca = new Map<string, FilaMarcaAgg>();
+  const porMarcaIps = new Map<string, FilaMarcaIpsAgg>();
   const anios = new Set<number>();
   const netoPorAnio = new Map<number, number>();
   let totalNC = 0;
@@ -154,6 +157,11 @@ export function agregarVentas(filas: FilaVenta[], params: ParamNC[], excluidos: 
     const eM = porMarca.get(kM) ?? { anio: r.anio, mes: r.mes, marca: r.marca, valor: 0, costo: 0 };
     eM.valor += neto; eM.costo += r.costo;
     porMarca.set(kM, eM);
+
+    const kMI = `${r.anio}|${r.mes}|${r.marca}|${r.cliente}`;
+    const eMI = porMarcaIps.get(kMI) ?? { anio: r.anio, mes: r.mes, marca: r.marca, ips: r.cliente, valor: 0, costo: 0 };
+    eMI.valor += neto; eMI.costo += r.costo;
+    porMarcaIps.set(kMI, eMI);
   }
 
   return {
@@ -161,6 +169,7 @@ export function agregarVentas(filas: FilaVenta[], params: ParamNC[], excluidos: 
     porLinea: [...porLinea.values()],
     porCliente: [...porCliente.values()],
     porMarca: [...porMarca.values()],
+    porMarcaIps: [...porMarcaIps.values()],
     netoPorAnio, totalNC, renglones: filas.length,
   };
 }

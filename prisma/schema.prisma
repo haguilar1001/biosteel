@@ -714,6 +714,22 @@ model VentaMarca {
   @@index([anio, mes])
 }
 
+// Venta neta y costo por MARCA (proveedor) × IPS (cliente de despacho) y mes.
+// Permite desplegar cada proveedor por IPS en el Informe de Consumos.
+model VentaMarcaIps {
+  id     Int     @id @default(autoincrement())
+  anio   Int
+  mes    Int     // 1–12
+  marca  String  // p.ej. "1003 - SAMPEDRO"
+  ips    String  // razón social del cliente de despacho (la IPS)
+  valor  Decimal @db.Decimal(18, 2) // venta neta
+  costo  Decimal @default(0) @db.Decimal(18, 2)
+
+  @@unique([anio, mes, marca, ips])
+  @@index([anio, mes])
+  @@index([marca])
+}
+
 // =============== 10. ESTADO DE RESULTADOS (PyG) ===============
 // Un registro por mes. Los totales principales quedan en columnas; el árbol
 // completo de cuentas (para la vista detallada) se guarda en `detalle` (JSON).

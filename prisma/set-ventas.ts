@@ -17,7 +17,7 @@ import "./_env";
 import { PrismaClient, Prisma } from "@prisma/client";
 import fs from "node:fs";
 import path from "node:path";
-import { leerRenglones, agregarVentas, type FilaLineaAgg, type FilaClienteAgg, type FilaMarcaAgg } from "../src/lib/negocio/importar-ventas";
+import { leerRenglones, agregarVentas, type FilaLineaAgg, type FilaClienteAgg, type FilaMarcaAgg, type FilaMarcaIpsAgg } from "../src/lib/negocio/importar-ventas";
 import type { ParamNC } from "../src/lib/negocio/nota-credito";
 
 const prisma = new PrismaClient();
@@ -55,6 +55,7 @@ async function main() {
   const lineasPorAnio = new Map<number, FilaLineaAgg[]>();
   const clientesPorAnio = new Map<number, FilaClienteAgg[]>();
   const marcasPorAnio = new Map<number, FilaMarcaAgg[]>();
+  const marcaIpsPorAnio = new Map<number, FilaMarcaIpsAgg[]>();
   const netoPorAnio = new Map<number, number>();
   let totalNC = 0;
 
@@ -66,6 +67,7 @@ async function main() {
     for (const e of agg.porLinea) { const a = lineasPorAnio.get(e.anio) ?? []; a.push(e); lineasPorAnio.set(e.anio, a); }
     for (const e of agg.porCliente) { const a = clientesPorAnio.get(e.anio) ?? []; a.push(e); clientesPorAnio.set(e.anio, a); }
     for (const e of agg.porMarca) { const a = marcasPorAnio.get(e.anio) ?? []; a.push(e); marcasPorAnio.set(e.anio, a); }
+    for (const e of agg.porMarcaIps) { const a = marcaIpsPorAnio.get(e.anio) ?? []; a.push(e); marcaIpsPorAnio.set(e.anio, a); }
     console.log(`   📄 ${archivo} (hoja "${hoja}"): ${fmt(filas.length)} renglones, ${sinFecha} sin fecha, NC ${fmt(agg.totalNC)}`);
   }
 
@@ -75,17 +77,20 @@ async function main() {
     const lineas = lineasPorAnio.get(anio) ?? [];
     const clientes = clientesPorAnio.get(anio) ?? [];
     const marcas = marcasPorAnio.get(anio) ?? [];
+    const marcaIps = marcaIpsPorAnio.get(anio) ?? [];
     if (!DRY) {
       await prisma.$transaction([
         prisma.ventaLinea.deleteMany({ where: { anio } }),
         prisma.ventaCliente.deleteMany({ where: { anio } }),
         prisma.ventaMarca.deleteMany({ where: { anio } }),
+        prisma.ventaMarcaIps.deleteMany({ where: { anio } }),
       ]);
       await crearEnLotes(lineas, (c) => prisma.ventaLinea.createMany({ data: c.map((e) => ({ anio: e.anio, mes: e.mes, linea: e.linea, valor: dec(e.valor), costo: dec(e.costo) })) }));
       await crearEnLotes(clientes, (c) => prisma.ventaCliente.createMany({ data: c.map((e) => ({ anio: e.anio, mes: e.mes, clienteNombre: e.clienteNombre, nit: e.nit, valor: dec(e.valor), costo: dec(e.costo) })) }));
       await crearEnLotes(marcas, (c) => prisma.ventaMarca.createMany({ data: c.map((e) => ({ anio: e.anio, mes: e.mes, marca: e.marca, valor: dec(e.valor), costo: dec(e.costo) })) }));
+      await crearEnLotes(marcaIps, (c) => prisma.ventaMarcaIps.createMany({ data: c.map((e) => ({ anio: e.anio, mes: e.mes, marca: e.marca, ips: e.ips, valor: dec(e.valor), costo: dec(e.costo) })) }));
     }
-    console.log(`   ${DRY ? "•" : "✅"} ${anio}: venta neta $ ${fmt(netoPorAnio.get(anio) ?? 0)} (${lineas.length} líneas, ${clientes.length} clientes, ${marcas.length} marcas)`);
+    console.log(`   ${DRY ? "•" : "✅"} ${anio}: venta neta $ ${fmt(netoPorAnio.get(anio) ?? 0)} (${lineas.length} líneas, ${clientes.length} clientes, ${marcas.length} marcas, ${marcaIps.length} marca×ips)`);
   }
 
   console.log(`${DRY ? "🔎 DRY-RUN: nada escrito." : "✅ Ventas reliquidadas (netas, multi-año)."} · NC total $ ${fmt(totalNC)}`);

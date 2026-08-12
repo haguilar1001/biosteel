@@ -282,6 +282,13 @@ h1, h2, h3 { margin: 0; }
 /* KPI con cabecera azul (chart-head): valor centrado en el cuerpo de la tarjeta. */
 .kpi-body { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; text-align: center; padding: 16px 12px; }
 .kpi-val { font-size: 24px; font-weight: 800; letter-spacing: -.5px; font-variant-numeric: tabular-nums; }
+/* Informe de Consumos: filas de proveedor desplegables por IPS. */
+.cons-det { border-bottom: 1px solid var(--line); }
+.cons-det > summary { list-style: none; cursor: pointer; }
+.cons-det > summary::-webkit-details-marker { display: none; }
+.cons-det > summary:hover { background: var(--surface-2, #f6f8fc); }
+.cons-chev { display: inline-block; width: 14px; transition: transform .12s; color: var(--muted); }
+.cons-det[open] > summary .cons-chev { transform: rotate(90deg); }
 /* .kc queda como alias: el centrado ya es el comportamiento por defecto. */
 .flag { font-size: 11px; color: var(--muted); }
 .delta { display: inline-flex; align-items: center; gap: 3px; font-weight: 700; padding: 2px 7px; border-radius: 20px; font-size: 11px; }
