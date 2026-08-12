@@ -96,6 +96,33 @@ export async function ventaPorMarcaConIps(anio: number, meses?: number[]): Promi
   return arr.sort((a, b) => b.valor - a.valor);
 }
 
+export interface ProveedorFila { marca: string; valor: number; costo: number; estado: string; motivo: string }
+
+/** Marcas con venta del período + su estado/motivo (Sin clasificar si no tiene). */
+export async function proveedoresConEstado(anio: number, meses?: number[]): Promise<ProveedorFila[]> {
+  const [marcas, estados] = await Promise.all([ventaPorMarca(anio, meses), prisma.proveedorEstado.findMany()]);
+  const em = new Map(estados.map((e) => [e.marca, e]));
+  return marcas.map((m) => {
+    const e = em.get(m.marca);
+    return { marca: m.marca, valor: m.valor, costo: m.costo, estado: e?.estado ?? "Sin clasificar", motivo: e?.motivo ?? "" };
+  });
+}
+
+export interface EstadoAgg { estado: string; valor: number; costo: number; proveedores: number }
+
+/** Venta neta agrupada por estado del proveedor (para KPIs de riesgo). */
+export async function ventaPorEstadoProveedor(anio: number, meses?: number[]): Promise<EstadoAgg[]> {
+  const filas = await proveedoresConEstado(anio, meses);
+  const map = new Map<string, EstadoAgg>();
+  for (const f of filas) {
+    const e = map.get(f.estado) ?? { estado: f.estado, valor: 0, costo: 0, proveedores: 0 };
+    e.valor += f.valor; e.costo += f.costo; e.proveedores += 1;
+    map.set(f.estado, e);
+  }
+  const orden = ["ACTIVO", "CON RESTRICCIÓN", "INACTIVO", "Sin clasificar"];
+  return [...map.values()].sort((a, b) => (orden.indexOf(a.estado) - orden.indexOf(b.estado)) || (b.valor - a.valor));
+}
+
 /** Años con ventas cargadas, ascendente. */
 export async function aniosConVenta(): Promise<number[]> {
   const grupos = await prisma.ventaLinea.groupBy({ by: ["anio"], _sum: { valor: true } });

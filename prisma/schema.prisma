@@ -730,6 +730,20 @@ model VentaMarcaIps {
   @@index([marca])
 }
 
+// Estado operativo de un proveedor/MARCA (ACTIVO / INACTIVO / CON RESTRICCIÓN)
+// con su motivo. Editable en la app; se cruza con la venta por marca para KPIs
+// de riesgo de suministro. `marca` = el mismo string de VentaMarca.
+model ProveedorEstado {
+  id        Int      @id @default(autoincrement())
+  marca     String   @unique
+  estado    String   @default("ACTIVO") // ACTIVO | INACTIVO | CON RESTRICCIÓN
+  motivo    String   @default("")        // EN OPERACIÓN | EMBARGO | SIN OPERACIÓN | COBRO PREJURIDICO | ACUERDO DE PAGO
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+
+  @@index([estado])
+}
+
 // Ajuste manual de venta neta por período (para cuadrar con Power BI cuando las
 // exclusiones exactas no se conocen). Al reliquidar se suma como una línea
 // sintética a los agregados. `valor` positivo sube la venta neta, negativo la baja.

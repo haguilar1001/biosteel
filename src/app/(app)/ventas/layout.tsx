@@ -8,6 +8,7 @@ const ITEMS = [
   { href: "/ventas", label: "Ventas x Mes" },
   { href: "/ventas/historico", label: "Históricas" },
   { href: "/ventas/consumos", label: "Consumos" },
+  { href: "/ventas/proveedores", label: "Proveedores" },
   { href: "/ventas/clientes", label: "Por Cliente" },
   { href: "/ventas/compras", label: "Compras x Proveedor" },
 ];
