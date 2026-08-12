@@ -730,6 +730,20 @@ model VentaMarcaIps {
   @@index([marca])
 }
 
+// Ajuste manual de venta neta por período (para cuadrar con Power BI cuando las
+// exclusiones exactas no se conocen). Al reliquidar se suma como una línea
+// sintética a los agregados. `valor` positivo sube la venta neta, negativo la baja.
+model AjusteVenta {
+  id        Int      @id @default(autoincrement())
+  anio      Int
+  mes       Int      // 1–12
+  concepto  String   @default("AJUSTE")
+  valor     Decimal  @db.Decimal(18, 2)
+  createdAt DateTime @default(now())
+
+  @@index([anio])
+}
+
 // =============== 10. ESTADO DE RESULTADOS (PyG) ===============
 // Un registro por mes. Los totales principales quedan en columnas; el árbol
 // completo de cuentas (para la vista detallada) se guarda en `detalle` (JSON).

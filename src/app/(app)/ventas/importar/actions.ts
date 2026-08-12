@@ -49,6 +49,18 @@ export async function importarVentasAction(_prev: ImportVentasState, fd: FormDat
   const excluidos = new Set(xRows.map((x) => nroClave(x.nroDocumento)));
 
   const agg = agregarVentas(filas, params, excluidos);
+
+  // Ajustes manuales de los años presentes: se agregan como línea sintética.
+  const ajustes = await prisma.ajusteVenta.findMany({ where: { anio: { in: agg.anios } } });
+  for (const aj of ajustes) {
+    const v = aj.valor.toNumber(); const c = aj.concepto;
+    agg.porLinea.push({ anio: aj.anio, mes: aj.mes, linea: c, valor: v, costo: 0 });
+    agg.porCliente.push({ anio: aj.anio, mes: aj.mes, clienteNombre: c, nit: null, valor: v, costo: 0 });
+    agg.porMarca.push({ anio: aj.anio, mes: aj.mes, marca: c, valor: v, costo: 0 });
+    agg.porMarcaIps.push({ anio: aj.anio, mes: aj.mes, marca: c, ips: c, valor: v, costo: 0 });
+    agg.netoPorAnio.set(aj.anio, (agg.netoPorAnio.get(aj.anio) ?? 0) + v);
+  }
+
   const anios = agg.anios.map((a) => ({
     anio: a,
     neto: agg.netoPorAnio.get(a) ?? 0,

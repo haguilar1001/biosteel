@@ -34,9 +34,10 @@ async function crearEnLotes<T>(rows: T[], fn: (chunk: T[]) => Promise<unknown>, 
 
 async function main() {
   // 1) Parámetros y exclusiones desde la BD.
-  const [pRows, xRows] = await Promise.all([
+  const [pRows, xRows, ajustes] = await Promise.all([
     prisma.parametroNotaCredito.findMany(),
     prisma.exclusionNC.findMany({ where: { concepto: "TODOS" } }),
+    prisma.ajusteVenta.findMany(),
   ]);
   if (pRows.length === 0) {
     throw new Error("No hay parámetros NC en la BD. Corre primero: npm run db:params-nc");
@@ -70,6 +71,19 @@ async function main() {
     for (const e of agg.porMarcaIps) { const a = marcaIpsPorAnio.get(e.anio) ?? []; a.push(e); marcaIpsPorAnio.set(e.anio, a); }
     console.log(`   📄 ${archivo} (hoja "${hoja}"): ${fmt(filas.length)} renglones, ${sinFecha} sin fecha, NC ${fmt(agg.totalNC)}`);
   }
+
+  // Ajustes manuales: se agregan como línea sintética por concepto (para cuadrar
+  // con Power BI cuando no se conocen las exclusiones exactas).
+  for (const aj of ajustes) {
+    const v = aj.valor.toNumber();
+    const c = aj.concepto;
+    netoPorAnio.set(aj.anio, (netoPorAnio.get(aj.anio) ?? 0) + v);
+    (lineasPorAnio.get(aj.anio) ?? lineasPorAnio.set(aj.anio, []).get(aj.anio)!).push({ anio: aj.anio, mes: aj.mes, linea: c, valor: v, costo: 0 });
+    (clientesPorAnio.get(aj.anio) ?? clientesPorAnio.set(aj.anio, []).get(aj.anio)!).push({ anio: aj.anio, mes: aj.mes, clienteNombre: c, nit: null, valor: v, costo: 0 });
+    (marcasPorAnio.get(aj.anio) ?? marcasPorAnio.set(aj.anio, []).get(aj.anio)!).push({ anio: aj.anio, mes: aj.mes, marca: c, valor: v, costo: 0 });
+    (marcaIpsPorAnio.get(aj.anio) ?? marcaIpsPorAnio.set(aj.anio, []).get(aj.anio)!).push({ anio: aj.anio, mes: aj.mes, marca: c, ips: c, valor: v, costo: 0 });
+  }
+  if (ajustes.length) console.log(`   ➕ ${ajustes.length} ajuste(s) manual(es) aplicados.`);
 
   // 3) Escribir por año (o sólo reportar en DRY-RUN).
   const anios = [...netoPorAnio.keys()].sort((a, b) => a - b);

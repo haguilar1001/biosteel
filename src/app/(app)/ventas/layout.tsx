@@ -14,6 +14,7 @@ const GESTION = [
   { href: "/ventas/importar", label: "Importar" },
   { href: "/ventas/exclusiones", label: "Exclusiones" },
   { href: "/ventas/parametros", label: "Parámetros" },
+  { href: "/ventas/ajustes", label: "Ajustes" },
 ];
 
 export default async function VentasLayout({ children }: { children: React.ReactNode }) {
