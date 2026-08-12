@@ -11,7 +11,6 @@ import { resumenCartera, carteraPorCiudad } from "@/lib/negocio/cartera";
 import { resumenObligaciones, listarObligaciones, tipoLabel, type NivelAlerta } from "@/lib/negocio/obligaciones";
 import { calcularIndicadores, type IndicadorCalc } from "@/lib/negocio/indicadores";
 import { ventaMensualDetalle } from "@/lib/negocio/ventas";
-import { Donut } from "../_components/charts/Donut";
 import { Medidor } from "../_components/charts/Medidor";
 import { MapaCartera } from "../_components/charts/MapaCartera";
 import { Sparkline } from "../_components/charts/Sparkline";
@@ -20,6 +19,7 @@ const ANIO = 2026;
 const PRESUPUESTO_VENTA_MES = 2_000_000_000; // meta mensual de venta (COP)
 const MESES_FULL = ["", "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 const CATS = ["var(--cat-1)", "var(--cat-2)", "var(--cat-3)", "var(--cat-4)", "var(--cat-5)", "var(--cat-6)", "var(--cat-7)", "var(--cat-8)"];
+const AZULES = ["var(--az-1)", "var(--az-2)", "var(--az-3)", "var(--az-4)", "var(--az-5)", "var(--az-6)", "var(--az-7)", "var(--az-8)"];
 
 function fmtInd(v: number, u: IndicadorCalc["unidad"]): string {
   if (u === "cop") return formatCOP(v);
@@ -57,10 +57,10 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const cartera = alcanceCartera !== "ninguno" ? await resumenCartera(usuario, alcanceCartera) : null;
   const ciudades = alcanceCartera !== "ninguno" ? await carteraPorCiudad(usuario, alcanceCartera) : [];
 
-  // Anillo: egresos por grupo (modo azul: agrupa los menores en "Otros menores").
+  // Egresos por grupo (barras horizontales), de mayor a menor.
   const grupos = (presup ?? []).filter((p) => p.real > 0).sort((a, b) => b.real - a.real);
-  const donutEgresos = grupos.map((g) => ({ label: g.categoria, valor: g.real }));
   const totalEgresos = grupos.reduce((s, g) => s + g.real, 0);
+  const maxEgr = grupos.length ? grupos[0]!.real : 1;
 
   // Medidores: los 4 indicadores no pendientes
   const gauges = (indicadores ?? []).filter((i) => !i.pendiente).slice(0, 4);
@@ -209,8 +209,24 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                 <button type="submit" className="btn primary">Ver</button>
                 {mesEgr ? <a href="/dashboard" className="btn">Todos</a> : null}
               </form>
-              {donutEgresos.length === 0 ? <div className="empty">Sin egresos{mesEgr ? ` en ${MESES_FULL[mesEgr]}` : ""}.</div> : (
-                <Donut azul data={donutEgresos} centro={{ valor: (totalEgresos / 1e9).toFixed(1).replace(".", ",") + " MM", etiqueta: "egresos" }} />
+              {grupos.length === 0 ? <div className="empty">Sin egresos{mesEgr ? ` en ${MESES_FULL[mesEgr]}` : ""}.</div> : (
+                <>
+                  <div className="flag" style={{ marginBottom: 10 }}>Total egresos: <strong className="num">{formatCOP(totalEgresos)}</strong></div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
+                    {grupos.map((g, idx) => {
+                      const pct = totalEgresos > 0 ? (g.real / totalEgresos) * 100 : 0;
+                      return (
+                        <div key={g.categoria}>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8, marginBottom: 3 }}>
+                            <span className="rank-label" title={g.categoria} style={{ fontSize: 12.5, fontWeight: 600 }}>{g.categoria}</span>
+                            <span className="num" style={{ fontSize: 12.5, whiteSpace: "nowrap" }}>{formatCOP(g.real)} <span className="flag">· {pct.toFixed(1).replace(".", ",")}%</span></span>
+                          </div>
+                          <div className="rank-bar"><div style={{ width: `${Math.max(2, (g.real / maxEgr) * 100)}%`, background: AZULES[idx % AZULES.length] }} /></div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </>
               )}
             </div>
           </div>
