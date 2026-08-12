@@ -3,6 +3,7 @@ import { requirePermiso } from "@/server/auth-context";
 import { formatCOP, formatPorcentaje, formatNumero } from "@/lib/format";
 import { carteraPorCliente } from "@/lib/negocio/cartera";
 import { Buscador } from "../../_components/Buscador";
+import { BotonImprimir } from "../../_components/BotonImprimir";
 
 export default async function CarteraPorClientePage({
   searchParams,
@@ -26,7 +27,11 @@ export default async function CarteraPorClientePage({
           <h1>Informe por cliente</h1>
           <p>{formatNumero(filas.length)} clientes · saldo neto {formatCOP(tot.saldo)}</p>
         </div>
-        <div className="toolbar"><a href="/cartera" className="btn">← Facturas</a></div>
+        <div className="toolbar">
+          <a href={`/cartera/clientes/export${q ? `?q=${encodeURIComponent(q)}` : ""}`} className="btn" title="Descargar en Excel">⬇️ Excel</a>
+          <BotonImprimir />
+          <a href="/cartera" className="btn">← Facturas</a>
+        </div>
       </div>
 
       <div className="card">

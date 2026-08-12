@@ -7,6 +7,7 @@ import { requirePermiso } from "@/server/auth-context";
 import { formatCOP, formatPorcentaje, formatNumero } from "@/lib/format";
 import { cxpPorProveedor, type TipoProveedorFiltro } from "@/lib/negocio/cxp";
 import { Buscador } from "../../_components/Buscador";
+import { BotonImprimir } from "../../_components/BotonImprimir";
 import { Donut } from "../../_components/charts/Donut";
 import { TopRanking, type RankItem } from "../../_components/charts/TopRanking";
 
@@ -56,11 +57,13 @@ export default async function CxpPorProveedorPage({
           <a href={filtro(undefined)} className={`btn${!tipo ? " primary" : ""}`}>Todos</a>
           <a href={filtro("externo")} className={`btn${tipo === "externo" ? " primary" : ""}`}>Externos</a>
           <a href={filtro("interno")} className={`btn${tipo === "interno" ? " primary" : ""}`}>Internos</a>
+          <a href={`/cxp/proveedores/export?${new URLSearchParams({ ...(tipo ? { tipo } : {}), ...(q ? { q } : {}) }).toString()}`} className="btn" title="Descargar en Excel">⬇️ Excel</a>
+          <BotonImprimir />
           <a href="/cxp" className="btn">← Documentos</a>
         </div>
       </div>
 
-      <div className="grid two" style={{ marginBottom: 12 }}>
+      <div className="grid two no-print" style={{ marginBottom: 12 }}>
         <div className="card">
           <div className="chart-head">Composición Interno vs Externo <span className="hact">por pagar (saldos positivos)</span></div>
           <div className="card-body">

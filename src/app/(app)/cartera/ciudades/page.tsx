@@ -6,6 +6,7 @@ import { requirePermiso } from "@/server/auth-context";
 import { formatCOP } from "@/lib/format";
 import { carteraPorCiudad } from "@/lib/negocio/cartera";
 import { MapaCartera } from "../../_components/charts/MapaCartera";
+import { BotonImprimir } from "../../_components/BotonImprimir";
 import { CiudadesTabla, type CiudadItem } from "./CiudadesTabla";
 
 const CATS = ["var(--cat-1)", "var(--cat-2)", "var(--cat-3)", "var(--cat-4)", "var(--cat-5)", "var(--cat-6)", "var(--cat-7)", "var(--cat-8)"];
@@ -39,11 +40,13 @@ export default async function CarteraPorCiudadPage() {
           <p>Clic en una ciudad para desplegar sus IPS (% sobre el total de la ciudad)</p>
         </div>
         <div className="toolbar">
+          <a href="/cartera/ciudades/export" className="btn" title="Descargar en Excel">⬇️ Excel</a>
+          <BotonImprimir />
           <a href="/cartera" className="btn">← Facturas</a>
         </div>
       </div>
 
-      <div className="card" style={{ marginBottom: 12 }}>
+      <div className="card no-print" style={{ marginBottom: 12 }}>
         <div className="chart-head">Mapa de cartera <span className="hact">{ciudades.length} ciudades · {formatCOP(total)}</span></div>
         <div className="card-body"><MapaCartera data={mapaData} /></div>
       </div>
