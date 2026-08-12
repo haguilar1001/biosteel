@@ -28,6 +28,7 @@ export default async function VentasClientesPage({ searchParams }: { searchParam
             <label className="flag" style={{ alignSelf: "center" }}>Año:</label>
             <select name="anio" defaultValue={anio} className="select">{anios.map((a) => <option key={a} value={a}>{a}</option>)}</select>
             <button type="submit" className="btn primary">Ver</button>
+            <a href={`/ventas/clientes/export?anio=${anio}`} className="btn" title="Descargar ventas por cliente en Excel">⬇️ Excel</a>
           </form>
         </div>
       </div>

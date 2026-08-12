@@ -78,6 +78,7 @@ export default async function VentasPage({ searchParams }: { searchParams: Promi
               {anios.map((a) => <option key={a} value={a}>{a}</option>)}
             </select>
             <button type="submit" className="btn primary">Ver</button>
+            <a href={`/ventas/export?anio=${anio}`} className="btn" title="Descargar ventas por mes en Excel">⬇️ Excel</a>
           </form>
         </div>
       </div>
