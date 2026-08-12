@@ -9,7 +9,7 @@ import { requireUsuario } from "@/server/auth-context";
 import { exigirPermiso } from "@/lib/rbac/authorize";
 import { auditar } from "@/lib/audit/log";
 import { leerRenglones, agregarVentas } from "@/lib/negocio/importar-ventas";
-import type { ParamNC } from "@/lib/negocio/nota-credito";
+import { nroClave, type ParamNC } from "@/lib/negocio/nota-credito";
 
 export interface ImportVentasState {
   error?: string;
@@ -46,7 +46,7 @@ export async function importarVentasAction(_prev: ImportVentasState, fd: FormDat
   ]);
   if (pRows.length === 0) return { error: "No hay parámetros NC cargados. Corre db:params-nc primero." };
   const params: ParamNC[] = pRows.map((p) => ({ ips: p.ips, concepto: p.concepto, pct: p.pct.toNumber(), ini: p.fechaInicio.getTime(), fin: p.fechaFin.getTime() }));
-  const excluidos = new Set(xRows.map((x) => x.nroDocumento));
+  const excluidos = new Set(xRows.map((x) => nroClave(x.nroDocumento)));
 
   const agg = agregarVentas(filas, params, excluidos);
   const anios = agg.anios.map((a) => ({

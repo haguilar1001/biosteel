@@ -47,11 +47,19 @@ export interface CtxNC {
   params: ParamNC[];
   /** Nro documento FET → set de "anio-mes" de las NAN vinculadas. */
   nanMeses: Map<string, Set<string>>;
-  /** Nro documento excluidos manualmente (Exclusiones NC, concepto TODOS). */
+  /** Núcleos numéricos (ver nroClave) de los documentos excluidos manualmente
+   *  (Exclusiones NC, concepto TODOS). */
   excluidos: Set<string>;
 }
 
 const INT = Math.trunc; // DAX INT() trunca hacia cero
+
+/** Núcleo numérico del Nro documento (sin prefijo ni ceros a la izquierda).
+ *  "FET-00119966" → "119966"; "119966" → "119966". Hace robusta la comparación
+ *  de exclusiones sin importar cómo se haya escrito el documento. */
+export function nroClave(s: string): string {
+  return s.replace(/\D/g, "").replace(/^0+/, "") || "0";
+}
 
 /** ¿`hay` (MAYÚSCULAS) contiene el literal `needle` (MAYÚSCULAS)? */
 function ct(hay: string, needle: string): boolean {
@@ -114,7 +122,7 @@ export function notaCredito(r: VentaRow, ctx: CtxNC): number {
   const tieneNan = meses != null;
   const nanMismoMes = tieneNan && meses!.has(key);
   const gate = tieneNan && !nanMismoMes; // NAN de otro mes ⇒ anula el descuento
-  const excluida = ctx.excluidos.has(r.nro);
+  const excluida = ctx.excluidos.has(nroClave(r.nro));
   const aplica = aplicaNota(r);
   const p = (concepto: string, ips: string | null = r.ips) => buscarPct(ctx.params, ips, concepto, r.ms);
 

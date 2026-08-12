@@ -18,7 +18,7 @@ import { PrismaClient, Prisma } from "@prisma/client";
 import fs from "node:fs";
 import path from "node:path";
 import { leerRenglones, agregarVentas, type FilaLineaAgg, type FilaClienteAgg, type FilaMarcaAgg, type FilaMarcaIpsAgg } from "../src/lib/negocio/importar-ventas";
-import type { ParamNC } from "../src/lib/negocio/nota-credito";
+import { nroClave, type ParamNC } from "../src/lib/negocio/nota-credito";
 
 const prisma = new PrismaClient();
 
@@ -45,7 +45,7 @@ async function main() {
     ips: p.ips, concepto: p.concepto, pct: p.pct.toNumber(),
     ini: p.fechaInicio.getTime(), fin: p.fechaFin.getTime(),
   }));
-  const excluidos = new Set(xRows.map((x) => x.nroDocumento));
+  const excluidos = new Set(xRows.map((x) => nroClave(x.nroDocumento)));
   console.log(`⚙  ${params.length} parámetros NC · ${excluidos.size} exclusiones · fuente: ${DIR}${DRY ? " · DRY-RUN" : ""}`);
 
   // 2) Leer y agregar cada archivo.

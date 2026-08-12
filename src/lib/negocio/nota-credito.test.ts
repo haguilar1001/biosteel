@@ -1,7 +1,7 @@
 // Pruebas del motor de Notas Crédito (casos representativos del docx).
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { ipsDe, aplicaNota, notaCredito, type VentaRow, type CtxNC, type ParamNC } from "./nota-credito";
+import { ipsDe, aplicaNota, notaCredito, nroClave, type VentaRow, type CtxNC, type ParamNC } from "./nota-credito";
 
 const D = (y: number, m: number, d: number) => Date.UTC(y, m - 1, d);
 
@@ -61,8 +61,14 @@ test("NAN de otro mes anula el descuento", () => {
   assert.equal(notaCredito(r, c), 0);
 });
 
-test("Exclusión manual ⇒ 0", () => {
-  const c: CtxNC = { params, nanMeses: new Map(), excluidos: new Set(["FET-1"]) };
-  const r = fila({ nro: "FET-1", ips: "CAMPBELL", suc: "CLINICA X" });
+test("Exclusión manual ⇒ 0 (compara por núcleo numérico)", () => {
+  // La exclusión se guarda como número pelado; el motor la normaliza.
+  const c: CtxNC = { params, nanMeses: new Map(), excluidos: new Set(["119966"]) };
+  const r = fila({ nro: "FET-00119966", ips: "CAMPBELL", suc: "CLINICA X" });
   assert.equal(notaCredito(r, c), 0);
+});
+
+test("nroClave normaliza prefijo y ceros", () => {
+  assert.equal(nroClave("FET-00119966"), "119966");
+  assert.equal(nroClave("119966"), "119966");
 });
