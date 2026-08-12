@@ -8,7 +8,7 @@ import { requirePermiso } from "@/server/auth-context";
 import { formatNumero } from "@/lib/format";
 import { Monto } from "../_components/Monto";
 import {
-  aniosConNomina, resumenAnual, porTipoContrato, porProceso, porCiudad,
+  aniosConNomina, resumenAnual, porProceso, porCiudad,
   composicionCosto, comparativoProceso,
 } from "@/lib/negocio/nomina";
 import { Donut } from "../_components/charts/Donut";
@@ -30,17 +30,13 @@ export default async function NominaPage({ searchParams }: { searchParams: Promi
   const anioAnt = anio - 1;
   const hayAnterior = anios.includes(anioAnt);
 
-  const [kpi, tipos, procesos, ciudades, comp, compProceso] = await Promise.all([
+  const [kpi, procesos, ciudades, comp, compProceso] = await Promise.all([
     resumenAnual(anio),
-    porTipoContrato(anio),
     porProceso(anio),
     porCiudad(anio),
     composicionCosto(anio),
     hayAnterior ? comparativoProceso(anio, anioAnt) : Promise.resolve([]),
   ]);
-
-  // Anillo por tipo de contrato (INDEFINIDO, OBRA O LABOR, APRENDIZ SENA…).
-  const donutTipo = tipos.map((e) => ({ label: e.label, valor: e.costoMensual }));
 
   // Composición del costo (mensual): salario base + auxilio + aportes + provisiones.
   const donutComp = [
@@ -72,41 +68,30 @@ export default async function NominaPage({ searchParams }: { searchParams: Promi
         <div className="kpi kc k-w"><div className="klabel">Salario base prom.</div><div className="kval num">{mill(kpi.salarioPromedio)}</div><div className="ksub"><span className="flag"><Monto value={kpi.salarioPromedio} /></span></div></div>
       </div>
 
-      <div className="grid two" style={{ marginBottom: 12, alignItems: "stretch" }}>
-        {/* Anillo por tipo de contrato */}
-        <div className="card">
-          <div className="chart-head">Costo por Tipo de Contrato <span className="hact">{anio}</span></div>
-          <div className="card-body" style={{ display: "grid", placeItems: "center" }}>
-            {donutTipo.length === 0 ? <div className="empty">Sin datos.</div> : (
-              <Donut azul data={donutTipo} size={260} centro={{ valor: mill(kpi.costoMensual), etiqueta: "costo/mes" }} />
-            )}
-          </div>
-        </div>
-
+      {/* Composición + rankings por proceso y ciudad, en una sola fila. */}
+      <div className="grid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", marginBottom: 12, alignItems: "start" }}>
         {/* Composición del costo */}
         <div className="card">
           <div className="chart-head">Composición del Costo <span className="hact">mensual · {anio}</span></div>
           <div className="card-body" style={{ display: "grid", placeItems: "center" }}>
             {donutComp.length === 0 ? <div className="empty">Sin datos.</div> : (
-              <Donut azul data={donutComp} size={260} centro={{ valor: mill(kpi.costoMensual), etiqueta: "costo/mes" }} />
+              <Donut azul data={donutComp} size={220} centro={{ valor: mill(kpi.costoMensual), etiqueta: "costo/mes" }} />
             )}
           </div>
         </div>
-      </div>
 
-      <div className="grid two" style={{ marginBottom: 12, alignItems: "start" }}>
         {/* Ranking por proceso */}
         <TopRanking
           titulo={`Costo por Proceso · ${anio}`}
           items={procesos.map((p) => ({ label: p.label, valor: p.costoMensual, sub: `${p.headcount} empl.` }))}
-          inicial={10}
+          inicial={8}
         />
         {/* Ranking por ciudad */}
         <TopRanking
           titulo={`Costo por Ciudad · ${anio}`}
           items={ciudades.map((c) => ({ label: c.label, valor: c.costoMensual, sub: `${c.headcount} empl.` }))}
           color="var(--w1)"
-          inicial={10}
+          inicial={8}
         />
       </div>
 
