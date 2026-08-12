@@ -38,15 +38,17 @@ function badgeAlerta(a: NivelAlerta, dias: number | null): { clase: string; text
   }
 }
 
-export default async function DashboardPage() {
+export default async function DashboardPage({ searchParams }: { searchParams: Promise<{ mes?: string }> }) {
   const { usuario } = await requirePermiso("dashboard.view");
+  const sp = await searchParams;
+  const mesEgr = sp.mes && /^\d+$/.test(sp.mes) ? Number(sp.mes) : undefined;
   const verCxp = await puede(usuario, "cxp.view");
   const alcanceCartera = await alcanceDe(usuario, "cartera.view");
   const alcInd = alcanceCartera === "ninguno" ? "todos" : alcanceCartera;
 
   const [meses, tot, presup, cxp, oblig, obligLista, indicadores, ventas] = verCxp
     ? await Promise.all([
-        flujoMensual(ANIO), totalesFlujo(ANIO), presupuestoVsReal(ANIO),
+        flujoMensual(ANIO), totalesFlujo(ANIO), presupuestoVsReal(ANIO, mesEgr),
         resumenCxp(), resumenObligaciones(), listarObligaciones(),
         calcularIndicadores(usuario, alcInd), ventaMensualDetalle(ANIO),
       ])
@@ -194,9 +196,20 @@ export default async function DashboardPage() {
       {verCxp && (
         <div className="grid two" style={{ marginBottom: 12 }}>
           <div className="card">
-            <div className="chart-head">¿En qué se va la plata? <span className="hact">egresos por grupo {ANIO}</span></div>
+            <div className="chart-head">¿En qué se va la plata? <span className="hact">egresos por grupo · {mesEgr ? MESES_FULL[mesEgr] : ANIO}</span></div>
             <div className="card-body">
-              {donutEgresos.length === 0 ? <div className="empty">Sin egresos.</div> : (
+              <form method="get" className="toolbar" style={{ marginBottom: 8 }}>
+                <label className="flag" style={{ alignSelf: "center" }}>Mes:</label>
+                <select name="mes" defaultValue={mesEgr ?? ""} className="select">
+                  <option value="">Todos los meses</option>
+                  {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
+                    <option key={m} value={m}>{MESES_FULL[m]}</option>
+                  ))}
+                </select>
+                <button type="submit" className="btn primary">Ver</button>
+                {mesEgr ? <a href="/dashboard" className="btn">Todos</a> : null}
+              </form>
+              {donutEgresos.length === 0 ? <div className="empty">Sin egresos{mesEgr ? ` en ${MESES_FULL[mesEgr]}` : ""}.</div> : (
                 <Donut azul data={donutEgresos} centro={{ valor: (totalEgresos / 1e9).toFixed(1).replace(".", ",") + " MM", etiqueta: "egresos" }} />
               )}
             </div>
