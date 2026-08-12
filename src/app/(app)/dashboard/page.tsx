@@ -10,12 +10,15 @@ import { resumenCxp } from "@/lib/negocio/cxp";
 import { resumenCartera, carteraPorCiudad } from "@/lib/negocio/cartera";
 import { resumenObligaciones, listarObligaciones, tipoLabel, type NivelAlerta } from "@/lib/negocio/obligaciones";
 import { calcularIndicadores, type IndicadorCalc } from "@/lib/negocio/indicadores";
+import { ventaMensualDetalle } from "@/lib/negocio/ventas";
 import { Donut } from "../_components/charts/Donut";
 import { Medidor } from "../_components/charts/Medidor";
 import { MapaCartera } from "../_components/charts/MapaCartera";
 import { Sparkline } from "../_components/charts/Sparkline";
 
 const ANIO = 2026;
+const PRESUPUESTO_VENTA_MES = 2_000_000_000; // meta mensual de venta (COP)
+const MESES_FULL = ["", "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 const CATS = ["var(--cat-1)", "var(--cat-2)", "var(--cat-3)", "var(--cat-4)", "var(--cat-5)", "var(--cat-6)", "var(--cat-7)", "var(--cat-8)"];
 
 function fmtInd(v: number, u: IndicadorCalc["unidad"]): string {
@@ -41,13 +44,13 @@ export default async function DashboardPage() {
   const alcanceCartera = await alcanceDe(usuario, "cartera.view");
   const alcInd = alcanceCartera === "ninguno" ? "todos" : alcanceCartera;
 
-  const [meses, tot, presup, cxp, oblig, obligLista, indicadores] = verCxp
+  const [meses, tot, presup, cxp, oblig, obligLista, indicadores, ventas] = verCxp
     ? await Promise.all([
         flujoMensual(ANIO), totalesFlujo(ANIO), presupuestoVsReal(ANIO),
         resumenCxp(), resumenObligaciones(), listarObligaciones(),
-        calcularIndicadores(usuario, alcInd),
+        calcularIndicadores(usuario, alcInd), ventaMensualDetalle(ANIO),
       ])
-    : [null, null, null, null, null, null, null];
+    : [null, null, null, null, null, null, null, null];
 
   const cartera = alcanceCartera !== "ninguno" ? await resumenCartera(usuario, alcanceCartera) : null;
   const ciudades = alcanceCartera !== "ninguno" ? await carteraPorCiudad(usuario, alcanceCartera) : [];
@@ -68,7 +71,20 @@ export default async function DashboardPage() {
 
   const maxBar = meses ? Math.max(1, ...meses.map((m) => Math.max(m.ingresos, m.egresos))) : 1;
   const obligOrden = obligLista ? [...obligLista].sort((a, b) => (a.proximaFecha?.getTime() ?? Infinity) - (b.proximaFecha?.getTime() ?? Infinity)) : [];
-  const hoy = formatFecha(new Date());
+  const ahora = new Date();
+  const hoy = formatFecha(ahora);
+
+  // Mes cerrado que reflejan los medidores Venta/Recaudo (último mes con flujo).
+  const mesCerrado = meses && meses.length ? meses[meses.length - 1]!.mes : null;
+
+  // Mes en curso: venta acumulada + proyección lineal a fin de mes (según los
+  // días transcurridos) y diferencia contra la meta mensual de venta.
+  const mesActual = ahora.getUTCFullYear() === ANIO ? ahora.getUTCMonth() + 1 : 12;
+  const diaHoy = ahora.getUTCFullYear() === ANIO ? ahora.getUTCDate() : 31;
+  const diasMes = new Date(Date.UTC(ANIO, mesActual, 0)).getUTCDate();
+  const ventaMesActual = ventas ? (ventas[mesActual - 1]?.venta ?? 0) : 0;
+  const ventaProyectada = diaHoy > 0 ? (ventaMesActual / diaHoy) * diasMes : ventaMesActual;
+  const difPresupuesto = ventaProyectada - PRESUPUESTO_VENTA_MES;
 
   return (
     <>
@@ -109,6 +125,14 @@ export default async function DashboardPage() {
         </div>
       </div>
 
+      {/* Título del informe: mes cerrado que reflejan los medidores */}
+      {verCxp && mesCerrado && (
+        <div style={{ margin: "18px 0 10px", display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
+          <h2 style={{ fontSize: 26, fontWeight: 800, margin: 0 }}>Informe de {MESES_FULL[mesCerrado]}</h2>
+          <span className="flag" style={{ fontSize: 14 }}>{ANIO} · mes cerrado</span>
+        </div>
+      )}
+
       {/* Medidores de indicadores */}
       {gauges.length > 0 && (
         <div className="grid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", marginBottom: 12 }}>
@@ -128,6 +152,40 @@ export default async function DashboardPage() {
             );
           })}
         </div>
+      )}
+
+      {/* Mes en curso: venta acumulada, proyección a fin de mes y dif. vs meta */}
+      {verCxp && ventas && (
+        <>
+          <div style={{ margin: "6px 0 8px", display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
+            <div className="eyebrow" style={{ fontSize: 14 }}>Venta · mes en curso</div>
+            <span className="flag">{MESES_FULL[mesActual]} {ANIO} · corte día {diaHoy} de {diasMes}</span>
+          </div>
+          <div className="kpis" style={{ marginBottom: 12 }}>
+            <div className="kpi k-ingreso">
+              <div className="klabel">Venta del mes</div>
+              <div className="kval num">{formatCOP(ventaMesActual)}</div>
+              <div className="ksub"><span className="flag">acumulada al día {diaHoy}</span></div>
+            </div>
+            <div className="kpi">
+              <div className="klabel">Proyectado a fin de mes</div>
+              <div className="kval num">{formatCOP(ventaProyectada)}</div>
+              <div className="ksub"><span className="flag">al ritmo actual ({diaHoy}/{diasMes} días)</span></div>
+            </div>
+            <div className="kpi">
+              <div className="klabel">Presupuesto (meta)</div>
+              <div className="kval num">{formatCOP(PRESUPUESTO_VENTA_MES)}</div>
+              <div className="ksub"><span className="flag">$2.000M / mes</span></div>
+            </div>
+            <div className="kpi" style={{ borderLeftColor: difPresupuesto >= 0 ? "var(--ok)" : "var(--bad)" }}>
+              <div className="klabel">Diferencia vs presupuesto</div>
+              <div className="kval num" style={{ color: difPresupuesto >= 0 ? "var(--ok)" : "var(--bad)" }}>
+                {difPresupuesto >= 0 ? "+" : "−"}{formatCOP(Math.abs(difPresupuesto))}
+              </div>
+              <div className="ksub"><span className="flag">proyectado − presupuesto</span></div>
+            </div>
+          </div>
+        </>
       )}
 
       {/* Anillo egresos por grupo + barras ingresos/egresos */}
