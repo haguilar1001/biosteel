@@ -36,13 +36,7 @@ export default async function PendientesPage() {
 
   return (
     <>
-      <div className="page-head">
-        <div>
-          <div className="eyebrow">Facturación</div>
-          <h1>Pendientes por facturar</h1>
-          <p>Foto del día · {formatNumero(resumen.pedidos)} pedidos · {resumen.ips} IPS</p>
-        </div>
-      </div>
+      <div className="eyebrow" style={{ marginBottom: 8 }}>Pendientes por facturar · foto del día · {formatNumero(resumen.pedidos)} pedidos · {resumen.ips} IPS</div>
 
       {/* KPIs */}
       <div className="kpis" style={{ marginBottom: 12 }}>

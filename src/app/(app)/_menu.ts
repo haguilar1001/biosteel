@@ -28,7 +28,7 @@ export const MENU_BASE: MenuGrupoDef[] = [
   ] },
   { id: "comercial", label: "Comercial", icon: "🛒", items: [
     { href: "/ventas", label: "💹 Ventas", permiso: "cxp.view" },
-    { href: "/pendientes", label: "📌 Pendientes", permiso: "cxp.view" },
+    { href: "/facturacion", label: "🧾 Facturación", permiso: "cxp.view" },
     { href: "/cartera", label: "📥 Cartera", permiso: "cartera.view" },
   ] },
   { id: "nomina", label: "Nómina", icon: "👥", items: [
