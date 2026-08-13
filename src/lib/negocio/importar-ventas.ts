@@ -95,6 +95,7 @@ export interface FilaLineaAgg { anio: number; mes: number; linea: string; valor:
 export interface FilaClienteAgg { anio: number; mes: number; clienteNombre: string; nit: string | null; valor: number; costo: number }
 export interface FilaMarcaAgg { anio: number; mes: number; marca: string; valor: number; costo: number }
 export interface FilaMarcaIpsAgg { anio: number; mes: number; marca: string; ips: string; valor: number; costo: number }
+export interface FilaDiaAgg { anio: number; mes: number; dia: number; valor: number; costo: number }
 
 export interface AgregadosVenta {
   anios: number[];
@@ -102,6 +103,7 @@ export interface AgregadosVenta {
   porCliente: FilaClienteAgg[];
   porMarca: FilaMarcaAgg[];
   porMarcaIps: FilaMarcaIpsAgg[];
+  porDia: FilaDiaAgg[];
   /** Venta neta total por año. */
   netoPorAnio: Map<number, number>;
   totalNC: number;
@@ -131,6 +133,7 @@ export function agregarVentas(filas: FilaVenta[], params: ParamNC[], excluidos: 
   const porCliente = new Map<string, FilaClienteAgg>();
   const porMarca = new Map<string, FilaMarcaAgg>();
   const porMarcaIps = new Map<string, FilaMarcaIpsAgg>();
+  const porDia = new Map<string, FilaDiaAgg>();
   const anios = new Set<number>();
   const netoPorAnio = new Map<number, number>();
   let totalNC = 0;
@@ -141,6 +144,12 @@ export function agregarVentas(filas: FilaVenta[], params: ParamNC[], excluidos: 
     const neto = r.subtotal - nc;
     anios.add(r.anio);
     netoPorAnio.set(r.anio, (netoPorAnio.get(r.anio) ?? 0) + neto);
+
+    const dia = new Date(r.ms).getUTCDate();
+    const kD = `${r.anio}|${r.mes}|${dia}`;
+    const eD = porDia.get(kD) ?? { anio: r.anio, mes: r.mes, dia, valor: 0, costo: 0 };
+    eD.valor += neto; eD.costo += r.costo;
+    porDia.set(kD, eD);
 
     const linea = r.linea || "(sin línea)";
     const kL = `${r.anio}|${r.mes}|${linea}`;
@@ -170,6 +179,7 @@ export function agregarVentas(filas: FilaVenta[], params: ParamNC[], excluidos: 
     porCliente: [...porCliente.values()],
     porMarca: [...porMarca.values()],
     porMarcaIps: [...porMarcaIps.values()],
+    porDia: [...porDia.values()],
     netoPorAnio, totalNC, renglones: filas.length,
   };
 }

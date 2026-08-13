@@ -12,8 +12,12 @@
 import "server-only";
 import { prisma } from "@/lib/db";
 import { DATASETS, parseDataset, type DatasetKey } from "./importar-siesa-pendientes";
+import { leerRenglones, type FilaVenta } from "./importar-ventas";
+import { escribirAgregados, docABitVenta } from "./escribir-ventas";
 
 export { DATASETS, type DatasetKey };
+
+const r2 = (v: number) => Math.round(v * 100) / 100;
 
 export interface ResultadoDataset {
   titulo: string;
@@ -65,6 +69,22 @@ async function persistir(clave: DatasetKey, rows: Record<string, unknown>[]): Pr
   return { cargadas: nuevos.length, estrategia: `${nuevos.length} documento(s) nuevo(s)` };
 }
 
+// ventas → reemplaza los renglones de las FECHAS presentes en el archivo y
+// recalcula la venta neta (VentaLinea/Cliente/Marca/Dia) desde TODO VentaDoc.
+async function persistirVentas(filas: FilaVenta[]): Promise<Persistencia> {
+  const fechas = [...new Map(filas.map((f) => [f.ms, new Date(f.ms)])).values()];
+  if (fechas.length) await prisma.ventaDoc.deleteMany({ where: { fecha: { in: fechas } } });
+  const docs = filas.map((f) => ({
+    nro: f.nro, tipo: f.tipo, aprobada: f.aprobada, fecha: new Date(f.ms), anio: f.anio, mes: f.mes, dia: new Date(f.ms).getUTCDate(),
+    ips: f.ips, suc: f.suc, bod: f.bod, notas: f.notas, conv: f.conv, proc: f.proc, linea: f.linea,
+    subtotal: r2(f.subtotal), fbd: f.fbd ?? null, costo: r2(f.costo), cliente: f.cliente, nit: f.nit, marca: f.marca,
+  }));
+  await insertar((d) => prisma.ventaDoc.createMany({ data: d as never }), docs);
+  const todos = await prisma.ventaDoc.findMany();
+  await escribirAgregados(prisma, todos.map(docABitVenta));
+  return { cargadas: filas.length, estrategia: `${fechas.length} fecha(s); venta neta recalculada (${todos.length} renglones)` };
+}
+
 export interface ArchivoEntrada { clave: DatasetKey; nombre: string; buffer: Buffer; }
 
 /** Procesa los archivos recibidos según su estrategia y deja bitácora. */
@@ -74,6 +94,12 @@ export async function procesarCarga(archivos: ArchivoEntrada[], origenIp?: strin
 
   for (const a of archivos) {
     try {
+      if (a.clave === "ventas") {
+        const { filas, sinFecha, hoja } = leerRenglones(a.buffer);
+        const { cargadas, estrategia } = await persistirVentas(filas);
+        res.datasets[a.clave] = { titulo: titulo(a.clave), archivo: a.nombre, hoja, filas: filas.length, cargadas, omitidas: sinFecha, estrategia };
+        continue;
+      }
       const parsed = parseDataset(a.clave, a.buffer);
       const { cargadas, estrategia } = await persistir(a.clave, parsed.rows);
       res.datasets[a.clave] = { titulo: titulo(a.clave), archivo: a.nombre, hoja: parsed.hoja, filas: parsed.rows.length, cargadas, omitidas: parsed.omitidas, estrategia };

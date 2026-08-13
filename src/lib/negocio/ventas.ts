@@ -130,6 +130,14 @@ export async function aniosConVenta(): Promise<number[]> {
   return grupos.map((g) => g.anio).sort((a, b) => a - b);
 }
 
+export interface VentaDiaFila { dia: number; valor: number; }
+
+/** Venta neta por día del mes (desde VentaDia; misma fórmula que la mensual). */
+export async function ventaNetaPorDia(anio: number, mes: number): Promise<VentaDiaFila[]> {
+  const filas = await prisma.ventaDia.findMany({ where: { anio, mes }, orderBy: { dia: "asc" } });
+  return filas.map((f) => ({ dia: f.dia, valor: f.valor.toNumber() }));
+}
+
 /** Meses (1–12) que tienen ventas cargadas. */
 export async function mesesConVenta(anio: number): Promise<number[]> {
   const grupos = await prisma.ventaLinea.groupBy({ by: ["mes"], where: { anio }, _sum: { valor: true } });

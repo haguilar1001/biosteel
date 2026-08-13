@@ -10,6 +10,7 @@ import { useEffect, useState } from "react";
 interface DatasetInfo { clave: string; titulo: string; archivoSugerido: string; }
 const DATASETS: DatasetInfo[] = [
   { clave: "pendientes", titulo: "Pedidos pendientes acumulados", archivoSugerido: "PEDIDOS PENDIENTES ACUMULADOS.xlsx" },
+  { clave: "ventas", titulo: "Ventas (facturas por ítem)", archivoSugerido: "2026.xlsx" },
   { clave: "facturacion", titulo: "Datos facturación", archivoSugerido: "DATOS FACTURACIÓN.xlsx" },
   { clave: "gastos", titulo: "Gastos", archivoSugerido: "GASTOS.xlsx" },
   { clave: "anuladas", titulo: "Motivo facturas anuladas", archivoSugerido: "MOTIVO FACTURAS ANULADAS.xlsx" },

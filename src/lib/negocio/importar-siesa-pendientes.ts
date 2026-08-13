@@ -7,13 +7,14 @@
 // ==========================================================
 import * as XLSX from "xlsx";
 
-export type DatasetKey = "facturacion" | "gastos" | "anuladas" | "pendientes";
+export type DatasetKey = "facturacion" | "gastos" | "anuladas" | "pendientes" | "ventas";
 
 export const DATASETS: { clave: DatasetKey; titulo: string }[] = [
+  { clave: "pendientes", titulo: "Pedidos pendientes acumulados" },
+  { clave: "ventas", titulo: "Ventas (facturas por ítem)" },
   { clave: "facturacion", titulo: "Datos facturación" },
   { clave: "gastos", titulo: "Gastos" },
   { clave: "anuladas", titulo: "Motivo facturas anuladas" },
-  { clave: "pendientes", titulo: "Pedidos pendientes acumulados" },
 ];
 
 export interface Parseado { hoja: string; rows: Record<string, unknown>[]; omitidas: number; }
@@ -238,5 +239,6 @@ export function parseDataset(clave: DatasetKey, buffer: Buffer): Parseado {
     case "gastos": return parseGastos(buffer);
     case "anuladas": return parseAnuladas(buffer);
     case "pendientes": return parsePendientes(buffer);
+    case "ventas": throw new Error("El dataset 'ventas' se procesa aparte (renglón + recálculo de venta neta).");
   }
 }

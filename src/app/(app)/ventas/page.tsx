@@ -6,8 +6,7 @@
 import { requirePermiso } from "@/server/auth-context";
 import { formatCOP, formatPorcentaje } from "@/lib/format";
 import { Monto } from "../_components/Monto";
-import { resumenAnual, ventaMensualDetalle, ventaPorCiudad, aniosConVenta } from "@/lib/negocio/ventas";
-import { ventaFacturacionPorDia } from "@/lib/negocio/facturacion";
+import { resumenAnual, ventaMensualDetalle, ventaPorCiudad, aniosConVenta, ventaNetaPorDia } from "@/lib/negocio/ventas";
 import { MapaCartera } from "../_components/charts/MapaCartera";
 import { LineasMensuales } from "../_components/charts/LineasMensuales";
 import { FiltroAuto } from "../_components/FiltroAuto";
@@ -51,11 +50,11 @@ export default async function VentasPage({ searchParams }: { searchParams: Promi
   const esFuturo = (mes: number) => mes > mesActual;
   const parcial = mesActual >= 1 && mesActual < 12; // año en curso
 
-  // Venta por día del mes actual (o del mes filtrado), desde facturación (FET).
+  // Venta neta por día del mes actual (o del mes filtrado), desde VentaDia.
   const mesDia = mesSel ?? (mesActual >= 1 ? mesActual : 12);
-  const ventaDiaRaw = await ventaFacturacionPorDia(anio, mesDia);
+  const ventaDiaRaw = await ventaNetaPorDia(anio, mesDia);
   let accDia = 0;
-  const ventaDia = ventaDiaRaw.map((d) => { accDia += d.venta; return { ...d, acumulado: accDia }; });
+  const ventaDia = ventaDiaRaw.map((d) => { accDia += d.valor; return { dia: d.dia, venta: d.valor, acumulado: accDia }; });
   const totalDia = accDia;
 
   // Total comparable: solo meses transcurridos de ambos años.
@@ -209,7 +208,7 @@ export default async function VentasPage({ searchParams }: { searchParams: Promi
               </tbody>
             </table>
           </div>
-          <p className="flag" style={{ padding: "8px 14px", margin: 0 }}>Subtotal facturado (FET) por día.</p>
+          <p className="flag" style={{ padding: "8px 14px", margin: 0 }}>Venta neta por día (con nota crédito). Cuadra con la venta del mes.</p>
         </div>
       </div>
 

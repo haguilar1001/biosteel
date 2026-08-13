@@ -1034,6 +1034,49 @@ model PedidoPendiente {
   @@index([motivoPendiente])
 }
 
+// Ventas crudas (reporte "Facturas por ítem", nivel renglón) — fuente única de
+// la venta neta. Se cargan incrementales por fecha (formulario) o completas
+// (CLI db:ventas); de aquí se recalculan VentaLinea/Cliente/Marca/Dia.
+model VentaDoc {
+  id       Int      @id @default(autoincrement())
+  nro      String
+  tipo     String   // FET / NAN / NDC…
+  aprobada Boolean  @default(false)
+  fecha    DateTime @db.Date
+  anio     Int
+  mes      Int
+  dia      Int
+  ips      String?
+  suc      String   @default("")
+  bod      String   @default("")
+  notas    String   @default("")
+  conv     String   @default("")
+  proc     String   @default("")
+  linea    String   @default("")
+  subtotal Decimal  @default(0) @db.Decimal(18, 2)
+  fbd      String?
+  costo    Decimal  @default(0) @db.Decimal(18, 2)
+  cliente  String   @default("")
+  nit      String?
+  marca    String   @default("")
+
+  @@index([anio, mes])
+  @@index([fecha])
+}
+
+// Venta neta por día (derivada de VentaDoc, misma fórmula que la mensual).
+model VentaDia {
+  id    Int     @id @default(autoincrement())
+  anio  Int
+  mes   Int
+  dia   Int
+  valor Decimal @db.Decimal(18, 2) // venta neta
+  costo Decimal @default(0) @db.Decimal(18, 2)
+
+  @@unique([anio, mes, dia])
+  @@index([anio, mes])
+}
+
 // Bitácora de cada carga por el formulario (auditoría + feedback a la auxiliar).
 model CargaSiesa {
   id        Int      @id @default(autoincrement())
