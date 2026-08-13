@@ -98,6 +98,10 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const ventaMesActual = ventas ? (ventas[mesActual - 1]?.venta ?? 0) : 0;
   const ventaProyectada = diaHoy > 0 ? (ventaMesActual / diaHoy) * diasMes : ventaMesActual;
   const difPresupuesto = ventaProyectada - PRESUPUESTO_VENTA_MES;
+  // Cumplimiento de la meta (proyectado / presupuesto) y color semáforo.
+  const cumplimiento = PRESUPUESTO_VENTA_MES > 0 ? (ventaProyectada / PRESUPUESTO_VENTA_MES) * 100 : 0;
+  const colorMeta = cumplimiento >= 100 ? "var(--ok)" : cumplimiento >= 80 ? "var(--w1)" : "var(--bad)";
+  const colorDif = difPresupuesto >= 0 ? "var(--ok)" : "var(--bad)";
 
   // Anillo Top 5 de egresos del mes corriente (fallback al último mes con
   // egresos si el mes en curso aún no registra movimientos).
@@ -138,6 +142,24 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
             <h2 style={{ fontSize: 26, fontWeight: 800, margin: 0 }}>Informe de {MESES_FULL[mesActual]}</h2>
             <span className="flag" style={{ fontSize: 14 }}>{ANIO} · mes actual · corte día {diaHoy} de {diasMes}</span>
           </div>
+
+          {/* Medidor de cumplimiento de la meta */}
+          <div className="card" style={{ marginBottom: 12 }}>
+            <div className="card-body" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 30, flexWrap: "wrap", padding: "16px" }}>
+              <Medidor valor={cumplimiento} etiqueta="cumplimiento de la meta" color={colorMeta} size={230} />
+              <div style={{ maxWidth: 340 }}>
+                <div className="eyebrow" style={{ color: colorMeta, fontSize: 14 }}>
+                  {cumplimiento >= 100 ? "✓ Meta alcanzada" : cumplimiento >= 80 ? "Cerca de la meta" : "Por debajo de la meta"}
+                </div>
+                <p className="flag" style={{ margin: "6px 0 0", fontSize: 13, lineHeight: 1.55 }}>
+                  Proyección a fin de mes vs meta de <strong className="num"><Monto value={PRESUPUESTO_VENTA_MES} /></strong>.
+                  Al ritmo actual {difPresupuesto >= 0 ? "superarás la meta por" : "faltarán"}{" "}
+                  <strong className="num" style={{ color: colorDif }}><Monto value={Math.abs(difPresupuesto)} /></strong>.
+                </p>
+              </div>
+            </div>
+          </div>
+
           <div className="grid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", marginBottom: 12 }}>
             <div className="card">
               <div className="chart-head">Venta del mes</div>
@@ -147,10 +169,10 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
               </div>
             </div>
             <div className="card">
-              <div className="chart-head">Proyectado a fin de mes</div>
+              <div className="chart-head" style={{ background: colorMeta }}>Proyectado a fin de mes</div>
               <div className="card-body kpi-body">
-                <div className="num kpi-val"><Monto value={ventaProyectada} /></div>
-                <div className="ksub" style={{ justifyContent: "center" }}><span className="flag">al ritmo actual ({diaHoy}/{diasMes} días)</span></div>
+                <div className="num kpi-val" style={{ color: colorMeta }}><Monto value={ventaProyectada} /></div>
+                <div className="ksub" style={{ justifyContent: "center" }}><span className="flag">{formatPorcentaje(cumplimiento)} de la meta · {diaHoy}/{diasMes} días</span></div>
               </div>
             </div>
             <div className="card">
@@ -161,9 +183,9 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
               </div>
             </div>
             <div className="card">
-              <div className="chart-head">Diferencia vs presupuesto</div>
+              <div className="chart-head" style={{ background: colorDif }}>Diferencia vs presupuesto</div>
               <div className="card-body kpi-body">
-                <div className="num kpi-val">{difPresupuesto >= 0 ? "+" : "−"}<Monto value={Math.abs(difPresupuesto)} /></div>
+                <div className="num kpi-val" style={{ color: colorDif }}>{difPresupuesto >= 0 ? "+" : "−"}<Monto value={Math.abs(difPresupuesto)} /></div>
                 <div className="ksub" style={{ justifyContent: "center" }}><span className="flag">proyectado − presupuesto</span></div>
               </div>
             </div>
