@@ -25,7 +25,7 @@ export default async function EgresosPage({
   const mes = sp.mes && /^\d+$/.test(sp.mes) ? Number(sp.mes) : undefined;
   const categoriaId = sp.grupo && /^\d+$/.test(sp.grupo) ? Number(sp.grupo) : undefined;
   const q = sp.q;
-  const vista = sp.vista === "proveedor" ? "proveedor" : "detalle";
+  const vista = sp.vista === "detalle" ? "detalle" : "proveedor";
   const categorias = await listarCategorias();
   const catsEdit = puedeGestionar ? await categoriasPorTipo("egreso") : [];
 

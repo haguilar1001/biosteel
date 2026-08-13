@@ -25,7 +25,7 @@ export default async function IngresosPage({
   const sp = await searchParams;
   const mes = sp.mes && /^\d+$/.test(sp.mes) ? Number(sp.mes) : undefined;
   const q = sp.q;
-  const vista = sp.vista === "cliente" ? "cliente" : "detalle";
+  const vista = sp.vista === "detalle" ? "detalle" : "cliente";
 
   // Orden: por defecto valor/total desc en "por cliente", fecha desc en detalle.
   const campos = vista === "cliente" ? ["tercero", "cantidad", "valor"] : ["fecha", "tercero", "detalle", "observacion", "valor"];
