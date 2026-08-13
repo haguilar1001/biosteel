@@ -7,15 +7,16 @@ import { requirePermiso } from "@/server/auth-context";
 import { formatCOP, formatPorcentaje } from "@/lib/format";
 import { Monto } from "../_components/Monto";
 import { resumenAnual, ventaMensualDetalle, ventaPorCiudad, aniosConVenta } from "@/lib/negocio/ventas";
-import { Donut } from "../_components/charts/Donut";
+import { MapaCartera } from "../_components/charts/MapaCartera";
 import { LineasMensuales } from "../_components/charts/LineasMensuales";
 import { FiltroAuto } from "../_components/FiltroAuto";
 
 const MESES = ["", "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 const MES_ABBR = ["", "Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
+const CATS = ["var(--cat-1)", "var(--cat-2)", "var(--cat-3)", "var(--cat-4)", "var(--cat-5)", "var(--cat-6)", "var(--cat-7)", "var(--cat-8)"];
 const mill = (v: number) => `${new Intl.NumberFormat("es-CO", { maximumFractionDigits: 0 }).format(Math.round(v / 1e6))} MM`;
 
-export default async function VentasPage({ searchParams }: { searchParams: Promise<{ anio?: string }> }) {
+export default async function VentasPage({ searchParams }: { searchParams: Promise<{ anio?: string; mes?: string }> }) {
   await requirePermiso("cxp.view");
   const sp = await searchParams;
 
@@ -25,12 +26,20 @@ export default async function VentasPage({ searchParams }: { searchParams: Promi
   }
   const anio = sp.anio && anios.includes(Number(sp.anio)) ? Number(sp.anio) : anios[anios.length - 1]!;
 
+  // Mes seleccionado (1–12) o null = todos los meses del año.
+  const mesNum = Number(sp.mes);
+  const mesSel = mesNum >= 1 && mesNum <= 12 ? mesNum : null;
+  const mesesFiltro = mesSel ? [mesSel] : undefined;
+
   const [kpi, mesesAct, mesesAnt, ciudades] = await Promise.all([
-    resumenAnual(anio),
+    resumenAnual(anio, mesesFiltro),
     ventaMensualDetalle(anio),
     ventaMensualDetalle(anio - 1),
-    ventaPorCiudad(anio),
+    ventaPorCiudad(anio, mesesFiltro),
   ]);
+
+  // Meses con venta cargada (para el selector de mes).
+  const mesesDisponibles = mesesAct.filter((m) => m.venta > 0).map((m) => m.mes);
 
   const totalAnt = mesesAnt.reduce((s, m) => s + m.venta, 0);
 
@@ -57,13 +66,18 @@ export default async function VentasPage({ searchParams }: { searchParams: Promi
   const prom25 = v25c / nMeses;
   const difProm = prom26 - prom25;
 
-  // Anillo por ciudad (modo azul: agrupa los menores en "Otros menores").
-  // detalle = IPS de la ciudad (para el tooltip).
-  const donut = ciudades.map((c) => ({
-    label: c.ciudad,
+  // Mapa por ciudad: burbuja por ciudad, color categórico ("Sin ciudad" en gris).
+  // detalle = IPS de la ciudad (para el tooltip del mapa).
+  let idxCol = 0;
+  const colorCiudad = new Map<string, string>();
+  for (const c of ciudades) colorCiudad.set(c.ciudad, c.ciudad === "Sin ciudad" ? "var(--muted)" : CATS[idxCol++ % CATS.length]!);
+  const mapaData = ciudades.map((c) => ({
+    ciudad: c.ciudad,
     valor: c.valor,
-    detalle: c.ips.map((i) => ({ label: i.nombre, valor: i.valor })),
+    color: colorCiudad.get(c.ciudad)!,
+    ips: c.ips.map((i) => ({ cliente: i.nombre, saldo: i.valor })),
   }));
+  const totalCiudades = ciudades.reduce((s, c) => s + c.valor, 0) || 1;
 
   // Series para la gráfica de líneas (año en curso corta en el mes actual).
   const serieActual = mesesAct.map((m) => (esFuturo(m.mes) ? null : m.venta));
@@ -73,11 +87,16 @@ export default async function VentasPage({ searchParams }: { searchParams: Promi
     <>
       <div className="card" style={{ marginBottom: 12 }}>
         <div className="card-body" style={{ paddingBottom: 12, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
-          <div className="eyebrow" style={{ fontSize: 15 }}>Informe de Ventas · {anio}</div>
+          <div className="eyebrow" style={{ fontSize: 15 }}>Informe de Ventas · {mesSel ? `${MESES[mesSel]} ` : ""}{anio}</div>
           <FiltroAuto className="toolbar">
             <label className="flag" style={{ alignSelf: "center" }}>Año:</label>
             <select name="anio" defaultValue={anio} className="select">
               {anios.map((a) => <option key={a} value={a}>{a}</option>)}
+            </select>
+            <label className="flag" style={{ alignSelf: "center" }}>Mes:</label>
+            <select name="mes" defaultValue={mesSel ?? ""} className="select">
+              <option value="">Todos</option>
+              {mesesDisponibles.map((m) => <option key={m} value={m}>{MESES[m]}</option>)}
             </select>
             <a href={`/ventas/export?anio=${anio}`} className="btn" title="Descargar ventas por mes en Excel">⬇️ Excel</a>
           </FiltroAuto>
@@ -109,7 +128,7 @@ export default async function VentasPage({ searchParams }: { searchParams: Promi
                   if (vac) return null;
                   const colDif = dif >= 0 ? "var(--ok)" : "var(--bad)";
                   return (
-                    <tr key={m.mes}>
+                    <tr key={m.mes} style={mesSel === m.mes ? { background: "var(--brand-tint)" } : undefined}>
                       <td style={{ fontWeight: 600 }}>{MESES[m.mes]}</td>
                       <td className="r num">{m.venta ? formatCOP(m.venta) : "—"}</td>
                       <td className="r num flag">{ant ? formatCOP(ant) : "—"}</td>
@@ -154,12 +173,24 @@ export default async function VentasPage({ searchParams }: { searchParams: Promi
           )}
         </div>
 
-        {/* Venta por ciudad (anillo) */}
+        {/* Venta por ciudad (mapa) */}
         <div className="card">
-          <div className="chart-head">Venta por Ciudad <span className="hact">{anio}</span></div>
-          <div className="card-body" style={{ display: "grid", placeItems: "center" }}>
-            {donut.length === 0 ? <div className="empty">Sin datos.</div> : (
-              <Donut azul data={donut} size={260} centro={{ valor: mill(kpi.venta), etiqueta: "venta neta" }} />
+          <div className="chart-head">Venta por Ciudad <span className="hact">{mesSel ? `${MESES[mesSel]} ` : ""}{anio}</span></div>
+          <div className="card-body" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            {mapaData.length === 0 ? <div className="empty">Sin datos.</div> : (
+              <>
+                <MapaCartera data={mapaData} />
+                <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                  {ciudades.map((c) => (
+                    <div key={c.ciudad} style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13, padding: "6px 4px", borderTop: "1px solid var(--line)" }}>
+                      <i style={{ width: 12, height: 12, borderRadius: 3, background: colorCiudad.get(c.ciudad), flex: "0 0 auto" }} />
+                      <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.ciudad}</span>
+                      <span className="num" style={{ fontWeight: 700 }}>{formatCOP(c.valor)}</span>
+                      <span className="num" style={{ color: "var(--muted)", minWidth: 58, textAlign: "right" }}>{formatPorcentaje((c.valor / totalCiudades) * 100)}</span>
+                    </div>
+                  ))}
+                </div>
+              </>
             )}
           </div>
         </div>

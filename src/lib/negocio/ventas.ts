@@ -54,9 +54,10 @@ export async function ventaMensualDetalle(anio: number): Promise<MesVenta[]> {
 
 export interface ResumenAnual { venta: number; costo: number; utilidad: number; margen: number }
 
-/** KPIs del año: venta neta, costo, utilidad y % utilidad. */
-export async function resumenAnual(anio: number): Promise<ResumenAnual> {
-  const agg = await prisma.ventaLinea.aggregate({ where: { anio }, _sum: { valor: true, costo: true } });
+/** KPIs del período (año, opcionalmente meses): venta neta, costo, utilidad y % utilidad. */
+export async function resumenAnual(anio: number, meses?: number[]): Promise<ResumenAnual> {
+  const where: Prisma.VentaLineaWhereInput = { anio, ...(meses && meses.length ? { mes: { in: meses } } : {}) };
+  const agg = await prisma.ventaLinea.aggregate({ where, _sum: { valor: true, costo: true } });
   const venta = agg._sum.valor?.toNumber() ?? 0;
   const costo = agg._sum.costo?.toNumber() ?? 0;
   const utilidad = venta - costo;
