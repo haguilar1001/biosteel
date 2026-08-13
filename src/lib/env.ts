@@ -29,8 +29,13 @@ const schema = z.object({
   CARGA_TOKEN: z.string().optional(),
 
   // --- Sincronización de Flujo de Caja desde OneDrive (cron diario) ---
-  // Enlace de compartir ("cualquiera con el enlace") al .xlsx del flujo diario.
+  // Enlace de compartir al .xlsx del flujo diario (URL del archivo en OneDrive).
   FLUJO_ONEDRIVE_URL: z.string().optional(),
+  // Microsoft Graph (app registration) para descargar de SharePoint/OneDrive
+  // empresarial de forma autenticada y confiable. Si están, se usa Graph.
+  FLUJO_GRAPH_TENANT_ID: z.string().optional(),
+  FLUJO_GRAPH_CLIENT_ID: z.string().optional(),
+  FLUJO_GRAPH_CLIENT_SECRET: z.string().optional(),
   // Destinatarios de los recordatorios de vencimientos financieros:
   //   Alejandro Aguilar        -> alejandro.aguilar@biosteeldecolombia.com
   //   María Angélica Parejo     -> cooradministrativa@biosteeldecolombia.com (coordinación administrativa)

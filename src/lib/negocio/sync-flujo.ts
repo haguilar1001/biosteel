@@ -128,6 +128,36 @@ async function persistir(movs: MovFlujo[], mapa: Map<string, number>): Promise<v
   for (let i = 0; i < filas.length; i += BATCH) await prisma.movimientoFlujo.createMany({ data: filas.slice(i, i + BATCH) as never });
 }
 
+// ---------- Descarga autenticada vía Microsoft Graph (recomendado) ----------
+
+const graphConfigurado = () =>
+  Boolean(env.FLUJO_GRAPH_TENANT_ID && env.FLUJO_GRAPH_CLIENT_ID && env.FLUJO_GRAPH_CLIENT_SECRET);
+
+async function tokenGraph(): Promise<string> {
+  const body = new URLSearchParams({
+    client_id: env.FLUJO_GRAPH_CLIENT_ID!, client_secret: env.FLUJO_GRAPH_CLIENT_SECRET!,
+    scope: "https://graph.microsoft.com/.default", grant_type: "client_credentials",
+  });
+  const r = await fetch(`https://login.microsoftonline.com/${env.FLUJO_GRAPH_TENANT_ID}/oauth2/v2.0/token`, {
+    method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" }, body,
+  });
+  const j = (await r.json().catch(() => ({}))) as { access_token?: string; error_description?: string };
+  if (!r.ok || !j.access_token) throw new Error(`Token Graph: HTTP ${r.status} ${(j.error_description ?? "").slice(0, 180)}`);
+  return j.access_token;
+}
+
+async function descargarGraph(shareUrl: string): Promise<Buffer> {
+  const token = await tokenGraph();
+  const enc = "u!" + Buffer.from(shareUrl).toString("base64").replace(/=+$/, "").replace(/\//g, "_").replace(/\+/g, "-");
+  const r = await fetch(`https://graph.microsoft.com/v1.0/shares/${enc}/driveItem/content`, {
+    headers: { authorization: `Bearer ${token}` }, redirect: "follow",
+  });
+  if (!r.ok) throw new Error(`Graph descarga: HTTP ${r.status} ${(await r.text().catch(() => "")).slice(0, 180)}`);
+  const buf = Buffer.from(await r.arrayBuffer());
+  if (!(buf.length >= 2 && buf[0] === 0x50 && buf[1] === 0x4b)) throw new Error("Graph no devolvió un .xlsx válido.");
+  return buf;
+}
+
 /** Sincroniza desde un buffer .xlsx ya descargado (útil para probar). */
 export async function sincronizarFlujoDesdeBuffer(buffer: Buffer, origenIp?: string): Promise<ResultadoFlujoSync> {
   const res: ResultadoFlujoSync = { ok: true, movimientos: 0, omitidas: 0, anios: [], ingresos: 0, egresos: 0, categoriasCreadas: [] };
@@ -160,7 +190,11 @@ export async function sincronizarFlujo(origenIp?: string): Promise<ResultadoFluj
   }
   let buffer: Buffer;
   try {
-    buffer = await descargarOneDrive(env.FLUJO_ONEDRIVE_URL);
+    // Con credenciales de Graph → descarga autenticada (confiable). Si no, se
+    // intenta la descarga anónima (solo funciona con enlaces públicos).
+    buffer = graphConfigurado()
+      ? await descargarGraph(env.FLUJO_ONEDRIVE_URL)
+      : await descargarOneDrive(env.FLUJO_ONEDRIVE_URL);
   } catch (e) {
     const error = e instanceof Error ? e.message : "error al descargar";
     await prisma.cargaSiesa.create({ data: { ok: false, resumen: { flujo: { error } } as unknown as object, mensaje: error, origenIp: origenIp ?? null } });
