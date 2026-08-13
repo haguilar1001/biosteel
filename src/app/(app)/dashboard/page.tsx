@@ -241,7 +241,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
 
       {/* Egresos por grupo + próximos pagos (izq.) · barras + anillo (der.) */}
       {verCxp && (
-        <div className="grid two" style={{ marginBottom: 12, alignItems: "start" }}>
+        <div className="grid two" style={{ marginBottom: 12, alignItems: "stretch" }}>
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           <div className="card">
             <div className="chart-head">¿En qué se va la plata? <span className="hact">egresos por grupo · {mesEgr ? MESES_FULL[mesEgr] : ANIO}</span></div>
@@ -275,7 +275,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
               )}
             </div>
           </div>
-          <div className="card">
+          <div className="card" style={{ flexGrow: 1 }}>
             <div className="chart-head">Próximos pagos · obligaciones</div>
             <div className="tbl-wrap">
               <table>
@@ -328,8 +328,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         </div>
       )}
 
-      {/* Mapa de cartera + cartera por ciudad expandible (por IPS) — anchos iguales */}
-      <div className="grid two">
+      {/* Mapa de cartera (más angosto) + cartera por ciudad expandible (más ancha) */}
+      <div className="grid two" style={{ gridTemplateColumns: "0.8fr 1.2fr" }}>
         {cartera && mapaData.length > 0 && (
           <div className="card">
             <div className="chart-head">Cartera por ciudad <a href="/cartera/ciudades?vista=mapa" className="hact" style={{ color: "#fff" }}>ver detalle →</a></div>
