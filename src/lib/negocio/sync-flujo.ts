@@ -35,10 +35,43 @@ export function urlDescargaDirecta(url: string): string {
   return url;
 }
 
+/** Agrega ?download=1 al enlace (algunos OneDrive/SharePoint lo requieren). */
+function conDownload(url: string): string {
+  try { const u = new URL(url); u.searchParams.set("download", "1"); return u.toString(); } catch { return url; }
+}
+
+/** Sigue redirecciones (incl. 308) manualmente y devuelve la respuesta final. */
+async function fetchSiguiendo(url: string, maxHops = 8): Promise<Response> {
+  let u = url;
+  for (let i = 0; i < maxHops; i++) {
+    const r = await fetch(u, { redirect: "manual", headers: { "user-agent": "Mozilla/5.0" } });
+    if (r.status >= 300 && r.status < 400) {
+      const loc = r.headers.get("location");
+      if (!loc) return r;
+      u = new URL(loc, u).toString();
+      continue;
+    }
+    return r;
+  }
+  throw new Error("demasiadas redirecciones");
+}
+
 async function descargarOneDrive(url: string): Promise<Buffer> {
-  const resp = await fetch(urlDescargaDirecta(url), { redirect: "follow" });
-  if (!resp.ok) throw new Error(`OneDrive respondió ${resp.status} al descargar el archivo.`);
-  return Buffer.from(await resp.arrayBuffer());
+  const candidatos = [urlDescargaDirecta(url), conDownload(url), url];
+  const vistos = new Set<string>();
+  let ultimo = "sin respuesta";
+  for (const c of candidatos) {
+    if (vistos.has(c)) continue;
+    vistos.add(c);
+    try {
+      const r = await fetchSiguiendo(c);
+      if (!r.ok) { ultimo = `HTTP ${r.status}`; continue; }
+      const buf = Buffer.from(await r.arrayBuffer());
+      if (buf.length >= 2 && buf[0] === 0x50 && buf[1] === 0x4b) return buf; // "PK" = .xlsx (zip)
+      ultimo = "la respuesta no es un .xlsx (¿el enlace apunta a una página, no al archivo?)";
+    } catch (e) { ultimo = e instanceof Error ? e.message : "error"; }
+  }
+  throw new Error(`No se pudo descargar el archivo de OneDrive: ${ultimo}.`);
 }
 
 /** Resuelve GRUPOS → categoriaId, creando las categorías (egreso) que falten. */
