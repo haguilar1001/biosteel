@@ -138,26 +138,12 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       {/* Fila 1 — Venta del mes en curso: acumulada, proyección y dif. vs meta */}
       {verCxp && ventas && (
         <>
-          <div style={{ margin: "18px 0 10px", display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
-            <h2 style={{ fontSize: 26, fontWeight: 800, margin: 0 }}>Informe de {MESES_FULL[mesActual]}</h2>
-            <span className="flag" style={{ fontSize: 14 }}>{ANIO} · mes actual · corte día {diaHoy} de {diasMes}</span>
-          </div>
-
-          {/* Medidor de cumplimiento de la meta */}
-          <div className="card" style={{ marginBottom: 12 }}>
-            <div className="card-body" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 30, flexWrap: "wrap", padding: "16px" }}>
-              <Medidor valor={cumplimiento} etiqueta="cumplimiento de la meta" color={colorMeta} size={230} />
-              <div style={{ maxWidth: 340 }}>
-                <div className="eyebrow" style={{ color: colorMeta, fontSize: 14 }}>
-                  {cumplimiento >= 100 ? "✓ Meta alcanzada" : cumplimiento >= 80 ? "Cerca de la meta" : "Por debajo de la meta"}
-                </div>
-                <p className="flag" style={{ margin: "6px 0 0", fontSize: 13, lineHeight: 1.55 }}>
-                  Proyección a fin de mes vs meta de <strong className="num"><Monto value={PRESUPUESTO_VENTA_MES} /></strong>.
-                  Al ritmo actual {difPresupuesto >= 0 ? "superarás la meta por" : "faltarán"}{" "}
-                  <strong className="num" style={{ color: colorDif }}><Monto value={Math.abs(difPresupuesto)} /></strong>.
-                </p>
-              </div>
+          <div style={{ margin: "18px 0 10px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14, flexWrap: "wrap" }}>
+            <div style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
+              <h2 style={{ fontSize: 26, fontWeight: 800, margin: 0 }}>Informe de {MESES_FULL[mesActual]}</h2>
+              <span className="flag" style={{ fontSize: 14 }}>{ANIO} · mes actual · corte día {diaHoy} de {diasMes}</span>
             </div>
+            <Medidor valor={cumplimiento} etiqueta="cumplimiento de la meta" color={colorMeta} size={150} />
           </div>
 
           <div className="grid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", marginBottom: 12 }}>
