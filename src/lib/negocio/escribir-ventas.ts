@@ -32,22 +32,25 @@ export async function escribirAgregados(prisma: PrismaClient, filas: FilaVenta[]
   const agg = agregarVentas(filas, params, excluidos);
 
   // Ajustes manuales (mensuales) como línea sintética por concepto (igual que el CLI).
+  // IMPORTANTE: solo se aplican a años PRESENTES en este lote. Si el archivo trae
+  // solo 2026, NO se toca 2024/2025 (evita borrar años que no vienen en la carga).
   const lineas = [...agg.porLinea];
   const clientes = [...agg.porCliente];
   const marcas = [...agg.porMarca];
   const marcaIps = [...agg.porMarcaIps];
   const anios = [...agg.anios];
+  const aniosData = new Set(agg.anios);
   for (const aj of ajustes) {
+    if (!aniosData.has(aj.anio)) continue; // no recalcular años ausentes en este lote
     const v = aj.valor.toNumber(); const c = aj.concepto;
     agg.netoPorAnio.set(aj.anio, (agg.netoPorAnio.get(aj.anio) ?? 0) + v);
     lineas.push({ anio: aj.anio, mes: aj.mes, linea: c, valor: v, costo: 0 });
     clientes.push({ anio: aj.anio, mes: aj.mes, clienteNombre: c, nit: null, valor: v, costo: 0 });
     marcas.push({ anio: aj.anio, mes: aj.mes, marca: c, valor: v, costo: 0 });
     marcaIps.push({ anio: aj.anio, mes: aj.mes, marca: c, ips: c, valor: v, costo: 0 });
-    if (!anios.includes(aj.anio)) anios.push(aj.anio);
   }
 
-  // Mensuales: delete+recreate por año.
+  // Mensuales: delete+recreate SOLO de los años presentes en el lote.
   for (const anio of anios.sort((a, b) => a - b)) {
     const L = lineas.filter((e) => e.anio === anio);
     const C = clientes.filter((e) => e.anio === anio);
