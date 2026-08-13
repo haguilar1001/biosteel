@@ -15,6 +15,7 @@ import { ventaMensualDetalle } from "@/lib/negocio/ventas";
 import { Medidor } from "../_components/charts/Medidor";
 import { Donut } from "../_components/charts/Donut";
 import { MapaCartera } from "../_components/charts/MapaCartera";
+import { CiudadesTabla, type CiudadItem } from "../cartera/ciudades/CiudadesTabla";
 import { Sparkline } from "../_components/charts/Sparkline";
 import { FiltroAuto } from "../_components/FiltroAuto";
 
@@ -73,6 +74,13 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const colorCiudad = new Map<string, string>();
   for (const c of ciudades) colorCiudad.set(c.ciudad, c.ciudad === "Sin ciudad" ? "var(--muted)" : CATS[idx++ % CATS.length]!);
   const mapaData = ciudades.map((c) => ({ ciudad: c.ciudad, valor: c.saldo, color: colorCiudad.get(c.ciudad)!, ips: c.ips.map((i) => ({ cliente: i.cliente, saldo: i.saldo })) }));
+  // Cartera por ciudad expandible (por IPS) — mismo dataset que el mapa.
+  const carteraItems: CiudadItem[] = ciudades.map((c) => ({
+    ciudad: c.ciudad, saldo: c.saldo, documentos: c.documentos, clientes: c.clientes,
+    color: colorCiudad.get(c.ciudad)!, ips: c.ips.map((i) => ({ cliente: i.cliente, saldo: i.saldo, documentos: i.documentos })),
+  }));
+  const carteraTotal = ciudades.reduce((s, c) => s + c.saldo, 0);
+  const carteraDocs = ciudades.reduce((s, c) => s + c.documentos, 0);
 
   const maxBar = meses ? Math.max(1, ...meses.map((m) => Math.max(m.ingresos, m.egresos))) : 1;
   const obligOrden = obligLista ? [...obligLista].sort((a, b) => (a.proximaFecha?.getTime() ?? Infinity) - (b.proximaFecha?.getTime() ?? Infinity)) : [];
@@ -231,9 +239,10 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         </div>
       </div>
 
-      {/* Anillo egresos por grupo + barras ingresos/egresos */}
+      {/* Egresos por grupo + próximos pagos (izq.) · barras + anillo (der.) */}
       {verCxp && (
-        <div className="grid two" style={{ marginBottom: 12 }}>
+        <div className="grid two" style={{ marginBottom: 12, alignItems: "start" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           <div className="card">
             <div className="chart-head">¿En qué se va la plata? <span className="hact">egresos por grupo · {mesEgr ? MESES_FULL[mesEgr] : ANIO}</span></div>
             <div className="card-body">
@@ -267,6 +276,28 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
             </div>
           </div>
           <div className="card">
+            <div className="chart-head">Próximos pagos · obligaciones</div>
+            <div className="tbl-wrap">
+              <table>
+                <thead><tr><th>Entidad</th><th className="r">Saldo</th><th>Próximo pago</th><th className="r">Cuota</th></tr></thead>
+                <tbody>
+                  {obligOrden.map((o) => {
+                    const b = badgeAlerta(o.alerta, o.diasHasta);
+                    return (
+                      <tr key={o.id}>
+                        <td style={{ fontWeight: 600 }}><span style={{ textTransform: "uppercase" }}>{o.entidad}</span> <span className="flag">· {tipoLabel(o.tipo)}</span></td>
+                        <td className="r num"><Monto value={o.saldoCapital} /></td>
+                        <td>{o.proximaFecha ? <>{formatFecha(o.proximaFecha)} <span className={`tag ${b.clase}`}>{b.texto}</span></> : "—"}</td>
+                        <td className="r num">{o.cuotaMensual != null ? formatCOP(o.cuotaMensual) : "—"}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+          </div>
+          <div className="card">
             <div className="chart-head">Ingresos vs Egresos por mes <span className="hact">{ANIO}</span></div>
             <div className="card-body">
               <div style={{ display: "flex", alignItems: "flex-end", gap: 8, height: 220 }}>
@@ -297,35 +328,18 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         </div>
       )}
 
-      {/* Mapa de cartera + próximos pagos */}
-      <div className="grid two" style={{ gridTemplateColumns: "1.3fr 1fr" }}>
+      {/* Mapa de cartera + cartera por ciudad expandible (por IPS) — anchos iguales */}
+      <div className="grid two">
         {cartera && mapaData.length > 0 && (
           <div className="card">
             <div className="chart-head">Cartera por ciudad <a href="/cartera/ciudades?vista=mapa" className="hact" style={{ color: "#fff" }}>ver detalle →</a></div>
             <div className="card-body"><MapaCartera data={mapaData} /></div>
           </div>
         )}
-        {verCxp && (
+        {cartera && carteraItems.length > 0 && (
           <div className="card">
-            <div className="chart-head">Próximos pagos · obligaciones</div>
-            <div className="tbl-wrap">
-              <table>
-                <thead><tr><th>Entidad</th><th className="r">Saldo</th><th>Próximo pago</th><th className="r">Cuota</th></tr></thead>
-                <tbody>
-                  {obligOrden.map((o) => {
-                    const b = badgeAlerta(o.alerta, o.diasHasta);
-                    return (
-                      <tr key={o.id}>
-                        <td style={{ fontWeight: 600 }}><span style={{ textTransform: "uppercase" }}>{o.entidad}</span> <span className="flag">· {tipoLabel(o.tipo)}</span></td>
-                        <td className="r num"><Monto value={o.saldoCapital} /></td>
-                        <td>{o.proximaFecha ? <>{formatFecha(o.proximaFecha)} <span className={`tag ${b.clase}`}>{b.texto}</span></> : "—"}</td>
-                        <td className="r num">{o.cuotaMensual != null ? formatCOP(o.cuotaMensual) : "—"}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+            <div className="chart-head">Cartera por ciudad · por IPS <span className="hact">clic para expandir</span></div>
+            <CiudadesTabla ciudades={carteraItems} total={carteraTotal} totalDocs={carteraDocs} />
           </div>
         )}
       </div>
