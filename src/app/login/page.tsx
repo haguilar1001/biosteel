@@ -3,6 +3,7 @@ import { useActionState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 import { loginAction, type LoginState } from "./actions";
+import { PasswordInput } from "@/components/PasswordInput";
 
 const estadoInicial: LoginState = {};
 
@@ -30,7 +31,7 @@ function LoginForm() {
 
       <div className="field">
         <label htmlFor="password">Contraseña</label>
-        <input id="password" name="password" type="password" autoComplete="current-password" required />
+        <PasswordInput id="password" name="password" autoComplete="current-password" required />
       </div>
 
       {state.needsTotp && (

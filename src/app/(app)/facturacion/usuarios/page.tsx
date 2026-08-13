@@ -9,6 +9,13 @@ const MESES = ["", "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio
 const AZULES = ["var(--az-1)", "var(--az-2)", "var(--az-3)", "var(--az-4)", "var(--az-5)", "var(--az-6)", "var(--az-7)", "var(--az-8)", "var(--az-otros)"];
 const nf = new Intl.NumberFormat("es-CO");
 
+// Nombres "bonitos" para usuarios cuyo login no se formatea bien solo.
+const ALIAS_USUARIO: Record<string, string> = {
+  "adriana.delacruz": "ADRIANA DE LA CRUZ",
+  "lperezb": "LORENA PEREZ",
+};
+const nombreUsuario = (u: string) => ALIAS_USUARIO[u.toLowerCase()] ?? u.replace(/\./g, " ").toUpperCase();
+
 export default async function FacturacionUsuariosPage({ searchParams }: { searchParams: Promise<{ anio?: string; mes?: string }> }) {
   await requirePermiso("cxp.view");
   const sp = await searchParams;
@@ -52,7 +59,7 @@ export default async function FacturacionUsuariosPage({ searchParams }: { search
           <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
             {usuarios.map((u, idx) => {
               const pct = docs > 0 ? (u.docs / docs) * 100 : 0;
-              const nombre = u.usuario.replace(/\./g, " ").toUpperCase();
+              const nombre = nombreUsuario(u.usuario);
               return (
                 <div key={u.usuario} style={{ display: "grid", gridTemplateColumns: "minmax(0, 180px) 1fr 64px 66px 150px", alignItems: "center", gap: 12 }}>
                   <span className="rank-label" title={nombre} style={{ fontSize: 12.5, fontWeight: 700 }}>{nombre}</span>

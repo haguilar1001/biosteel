@@ -2,6 +2,7 @@
 "use client";
 import { useActionState } from "react";
 import { cambiarClaveAction, type CambioState } from "./actions";
+import { PasswordInput } from "@/components/PasswordInput";
 
 export default function CambiarClavePage() {
   const [state, formAction, pending] = useActionState<CambioState, FormData>(cambiarClaveAction, {});
@@ -22,15 +23,15 @@ export default function CambiarClavePage() {
           {state.error && <div className="alert" role="alert">{state.error}</div>}
           <div className="field">
             <label htmlFor="actual">Contraseña actual</label>
-            <input id="actual" name="actual" type="password" autoComplete="current-password" required />
+            <PasswordInput id="actual" name="actual" autoComplete="current-password" required />
           </div>
           <div className="field">
             <label htmlFor="nueva">Nueva contraseña</label>
-            <input id="nueva" name="nueva" type="password" autoComplete="new-password" required />
+            <PasswordInput id="nueva" name="nueva" autoComplete="new-password" required />
           </div>
           <div className="field">
             <label htmlFor="confirmar">Confirmar nueva contraseña</label>
-            <input id="confirmar" name="confirmar" type="password" autoComplete="new-password" required />
+            <PasswordInput id="confirmar" name="confirmar" autoComplete="new-password" required />
           </div>
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 6 }}>
             <a className="btn" href="/dashboard">Cancelar</a>

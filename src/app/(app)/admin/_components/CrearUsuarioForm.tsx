@@ -1,6 +1,7 @@
 "use client";
 import { useActionState } from "react";
 import { crearUsuarioAction, type AdminState } from "../actions";
+import { PasswordInput } from "@/components/PasswordInput";
 
 const init: AdminState = {};
 
@@ -30,7 +31,7 @@ export function CrearUsuarioForm({
           </div>
           <div className="field">
             <label>🔑 Contraseña inicial</label>
-            <input name="clave" type="password" required autoComplete="new-password" />
+            <PasswordInput name="clave" required autoComplete="new-password" />
             <small className="flag">Mín. 12 caracteres: mayúscula, minúscula, número y símbolo.</small>
           </div>
           <div className="field">
