@@ -13,6 +13,7 @@ import { resumenObligaciones, listarObligaciones, tipoLabel, type NivelAlerta } 
 import { calcularIndicadores, type IndicadorCalc } from "@/lib/negocio/indicadores";
 import { ventaMensualDetalle } from "@/lib/negocio/ventas";
 import { Medidor } from "../_components/charts/Medidor";
+import { Donut } from "../_components/charts/Donut";
 import { MapaCartera } from "../_components/charts/MapaCartera";
 import { Sparkline } from "../_components/charts/Sparkline";
 import { FiltroAuto } from "../_components/FiltroAuto";
@@ -89,6 +90,28 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const ventaMesActual = ventas ? (ventas[mesActual - 1]?.venta ?? 0) : 0;
   const ventaProyectada = diaHoy > 0 ? (ventaMesActual / diaHoy) * diasMes : ventaMesActual;
   const difPresupuesto = ventaProyectada - PRESUPUESTO_VENTA_MES;
+
+  // Anillo Top 5 de egresos del mes corriente (fallback al último mes con
+  // egresos si el mes en curso aún no registra movimientos).
+  let mesDonut: number | null = mesActual;
+  let gruposDonut = verCxp ? (await presupuestoVsReal(ANIO, mesActual)).filter((p) => p.real > 0) : [];
+  if (verCxp && gruposDonut.length === 0 && mesCerrado && mesCerrado !== mesActual) {
+    mesDonut = mesCerrado;
+    gruposDonut = (await presupuestoVsReal(ANIO, mesCerrado)).filter((p) => p.real > 0);
+  }
+  if (gruposDonut.length === 0) mesDonut = null;
+  gruposDonut.sort((a, b) => b.real - a.real);
+  const top5Donut = gruposDonut.slice(0, 5);
+  const restoDonut = gruposDonut.slice(5);
+  const restoValDonut = restoDonut.reduce((s, g) => s + g.real, 0);
+  const totalDonut = gruposDonut.reduce((s, g) => s + g.real, 0);
+  const donutEgresos = [
+    ...top5Donut.map((g, i) => ({ label: g.categoria, valor: g.real, color: AZULES[i % AZULES.length]! })),
+    ...(restoValDonut > 0
+      ? [{ label: `Otros (${restoDonut.length})`, valor: restoValDonut, color: "var(--az-otros)", detalle: restoDonut.map((r) => ({ label: r.categoria, valor: r.real })) }]
+      : []),
+  ];
+  const donutCentro = `${new Intl.NumberFormat("es-CO", { maximumFractionDigits: 0 }).format(Math.round(totalDonut / 1e6))} MM`;
 
   return (
     <>
@@ -227,16 +250,14 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
               {grupos.length === 0 ? <div className="empty">Sin egresos{mesEgr ? ` en ${MESES_FULL[mesEgr]}` : ""}.</div> : (
                 <>
                   <div className="flag" style={{ marginBottom: 10 }}>Total egresos: <strong className="num"><Monto value={totalEgresos} /></strong></div>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
                     {grupos.map((g, idx) => {
                       const pct = totalEgresos > 0 ? (g.real / totalEgresos) * 100 : 0;
                       return (
-                        <div key={g.categoria}>
-                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8, marginBottom: 3 }}>
-                            <span className="rank-label" title={g.categoria} style={{ fontSize: 12.5, fontWeight: 600 }}>{g.categoria}</span>
-                            <span className="num" style={{ fontSize: 12.5, whiteSpace: "nowrap" }}><Monto value={g.real} /> <span className="flag">· {pct.toFixed(1).replace(".", ",")}%</span></span>
-                          </div>
+                        <div key={g.categoria} style={{ display: "grid", gridTemplateColumns: "minmax(0, 210px) 1fr auto", alignItems: "center", gap: 10 }}>
+                          <span className="rank-label" title={g.categoria} style={{ fontSize: 12.5, fontWeight: 600 }}>{g.categoria}</span>
                           <div className="rank-bar"><div style={{ width: `${Math.max(2, (g.real / maxEgr) * 100)}%`, background: AZULES[idx % AZULES.length] }} /></div>
+                          <span className="num" style={{ fontSize: 12.5, whiteSpace: "nowrap" }}><Monto value={g.real} /> <span className="flag">· {pct.toFixed(1).replace(".", ",")}%</span></span>
                         </div>
                       );
                     })}
@@ -260,6 +281,17 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                 ))}
               </div>
               <div className="legend"><span><i style={{ background: "var(--ingreso)" }} />Ingresos</span><span><i style={{ background: "var(--egreso)" }} />Egresos</span></div>
+
+              {donutEgresos.length > 0 && (
+                <div style={{ borderTop: "1px solid var(--line)", marginTop: 14, paddingTop: 12 }}>
+                  <div className="eyebrow" style={{ fontSize: 13, marginBottom: 6 }}>
+                    ¿En qué se va la plata? <span className="flag">· Top 5 · {mesDonut ? MESES_FULL[mesDonut] : ""}</span>
+                  </div>
+                  <div style={{ display: "grid", placeItems: "center" }}>
+                    <Donut data={donutEgresos} size={230} centro={{ valor: donutCentro, etiqueta: "egresos" }} />
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
