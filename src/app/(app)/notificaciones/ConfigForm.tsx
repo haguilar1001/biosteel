@@ -37,7 +37,7 @@ export function ConfigForm({ diasAntes, destinatariosRaw, puedeEditar }: Props) 
         <div className="field">
           <label>📆 Días de anticipación</label>
           <input type="number" name="diasAntes" defaultValue={diasAntes} min={1} max={120} required style={{ maxWidth: 140 }} />
-          <small className="flag">Cuántos días antes del vencimiento se envía el recordatorio.</small>
+          <small className="flag">Aviso anticipado. Además siempre se envía 1 día antes y el día del vencimiento.</small>
         </div>
         <div className="field">
           <label>✉️ Destinatarios</label>

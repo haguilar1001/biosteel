@@ -35,7 +35,7 @@ export default async function NotificacionesPage() {
         <div>
           <div className="eyebrow">Tesorería</div>
           <h1>Notificaciones</h1>
-          <p>Recordatorios de pago por correo, {diasAntes} días antes del vencimiento</p>
+          <p>Recordatorios de pago por correo: {diasAntes} días antes, 1 día antes y el día del vencimiento</p>
         </div>
         <div className="toolbar" style={{ gap: 8 }}>
           <AnuncioBtn />
