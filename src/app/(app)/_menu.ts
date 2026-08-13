@@ -19,6 +19,7 @@ export interface MenuGrupoDef { id: string; label: string; icon: string; items: 
 export const MENU_BASE: MenuGrupoDef[] = [
   { id: "inicio", label: "Inicio", icon: "🏠", items: [
     { href: "/dashboard", label: "🏠 Inicio", permiso: "dashboard.view" },
+    { href: "/consultas", label: "🤖 Asistente", permiso: "cxp.view" },
   ] },
   { id: "tesoreria", label: "Tesorería", icon: "💰", items: [
     { href: "/flujo", label: "💵 Flujo de Caja", permiso: "cxp.view" },
