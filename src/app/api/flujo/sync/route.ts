@@ -19,7 +19,9 @@ async function handler(req: Request) {
   }
   const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? undefined;
   const res = await sincronizarFlujo(ip);
-  return NextResponse.json(res, { status: res.ok ? 200 : 500 });
+  // Siempre 200 con el JSON (el campo `ok` indica el resultado) para que el
+  // motivo del fallo sea visible en el navegador/curl.
+  return NextResponse.json(res, { status: 200 });
 }
 
 export const GET = handler;
