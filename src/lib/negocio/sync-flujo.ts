@@ -40,6 +40,17 @@ function conDownload(url: string): string {
   try { const u = new URL(url); u.searchParams.set("download", "1"); return u.toString(); } catch { return url; }
 }
 
+/** Enlace de descarga directa de SharePoint: /:x:/g/personal/user/TOKEN → download.aspx?share=TOKEN */
+function sharepointDownload(url: string): string | null {
+  try {
+    const u = new URL(url);
+    if (!/sharepoint\.com$/i.test(u.hostname)) return null;
+    const m = u.pathname.match(/\/:[a-z]:\/[a-z]\/(personal\/[^/]+)\/([^/]+)/i);
+    if (!m) return null;
+    return `${u.origin}/${m[1]}/_layouts/15/download.aspx?share=${m[2]}`;
+  } catch { return null; }
+}
+
 /** Sigue redirecciones (incl. 308) manualmente CONSERVANDO cookies — necesario
  *  para los enlaces anónimos de SharePoint, que fijan una cookie de invitado. */
 async function fetchSiguiendo(url: string, maxHops = 12): Promise<Response> {
@@ -69,7 +80,7 @@ async function fetchSiguiendo(url: string, maxHops = 12): Promise<Response> {
 }
 
 async function descargarOneDrive(url: string): Promise<Buffer> {
-  const candidatos = [urlDescargaDirecta(url), conDownload(url), url];
+  const candidatos = [sharepointDownload(url), conDownload(url), urlDescargaDirecta(url), url].filter((u): u is string => !!u);
   const vistos = new Set<string>();
   let ultimo = "sin respuesta";
   for (const c of candidatos) {
