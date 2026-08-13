@@ -15,7 +15,7 @@ const DATASETS: DatasetInfo[] = [
   { clave: "anuladas", titulo: "Motivo facturas anuladas", archivoSugerido: "MOTIVO FACTURAS ANULADAS.xlsx" },
 ];
 
-interface ResDataset { titulo: string; archivo: string; hoja: string; filas: number; omitidas: number; }
+interface ResDataset { titulo: string; archivo: string; hoja: string; filas: number; cargadas: number; omitidas: number; estrategia: string; }
 interface Resultado {
   status: number;
   ok?: boolean;
@@ -166,16 +166,16 @@ function Resultado({ res }: { res: Resultado }) {
             <thead>
               <tr style={{ color: "#5B6B82", textAlign: "left" }}>
                 <th style={{ padding: "6px 0" }}>Archivo</th>
-                <th style={{ padding: "6px 0", textAlign: "right" }}>Filas</th>
-                <th style={{ padding: "6px 0", textAlign: "right" }}>Omitidas</th>
+                <th style={{ padding: "6px 0", textAlign: "right" }}>En archivo</th>
+                <th style={{ padding: "6px 0", textAlign: "right" }}>Cargadas</th>
               </tr>
             </thead>
             <tbody>
               {filas.map((d) => (
                 <tr key={d.titulo} style={{ borderTop: "1px solid #EEF2F7" }}>
-                  <td style={{ padding: "7px 0" }}><strong>{d.titulo}</strong><br /><span style={{ color: "#5B6B82", fontSize: 12 }}>{d.archivo}</span></td>
-                  <td style={{ padding: "7px 0", textAlign: "right", fontWeight: 700 }}>{nf.format(d.filas)}</td>
-                  <td style={{ padding: "7px 0", textAlign: "right", color: d.omitidas ? "#9A5A00" : "#5B6B82" }}>{nf.format(d.omitidas)}</td>
+                  <td style={{ padding: "7px 0" }}><strong>{d.titulo}</strong><br /><span style={{ color: "#5B6B82", fontSize: 12 }}>{d.estrategia}</span></td>
+                  <td style={{ padding: "7px 0", textAlign: "right", color: "#5B6B82" }}>{nf.format(d.filas)}</td>
+                  <td style={{ padding: "7px 0", textAlign: "right", fontWeight: 700 }}>{nf.format(d.cargadas)}</td>
                 </tr>
               ))}
             </tbody>
