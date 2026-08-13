@@ -130,7 +130,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       <div className="page-head">
         <div>
           <div className="eyebrow">Inicio</div>
-          <h1>Panel de Flujo de Caja</h1>
+          <h1>APP Bio Steel</h1>
           <p>Corte a {hoy} · {usuario.rol.nombre}</p>
         </div>
       </div>

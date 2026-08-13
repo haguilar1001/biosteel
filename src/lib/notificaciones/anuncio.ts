@@ -23,7 +23,7 @@ function plantillaAnuncio(diasAntes: number, baseUrl: string): string {
 
       <div style="padding:28px;color:#1B2434;line-height:1.55">
         <h1 style="margin:0 0 6px;font-size:20px;color:${AZUL}">Recordatorios de vencimientos financieros</h1>
-        <p style="margin:0 0 16px;color:#5B6B82;font-size:14px">Sistema de Flujo de Caja · Tesorería</p>
+        <p style="margin:0 0 16px;color:#5B6B82;font-size:14px">APP Bio Steel · Tesorería</p>
 
         <p style="margin:0 0 14px;font-size:15px">Hola 👋</p>
         <p style="margin:0 0 14px;font-size:15px">
@@ -51,7 +51,7 @@ function plantillaAnuncio(diasAntes: number, baseUrl: string): string {
 
         <p style="margin:0 0 6px;font-size:14px;color:#5B6B82">No hay que hacer nada: los recordatorios llegan solos.</p>
         <p style="margin:16px 0 0;color:#9AA7B8;font-size:12px">
-          Mensaje automático del sistema de flujo de caja de BioSteel de Colombia S.A.S. · Confidencial.
+          Mensaje automático de la APP Bio Steel · BioSteel de Colombia S.A.S. · Confidencial.
         </p>
       </div>
     </div>

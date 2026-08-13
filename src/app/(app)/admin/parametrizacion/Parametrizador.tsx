@@ -189,7 +189,7 @@ export function Parametrizador() {
         <div className="chart-head">👁️ Vista previa</div>
         <div style={{ padding: 16 }}>
           <div style={{ display: "grid", gap: 8 }}>
-            <div style={{ fontSize: 24, fontWeight: 700, color: "var(--ink)" }}>Flujo de Caja — BioSteel</div>
+            <div style={{ fontSize: 24, fontWeight: 700, color: "var(--ink)" }}>APP Bio Steel</div>
             <div style={{ fontSize: 14, color: "var(--ink)" }}>
               El zorro veloz salta sobre el perro perezoso mientras revisa la cartera del cliente #1.234.
             </div>

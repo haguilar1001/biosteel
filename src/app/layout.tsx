@@ -2,8 +2,8 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "BioSteel — Flujo de Caja",
-  description: "Sistema de flujo de caja de BioSteel de Colombia S.A.S",
+  title: "APP Bio Steel",
+  description: "APP Bio Steel · BioSteel de Colombia S.A.S.",
   robots: { index: false, follow: false }, // app interna, no indexar
   // Favicon = logo BioSteel (lo usan también los lanzadores de apps).
   icons: {

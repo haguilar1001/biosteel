@@ -90,7 +90,7 @@ function plantilla(o: FilaObligacion, fechaISO: string, dias: number): string {
         ${fila("Saldo", formatCOP(o.saldoCapital))}
         ${fila("Tasa EA", o.tasaEA != null ? formatPorcentaje(o.tasaEA) : "—", { ultima: true })}
       </table>
-      <p style="color:#5B6B82;font-size:12px;margin-top:18px;margin-bottom:0">Mensaje automático del sistema de flujo de caja de BioSteel de Colombia S.A.S.</p>
+      <p style="color:#5B6B82;font-size:12px;margin-top:18px;margin-bottom:0">Mensaje automático de la APP Bio Steel · BioSteel de Colombia S.A.S.</p>
     </div>
   </div>`;
 }
