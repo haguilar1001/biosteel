@@ -5,6 +5,8 @@
 //   · gastos      → REEMPLAZA solo los MESES que trae el archivo (mes actual).
 //   · facturacion → AGREGA solo documentos NUEVOS (no toca el histórico).
 //   · anuladas    → AGREGA solo documentos NUEVOS.
+//   · ventas      → AGREGA las fechas nuevas del archivo "2026" (reemplazo por
+//                   fecha) y RECALCULA la venta neta sobre todo VentaDoc.
 // El parseo vive en importar-siesa-pendientes.ts (compartido con el CLI).
 // El CLI db:pendientes hace reemplazo total (carga inicial / reseteo).
 // Ver la ruta pública: src/app/api/cargar/route.ts
@@ -82,7 +84,7 @@ async function persistirVentas(filas: FilaVenta[]): Promise<Persistencia> {
   await insertar((d) => prisma.ventaDoc.createMany({ data: d as never }), docs);
   const todos = await prisma.ventaDoc.findMany();
   await escribirAgregados(prisma, todos.map(docABitVenta));
-  return { cargadas: filas.length, estrategia: `${fechas.length} fecha(s); venta neta recalculada (${todos.length} renglones)` };
+  return { cargadas: filas.length, estrategia: `${fechas.length} fecha(s) nueva(s)/actualizada(s); venta neta recalculada sobre ${todos.length} renglones` };
 }
 
 export interface ArchivoEntrada { clave: DatasetKey; nombre: string; buffer: Buffer; }
