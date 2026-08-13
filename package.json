@@ -28,6 +28,7 @@
     "db:inventario": "tsx prisma/set-inventario.ts",
     "db:codigos": "tsx prisma/set-codigos.ts",
     "db:nomina": "tsx prisma/set-nomina.ts",
+    "db:pendientes": "node --max-old-space-size=8192 node_modules/tsx/dist/cli.mjs prisma/set-pendientes.ts",
     "db:check": "tsx prisma/check-datos.ts",
     "db:studio": "prisma studio",
     "audit": "npm audit --audit-level=high",
