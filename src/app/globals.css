@@ -388,10 +388,13 @@ td.r, th.r { text-align: right; }
 .dlg {
   border: 1px solid var(--line); border-radius: var(--r); padding: 0;
   background: var(--surface); color: var(--ink); box-shadow: 0 24px 60px rgba(27,36,52,.28);
-  max-width: 640px; width: calc(100% - 32px);
+  max-width: 760px; width: calc(100% - 32px);
 }
 .dlg::backdrop { background: rgba(27,36,52,.45); backdrop-filter: blur(2px); }
 .dlg .form-crear { border: 0; box-shadow: none; }
+/* Evita la barra de desplazamiento horizontal: deja que inputs/selects
+   de las filas en grid se encojan por debajo de su ancho intrínseco. */
+.dlg .form-crear input, .dlg .form-crear select { min-width: 0; max-width: 100%; }
 .dlg h3 { font-size: 16px; }
 
 /* ==========================================================
