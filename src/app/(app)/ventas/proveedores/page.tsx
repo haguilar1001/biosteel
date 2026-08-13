@@ -63,7 +63,7 @@ export default async function ProveedoresPage({ searchParams }: { searchParams: 
       <div className="grid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", marginBottom: 12 }}>
         {porEstado.map((e) => (
           <div className="card" key={e.estado}>
-            <div className="chart-head" style={{ background: colorEstado(e.estado) }}>{e.estado} <span className="hact">{e.proveedores} marcas</span></div>
+            <div className="chart-head" style={{ background: colorEstado(e.estado) }}>{e.estado.toUpperCase()} <span className="hact">{e.proveedores} marcas</span></div>
             <div className="card-body kpi-body">
               <div className="num kpi-val"><Monto value={e.valor} /></div>
               <div className="ksub" style={{ justifyContent: "center" }}><span className="flag">{formatPorcentaje(total > 0 ? (e.valor / total) * 100 : 0)} del total</span></div>
@@ -71,7 +71,7 @@ export default async function ProveedoresPage({ searchParams }: { searchParams: 
           </div>
         ))}
         <div className="card">
-          <div className="chart-head" style={{ background: "var(--bad)" }}>Venta en riesgo</div>
+          <div className="chart-head" style={{ background: "var(--bad)" }}>VENTA EN RIESGO</div>
           <div className="card-body kpi-body">
             <div className="num kpi-val"><Monto value={enRiesgo} /></div>
             <div className="ksub" style={{ justifyContent: "center" }}><span className="flag">{formatPorcentaje(total > 0 ? (enRiesgo / total) * 100 : 0)} · inactivos + restringidos</span></div>
@@ -85,7 +85,7 @@ export default async function ProveedoresPage({ searchParams }: { searchParams: 
         <div className="tbl-wrap">
           <table className="tabla-fit">
             <thead>
-              <tr><th>Marca (proveedor)</th><th className="r">Venta neta</th><th>Estado</th><th>Motivo</th>{editable ? <th className="r">Acción</th> : null}</tr>
+              <tr><th>Marca (proveedor)</th><th className="r">Compra neta</th><th>Estado</th><th>Motivo</th>{editable ? <th className="r">Acción</th> : null}</tr>
             </thead>
             <tbody>
               {filas.length === 0 ? (
