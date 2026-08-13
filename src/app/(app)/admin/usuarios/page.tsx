@@ -3,6 +3,7 @@ import { requirePermiso } from "@/server/auth-context";
 import { prisma } from "@/lib/db";
 import { formatNumero, formatFechaHora } from "@/lib/format";
 import { CrearUsuarioForm } from "../_components/CrearUsuarioForm";
+import { EnviarBienvenidaBtn } from "../_components/EnviarBienvenidaBtn";
 import { SelectorRolUsuario } from "../_components/SelectorRolUsuario";
 
 const fmtFechaHora = (d: Date | null) => (d ? formatFechaHora(d) : "Nunca");
@@ -21,7 +22,8 @@ export default async function UsuariosPage() {
 
   return (
     <>
-      <div className="toolbar" style={{ marginBottom: 12, justifyContent: "flex-end" }}>
+      <div className="toolbar" style={{ marginBottom: 12, justifyContent: "flex-end", alignItems: "flex-start", gap: 10 }}>
+        <EnviarBienvenidaBtn total={usuarios.length} />
         <CrearUsuarioForm roles={roles} sedes={sedes} />
       </div>
 

@@ -13,6 +13,7 @@ import { exigirPermiso } from "@/lib/rbac/authorize";
 import { hashPassword } from "@/lib/auth/password";
 import { auditar } from "@/lib/audit/log";
 import { crearUsuarioSchema, crearRolSchema } from "@/lib/validation/admin";
+import { enviarBienvenida, enviarBienvenidaAVarios } from "@/lib/notificaciones/bienvenida";
 
 export interface AdminState {
   ok?: boolean;
@@ -68,8 +69,24 @@ export async function crearUsuarioAction(_prev: AdminState, fd: FormData): Promi
     data: { nombre, email, passwordHash, rolId, sedeId: sedeId ?? null, activo: true },
   });
   await auditar({ usuarioId: actor.id, accion: "usuario.crear", entidad: "Usuario", entidadId: u.id, valorNuevo: { nombre, email, rol: rol.nombre }, ip: await ipActual() });
+  // Correo de bienvenida (no bloquea la creación si el correo falla o no está configurado).
+  let aviso = "";
+  try { await enviarBienvenida({ nombre, email, rol: rol.nombre }); aviso = " Se envió el correo de bienvenida."; }
+  catch { aviso = " (No se pudo enviar el correo de bienvenida — revisa la config de correo.)"; }
   revalidatePath("/admin/usuarios");
-  return { ok: true, msg: `Usuario "${nombre}" creado con perfil ${rol.nombre}.` };
+  return { ok: true, msg: `Usuario "${nombre}" creado con perfil ${rol.nombre}.${aviso}` };
+}
+
+// ------------- Enviar correo de bienvenida a TODOS los usuarios activos -------------
+export async function enviarBienvenidaTodosAction(): Promise<AdminState> {
+  const actor = await requireUsuario();
+  try { await exigirPermiso(actor, "usuario.manage"); } catch { return { error: "No tienes permiso para gestionar usuarios." }; }
+
+  const usuarios = await prisma.usuario.findMany({ where: { activo: true }, include: { rol: { select: { nombre: true } } } });
+  const res = await enviarBienvenidaAVarios(usuarios.map((u) => ({ nombre: u.nombre, email: u.email, rol: u.rol.nombre })));
+  if (!res.configurado) return { error: "El correo no está configurado en el servidor (falta BREVO_API_KEY o SMTP en Railway)." };
+  const err = res.errores.length ? ` · ${res.errores.length} con error` : "";
+  return { ok: true, msg: `Bienvenida enviada a ${res.enviados} de ${res.total} usuario(s)${err}.` };
 }
 
 // ---------------- Cambiar el rol de un usuario (inline) ----------------
