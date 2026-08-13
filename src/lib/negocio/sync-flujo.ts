@@ -40,11 +40,23 @@ function conDownload(url: string): string {
   try { const u = new URL(url); u.searchParams.set("download", "1"); return u.toString(); } catch { return url; }
 }
 
-/** Sigue redirecciones (incl. 308) manualmente y devuelve la respuesta final. */
-async function fetchSiguiendo(url: string, maxHops = 8): Promise<Response> {
+/** Sigue redirecciones (incl. 308) manualmente CONSERVANDO cookies — necesario
+ *  para los enlaces anónimos de SharePoint, que fijan una cookie de invitado. */
+async function fetchSiguiendo(url: string, maxHops = 12): Promise<Response> {
   let u = url;
+  const jar = new Map<string, string>();
   for (let i = 0; i < maxHops; i++) {
-    const r = await fetch(u, { redirect: "manual", headers: { "user-agent": "Mozilla/5.0" } });
+    const headers: Record<string, string> = { "user-agent": "Mozilla/5.0", accept: "*/*" };
+    if (jar.size) headers.cookie = [...jar.entries()].map(([k, v]) => `${k}=${v}`).join("; ");
+    const r = await fetch(u, { redirect: "manual", headers });
+    const setCookies: string[] = typeof (r.headers as { getSetCookie?: () => string[] }).getSetCookie === "function"
+      ? (r.headers as { getSetCookie: () => string[] }).getSetCookie()
+      : (r.headers.get("set-cookie") ? [r.headers.get("set-cookie") as string] : []);
+    for (const c of setCookies) {
+      const kv = c.split(";")[0] ?? "";
+      const eq = kv.indexOf("=");
+      if (eq > 0) jar.set(kv.slice(0, eq).trim(), kv.slice(eq + 1).trim());
+    }
     if (r.status >= 300 && r.status < 400) {
       const loc = r.headers.get("location");
       if (!loc) return r;
