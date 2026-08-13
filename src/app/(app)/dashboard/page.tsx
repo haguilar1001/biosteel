@@ -127,23 +127,23 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
 
   return (
     <>
-      <div className="page-head">
+      <div className="page-head" style={{ alignItems: "center" }}>
         <div>
           <div className="eyebrow">Inicio</div>
           <h1>APP Bio Steel</h1>
           <p>Corte a {hoy} · {usuario.rol.nombre}</p>
         </div>
+        {verCxp && ventas && (
+          <Medidor valor={cumplimiento} etiqueta="cumplimiento de la meta" color={colorMeta} size={210} />
+        )}
       </div>
 
       {/* Fila 1 — Venta del mes en curso: acumulada, proyección y dif. vs meta */}
       {verCxp && ventas && (
         <>
-          <div style={{ margin: "18px 0 10px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14, flexWrap: "wrap" }}>
-            <div style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
-              <h2 style={{ fontSize: 26, fontWeight: 800, margin: 0 }}>Informe de {MESES_FULL[mesActual]}</h2>
-              <span className="flag" style={{ fontSize: 14 }}>{ANIO} · mes actual · corte día {diaHoy} de {diasMes}</span>
-            </div>
-            <Medidor valor={cumplimiento} etiqueta="cumplimiento de la meta" color={colorMeta} size={150} />
+          <div style={{ margin: "4px 0 10px", display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
+            <h2 style={{ fontSize: 26, fontWeight: 800, margin: 0 }}>Informe de {MESES_FULL[mesActual]}</h2>
+            <span className="flag" style={{ fontSize: 14 }}>{ANIO} · mes actual · corte día {diaHoy} de {diasMes}</span>
           </div>
 
           <div className="grid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", marginBottom: 12 }}>
