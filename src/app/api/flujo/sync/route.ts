@@ -20,8 +20,8 @@ async function handler(req: Request) {
   const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? undefined;
   const res = await sincronizarFlujo(ip);
   // Siempre 200 con el JSON (el campo `ok` indica el resultado) para que el
-  // motivo del fallo sea visible en el navegador/curl.
-  return NextResponse.json(res, { status: 200 });
+  // motivo del fallo sea visible en el navegador/curl. no-store: no cachear.
+  return NextResponse.json(res, { status: 200, headers: { "Cache-Control": "no-store" } });
 }
 
 export const GET = handler;
