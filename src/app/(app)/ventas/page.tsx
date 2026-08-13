@@ -56,6 +56,13 @@ export default async function VentasPage({ searchParams }: { searchParams: Promi
   let accDia = 0;
   const ventaDia = ventaDiaRaw.map((d) => { accDia += d.valor; return { dia: d.dia, venta: d.valor, acumulado: accDia }; });
   const totalDia = accDia;
+  // Heat map de la columna Venta: verde más intenso a mayor venta del día.
+  const minDia = ventaDia.length ? Math.min(...ventaDia.map((d) => d.venta)) : 0;
+  const maxDia = ventaDia.length ? Math.max(...ventaDia.map((d) => d.venta)) : 0;
+  const heatVenta = (v: number) => {
+    const t = maxDia > minDia ? (v - minDia) / (maxDia - minDia) : 0.5;
+    return `color-mix(in srgb, var(--ok) ${Math.round(8 + t * 56)}%, transparent)`;
+  };
 
   // Total comparable: solo meses transcurridos de ambos años.
   let v26c = 0, v25c = 0;
@@ -194,7 +201,7 @@ export default async function VentasPage({ searchParams }: { searchParams: Promi
                     {ventaDia.map((d) => (
                       <tr key={d.dia}>
                         <td style={{ fontWeight: 600 }}>{d.dia}</td>
-                        <td className="r num"><Monto value={d.venta} /></td>
+                        <td className="r num" style={{ background: heatVenta(d.venta) }}><Monto value={d.venta} /></td>
                         <td className="r num" style={{ fontWeight: 700 }}><Monto value={d.acumulado} /></td>
                       </tr>
                     ))}
