@@ -7,7 +7,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 const SESSION_COOKIE = "biosteel_session";
-const RUTAS_PUBLICAS = ["/login", "/api/health", "/api/notificaciones", "/cargar", "/api/cargar"];
+const RUTAS_PUBLICAS = ["/login", "/api/health", "/api/notificaciones", "/cargar", "/api/cargar", "/api/flujo"];
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;

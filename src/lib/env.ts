@@ -27,6 +27,10 @@ const schema = z.object({
   // Token del link de carga que usa la auxiliar (fuera de la app, sin login).
   // Si falta, el formulario de carga queda deshabilitado.
   CARGA_TOKEN: z.string().optional(),
+
+  // --- Sincronización de Flujo de Caja desde OneDrive (cron diario) ---
+  // Enlace de compartir ("cualquiera con el enlace") al .xlsx del flujo diario.
+  FLUJO_ONEDRIVE_URL: z.string().optional(),
   // Destinatarios de los recordatorios de vencimientos financieros:
   //   Alejandro Aguilar        -> alejandro.aguilar@biosteeldecolombia.com
   //   María Angélica Parejo     -> cooradministrativa@biosteeldecolombia.com (coordinación administrativa)
