@@ -22,6 +22,11 @@ const schema = z.object({
 
   // --- Notificaciones ---
   CRON_SECRET: z.string().optional(), // protege el endpoint /api/notificaciones/run
+
+  // --- Carga de S1ESA (módulo Pendientes) ---
+  // Token del link de carga que usa la auxiliar (fuera de la app, sin login).
+  // Si falta, el formulario de carga queda deshabilitado.
+  CARGA_TOKEN: z.string().optional(),
   // Destinatarios de los recordatorios de vencimientos financieros:
   //   Alejandro Aguilar        -> alejandro.aguilar@biosteeldecolombia.com
   //   María Angélica Parejo     -> cooradministrativa@biosteeldecolombia.com (coordinación administrativa)

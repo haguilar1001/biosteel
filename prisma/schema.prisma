@@ -924,3 +924,124 @@ model ExclusionNC {
   @@unique([nroDocumento, concepto])
   @@index([nroDocumento])
 }
+
+// ==========================================================
+// Módulo PENDIENTES — datos crudos de S1ESA cargados a diario por la auxiliar
+// contable vía formulario con token. Cada carga REEMPLAZA por completo el
+// dataset (la descarga es histórica completa). Ver src/lib/negocio/carga-siesa.
+// ==========================================================
+
+// DATOS FACTURACIÓN (FET). Grano: documento. ~106k filas.
+model FacturacionDoc {
+  id                Int       @id @default(autoincrement())
+  nroDocumento      String
+  fecha             DateTime  @db.Date
+  anio              Int
+  mes               Int       // 1–12
+  estado            String
+  clienteRazon      String    // Razón social cliente factura
+  costoPromedio     Decimal   @default(0) @db.Decimal(18, 2)
+  subtotal          Decimal   @default(0) @db.Decimal(18, 2) // Valor subtotal local
+  impuestos         Decimal   @default(0) @db.Decimal(18, 2) // Valor impuestos local
+  neto              Decimal   @default(0) @db.Decimal(18, 2) // Valor neto local
+  utilidadPromedio  Decimal   @default(0) @db.Decimal(18, 2)
+  sucursal          String?   // Desc. sucursal factura
+  notasCredito      String?   // Notas credito condicionadas
+  pedidos           String?
+  usuarioAprobacion String?   // Usuario aprobacion (indicador clave: # docs x usuario)
+  convenio          String?
+  fechaCx           DateTime? @db.Date
+
+  @@index([anio, mes])
+  @@index([usuarioAprobacion])
+  @@index([clienteRazon])
+}
+
+// GASTOS. Grano: documento (PVS/PBQ…). ~58k filas.
+model GastoDoc {
+  id                Int       @id @default(autoincrement())
+  nroDocumento      String
+  fecha             DateTime  @db.Date
+  anio              Int
+  mes               Int       // 1–12
+  estado            String    // Cumplido / Pendiente
+  clienteRazon      String
+  sucursal          String?
+  subtotal          Decimal   @default(0) @db.Decimal(18, 2)
+  valorBruto        Decimal   @default(0) @db.Decimal(18, 2)
+  impuestos         Decimal   @default(0) @db.Decimal(18, 2)
+  fechaAprobacion   DateTime? @db.Date
+  fechaCumplido     DateTime? @db.Date
+  diasFacturacion   Int? // fechaCumplido − fechaAprobacion (para el indicador 0–3 días)
+  usuarioAprobacion String?
+  fechaCx           DateTime? @db.Date
+  convenio          String?
+  numeroCaso        String?
+  estadoPedidos     String?
+
+  @@index([anio, mes])
+  @@index([estado])
+}
+
+// MOTIVO FACTURAS ANULADAS (NAN). Grano: documento. Cientos de filas.
+model FacturaAnulada {
+  id                Int       @id @default(autoincrement())
+  nroDocumento      String
+  fecha             DateTime  @db.Date
+  anio              Int
+  mes               Int       // 1–12
+  clienteRazon      String
+  subtotal          Decimal   @default(0) @db.Decimal(18, 2)
+  numeroCaso        String?
+  paciente          String?
+  sucursal          String?
+  doc               String?   // tipo doc (FET…)
+  nFactura          String?   // N° Factura
+  usuarioAprobacion String?
+  fechaFacturaBase  DateTime? @db.Date
+  motivo            String?
+  descripcion       String?
+  responsable       String?   // indicador clave: valor x responsable
+
+  @@index([anio, mes])
+  @@index([motivo])
+  @@index([responsable])
+}
+
+// PEDIDOS PENDIENTES ACUMULADOS. Foto (snapshot) del día. Cientos de filas.
+model PedidoPendiente {
+  id                Int       @id @default(autoincrement())
+  nroDocumento      String
+  fecha             DateTime  @db.Date
+  anio              Int
+  mes               Int       // 1–12
+  estado            String
+  clienteRazon      String    // IPS
+  sucursal          String?
+  subtotal          Decimal   @default(0) @db.Decimal(18, 2)
+  valorBruto        Decimal   @default(0) @db.Decimal(18, 2)
+  impuestos         Decimal   @default(0) @db.Decimal(18, 2)
+  fechaAprobacion   DateTime? @db.Date
+  fechaCumplido     DateTime? @db.Date
+  usuarioAprobacion String?
+  fechaCx           DateTime? @db.Date
+  convenio          String?
+  numeroCaso        String?
+  motivoPendiente   String?   // Q-códigos (Q2-LISTO PARA FACTURAR…) o texto libre
+  responsable       String?
+
+  @@index([clienteRazon])
+  @@index([motivoPendiente])
+}
+
+// Bitácora de cada carga por el formulario (auditoría + feedback a la auxiliar).
+model CargaSiesa {
+  id        Int      @id @default(autoincrement())
+  cargadaEn DateTime @default(now())
+  ok        Boolean  @default(true)
+  resumen   Json     // { dataset: { archivo, filas, ... }, errores: [...] }
+  mensaje   String?
+  origenIp  String?
+
+  @@index([cargadaEn])
+}
