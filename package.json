@@ -25,6 +25,7 @@
     "db:permiso-ventas": "tsx prisma/set-permiso-ventas.ts",
     "db:proveedor-estado": "tsx prisma/set-proveedor-estado.ts",
     "db:pyg": "tsx prisma/set-pyg.ts",
+    "db:pyg-excel": "tsx prisma/set-pyg-excel.ts",
     "db:inventario": "tsx prisma/set-inventario.ts",
     "db:codigos": "tsx prisma/set-codigos.ts",
     "db:nomina": "tsx prisma/set-nomina.ts",

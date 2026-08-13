@@ -69,8 +69,8 @@ const topClientes: Intent = {
   id: "ventas.top-clientes",
   ejemplo: "Dame el top 5 de clientes del año",
   score(c) {
-    let s = 0;
-    if (has(c, "cliente", "ips")) s += 3;
+    if (!has(c, "cliente", "ips")) return 0; // exige la dimensión
+    let s = 3;
     if (c.ranking) s += 2;
     if (has(c, ...K_VENTA)) s += 1;
     if (has(c, "cartera", "debe", "por cobrar", "por pagar", "proveedor", "ciudad")) s -= 4;
@@ -101,8 +101,8 @@ const topProveedores: Intent = {
   id: "ventas.top-proveedores",
   ejemplo: "¿Cuál es el top de proveedores?",
   score(c) {
-    let s = 0;
-    if (has(c, "proveedor", "marca", "laboratorio", "casa")) s += 3;
+    if (!has(c, "proveedor", "marca", "laboratorio", "casa")) return 0; // exige la dimensión
+    let s = 3;
     if (c.ranking) s += 2;
     if (has(c, ...K_VENTA, "compra", "consumo")) s += 1;
     if (has(c, ...K_CXP)) s -= 5; // eso es CxP, no ventas por marca
@@ -132,8 +132,8 @@ const topLineas: Intent = {
   id: "ventas.top-lineas",
   ejemplo: "Top de líneas de negocio",
   score(c) {
-    let s = 0;
-    if (has(c, "linea", "lineas", "categoria de producto", "especialidad")) s += 3;
+    if (!has(c, "linea", "especialidad", "categoria de producto")) return 0; // exige la dimensión
+    let s = 3;
     if (c.ranking) s += 1;
     if (has(c, ...K_VENTA)) s += 1;
     return s;
@@ -160,11 +160,11 @@ const mejorMes: Intent = {
   id: "ventas.mejor-mes",
   ejemplo: "¿Cuál es el mes que más se ha vendido en 2026?",
   score(c) {
-    let s = 0;
-    const porMes = has(c, "mes", "meses", "mensual", "por mes");
-    if (porMes) s += 2;
-    if (c.extremo && porMes) s += 3;
-    if (has(c, ...K_VENTA) && porMes) s += 1;
+    const porMes = has(c, "mes", "mensual");
+    if (!porMes) return 0; // exige hablar de meses
+    let s = 2;
+    if (c.extremo) s += 3;
+    if (has(c, ...K_VENTA)) s += 1;
     if (has(c, "cliente", "proveedor", "linea", "ciudad")) s -= 3;
     return s;
   },
@@ -237,8 +237,8 @@ const ventasCiudad: Intent = {
   id: "ventas.ciudad",
   ejemplo: "Ventas por ciudad",
   score(c) {
-    let s = 0;
-    if (has(c, "ciudad", "ciudades", "region", "departamento")) s += 3;
+    if (!has(c, "ciudad", "region", "departamento")) return 0; // exige la dimensión
+    let s = 3;
     if (has(c, ...K_VENTA)) s += 1;
     if (has(c, "cartera")) s -= 4;
     return s;

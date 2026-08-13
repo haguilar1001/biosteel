@@ -75,6 +75,18 @@ export async function responder(pregunta: string, opts: OpcionesResponder): Prom
     return noEntendida("Escribe una pregunta.");
   }
   const ctx = construirCtx(limpia, opts);
+
+  // Datos que la app NO tiene: ventas a nivel de ítem/producto/referencia.
+  // Antes se enrutaba por error a "Top clientes"; ahora se responde honesto.
+  if (/\b(item|items|producto|productos|referencia|referencias|sku|articulo|articulos|lote|lotes)\b/.test(ctx.texto)) {
+    return {
+      ok: false,
+      titulo: "Ese detalle no está disponible",
+      resumen: "Hoy no tengo ventas a nivel de ítem, producto o referencia. La venta está cargada por cliente, proveedor (marca), línea, ciudad y mes. Con eso sí puedo ayudarte:",
+      sugerencias: ["Top 5 clientes del año", "Top proveedores del año", "Ventas por línea", "¿Cuál es el mes que más se ha vendido?"],
+    };
+  }
+
   const elegido = elegirIntent(ctx);
   if (!elegido) return noEntendida();
 
@@ -95,7 +107,7 @@ function noEntendida(resumen?: string): Respuesta {
   return {
     ok: false,
     titulo: "No entendí la pregunta",
-    resumen: resumen ?? "Prueba con preguntas sobre ventas, clientes, proveedores, flujo de caja, cartera, nómina o utilidad. Aquí tienes algunas ideas:",
+    resumen: resumen ?? "Para rankings dime la dimensión: cliente, proveedor, línea, ciudad o mes (p. ej. \"top 5 clientes\", no solo \"top 5\"). También respondo por flujo de caja, cartera, CxP, nómina, utilidad/PyG, obligaciones, impuestos e indicadores. Prueba con:",
     sugerencias: preguntasEjemplo().slice(0, 6),
   };
 }
