@@ -4,7 +4,7 @@
 // días corridos), pendientes por IPS (expandible), por motivo y acumulado×mes.
 // ==========================================================
 import { requirePermiso } from "@/server/auth-context";
-import { formatNumero } from "@/lib/format";
+import { formatNumero, formatPorcentaje } from "@/lib/format";
 import { Monto } from "../_components/Monto";
 import {
   listarPendientes, resumenPendientes, pendientesPorIps, pendientesPorMotivo, pendientesPorMes,
@@ -61,7 +61,7 @@ export default async function PendientesPage() {
               const pctP = (m.pedidos / resumen.pedidos) * 100;
               return (
                 <div key={m.motivo} style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 4, alignItems: "baseline" }}>
-                  <span className="rank-label" title={m.motivo} style={{ fontSize: 12.5, fontWeight: 600 }}>{m.motivo}</span>
+                  <span className="rank-label" title={m.motivo.toUpperCase()} style={{ fontSize: 12.5, fontWeight: 600 }}>{m.motivo.toUpperCase()}</span>
                   <span className="num" style={{ fontSize: 12.5, whiteSpace: "nowrap" }}>
                     {nf.format(m.pedidos)} <span className="flag">· {pctP.toFixed(1).replace(".", ",")}%</span> · <Monto value={m.valor} />
                   </span>
@@ -77,29 +77,41 @@ export default async function PendientesPage() {
       <div className="card">
         <div className="chart-head">Pendientes acumulado × mes <span className="hact">conteo de pedidos por mes de creación</span></div>
         <div className="tbl-wrap">
-          <table className="tabla-fit">
+          <table>
             <thead>
               <tr>
-                <th>IPS</th>
+                <th style={{ whiteSpace: "nowrap" }}>IPS</th>
                 {matriz.meses.map((m) => <th key={ck(m.anio, m.mes)} className="r">{MES_ABBR[m.mes]} {String(m.anio).slice(2)}</th>)}
                 <th className="r">Total</th>
+                <th className="r">%</th>
               </tr>
             </thead>
             <tbody>
               {matriz.filas.map((f) => (
                 <tr key={f.ips}>
-                  <td style={{ fontWeight: 600 }}>{f.ips}</td>
+                  <td style={{ fontWeight: 600, whiteSpace: "nowrap" }}>{f.ips}</td>
                   {matriz.meses.map((m) => {
                     const v = f.porMes.get(ck(m.anio, m.mes)) ?? 0;
                     return <td key={ck(m.anio, m.mes)} className="r num">{v ? nf.format(v) : "—"}</td>;
                   })}
                   <td className="r num" style={{ fontWeight: 700 }}>{nf.format(f.total)}</td>
+                  <td className="r num flag">{matriz.totalGeneral ? formatPorcentaje((f.total / matriz.totalGeneral) * 100) : "—"}</td>
                 </tr>
               ))}
               <tr className="fila-total">
                 <td style={{ fontWeight: 800 }}>Total</td>
                 {matriz.meses.map((m) => <td key={ck(m.anio, m.mes)} className="r num" style={{ fontWeight: 800 }}>{nf.format(matriz.totalPorMes.get(ck(m.anio, m.mes)) ?? 0)}</td>)}
                 <td className="r num" style={{ fontWeight: 800 }}>{nf.format(matriz.totalGeneral)}</td>
+                <td className="r num" style={{ fontWeight: 800 }}>{formatPorcentaje(100)}</td>
+              </tr>
+              <tr>
+                <td style={{ fontWeight: 700, fontStyle: "italic", color: "var(--muted)" }}>%</td>
+                {matriz.meses.map((m) => {
+                  const c = matriz.totalPorMes.get(ck(m.anio, m.mes)) ?? 0;
+                  return <td key={ck(m.anio, m.mes)} className="r num flag">{matriz.totalGeneral ? formatPorcentaje((c / matriz.totalGeneral) * 100) : "—"}</td>;
+                })}
+                <td className="r num flag">{formatPorcentaje(100)}</td>
+                <td></td>
               </tr>
             </tbody>
           </table>

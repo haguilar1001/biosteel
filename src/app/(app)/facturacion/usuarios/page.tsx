@@ -52,11 +52,14 @@ export default async function FacturacionUsuariosPage({ searchParams }: { search
           <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
             {usuarios.map((u, idx) => {
               const pct = docs > 0 ? (u.docs / docs) * 100 : 0;
+              const nombre = u.usuario.replace(/\./g, " ").toUpperCase();
               return (
-                <div key={u.usuario} style={{ display: "grid", gridTemplateColumns: "minmax(0, 190px) 1fr auto", alignItems: "center", gap: 10 }}>
-                  <span className="rank-label" title={u.usuario} style={{ fontSize: 12.5, fontWeight: 600 }}>{u.usuario}</span>
+                <div key={u.usuario} style={{ display: "grid", gridTemplateColumns: "minmax(0, 180px) 1fr 64px 66px 150px", alignItems: "center", gap: 12 }}>
+                  <span className="rank-label" title={nombre} style={{ fontSize: 12.5, fontWeight: 700 }}>{nombre}</span>
                   <div className="rank-bar"><div style={{ width: `${Math.max(2, (u.docs / maxDocs) * 100)}%`, background: AZULES[idx % AZULES.length] }} /></div>
-                  <span className="num" style={{ fontSize: 12.5, whiteSpace: "nowrap" }}>{nf.format(u.docs)} <span className="flag">· {formatPorcentaje(pct)}</span> · <Monto value={u.valor} /></span>
+                  <span className="num" style={{ fontSize: 12.5, textAlign: "right", fontWeight: 700 }}>{nf.format(u.docs)}</span>
+                  <span className="num flag" style={{ fontSize: 12.5, textAlign: "right" }}>{formatPorcentaje(pct)}</span>
+                  <span className="num" style={{ fontSize: 12.5, textAlign: "right" }}><Monto value={u.valor} /></span>
                 </div>
               );
             })}
