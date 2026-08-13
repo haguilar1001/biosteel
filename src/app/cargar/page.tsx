@@ -59,8 +59,8 @@ export default function CargaPage() {
         fd.append(d.clave, files[d.clave]!);
         const r = await fetch(`/api/cargar?token=${encodeURIComponent(token)}`, { method: "POST", body: fd });
         lastStatus = r.status;
-        if (r.status === 401) { ok = false; errores.push("Token inválido."); break; }
         const j = await r.json().catch(() => ({}));
+        if (r.status === 401) { ok = false; errores.push(j.error || "Token inválido."); break; }
         if (j.datasets) Object.assign(datasets, j.datasets);
         if (j.errores?.length) { ok = false; errores.push(...j.errores); }
         else if (!r.ok && !j.datasets) { ok = false; errores.push(`${d.titulo}: error ${r.status}.`); }

@@ -15,8 +15,11 @@ export const maxDuration = 300;
 export async function POST(req: Request) {
   const url = new URL(req.url);
   const token = url.searchParams.get("token") ?? req.headers.get("x-carga-token");
-  if (!env.CARGA_TOKEN || token !== env.CARGA_TOKEN) {
-    return NextResponse.json({ ok: false, error: "No autorizado" }, { status: 401 });
+  if (!env.CARGA_TOKEN) {
+    return NextResponse.json({ ok: false, error: "El servidor no tiene CARGA_TOKEN configurado (revisa las variables del servicio en Railway)." }, { status: 401 });
+  }
+  if (token !== env.CARGA_TOKEN) {
+    return NextResponse.json({ ok: false, error: "Token inválido: el token del enlace no coincide con el del servidor." }, { status: 401 });
   }
 
   let form: FormData;
