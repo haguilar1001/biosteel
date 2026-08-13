@@ -27,6 +27,18 @@ export async function aniosFacturacion(): Promise<number[]> {
   return [...new Set([...f.map((x) => x.anio), ...g.map((x) => x.anio)])].sort((a, b) => a - b);
 }
 
+// ---------- Venta por día (facturación FET) ----------
+
+export interface VentaDia { dia: number; venta: number; }
+
+/** Venta (Σ subtotal FET) por día del mes indicado, ascendente. */
+export async function ventaFacturacionPorDia(anio: number, mes: number): Promise<VentaDia[]> {
+  const grupos = await prisma.facturacionDoc.groupBy({ by: ["fecha"], where: { anio, mes }, _sum: { subtotal: true } });
+  return grupos
+    .map((g) => ({ dia: g.fecha.getUTCDate(), venta: g._sum.subtotal?.toNumber() ?? 0 }))
+    .sort((a, b) => a.dia - b.dia);
+}
+
 // ---------- Facturación por usuario ----------
 
 export interface UsuarioFact { usuario: string; docs: number; valor: number; }

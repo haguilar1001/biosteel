@@ -7,6 +7,7 @@ import { requirePermiso } from "@/server/auth-context";
 import { formatCOP, formatPorcentaje } from "@/lib/format";
 import { Monto } from "../_components/Monto";
 import { resumenAnual, ventaMensualDetalle, ventaPorCiudad, aniosConVenta } from "@/lib/negocio/ventas";
+import { ventaFacturacionPorDia } from "@/lib/negocio/facturacion";
 import { MapaCartera } from "../_components/charts/MapaCartera";
 import { LineasMensuales } from "../_components/charts/LineasMensuales";
 import { FiltroAuto } from "../_components/FiltroAuto";
@@ -49,6 +50,13 @@ export default async function VentasPage({ searchParams }: { searchParams: Promi
   const mesActual = anio < hoy.getUTCFullYear() ? 12 : anio > hoy.getUTCFullYear() ? 0 : hoy.getUTCMonth() + 1;
   const esFuturo = (mes: number) => mes > mesActual;
   const parcial = mesActual >= 1 && mesActual < 12; // año en curso
+
+  // Venta por día del mes actual (o del mes filtrado), desde facturación (FET).
+  const mesDia = mesSel ?? (mesActual >= 1 ? mesActual : 12);
+  const ventaDiaRaw = await ventaFacturacionPorDia(anio, mesDia);
+  let accDia = 0;
+  const ventaDia = ventaDiaRaw.map((d) => { accDia += d.venta; return { ...d, acumulado: accDia }; });
+  const totalDia = accDia;
 
   // Total comparable: solo meses transcurridos de ambos años.
   let v26c = 0, v25c = 0;
@@ -173,6 +181,53 @@ export default async function VentasPage({ searchParams }: { searchParams: Promi
           )}
         </div>
 
+        {/* Venta por día del mes actual (o filtrado) */}
+        <div className="card">
+          <div className="chart-head">Venta por día <span className="hact">{MESES[mesDia]} {anio}</span></div>
+          <div className="tbl-wrap" style={{ maxHeight: 520, overflowY: "auto" }}>
+            <table className="tabla-fit">
+              <thead><tr><th>Día</th><th className="r">Venta</th><th className="r">Acumulado</th></tr></thead>
+              <tbody>
+                {ventaDia.length === 0 ? (
+                  <tr><td colSpan={3}><div className="empty">Sin facturación en {MESES[mesDia]} {anio}.</div></td></tr>
+                ) : (
+                  <>
+                    {ventaDia.map((d) => (
+                      <tr key={d.dia}>
+                        <td style={{ fontWeight: 600 }}>{d.dia}</td>
+                        <td className="r num"><Monto value={d.venta} /></td>
+                        <td className="r num" style={{ fontWeight: 700 }}><Monto value={d.acumulado} /></td>
+                      </tr>
+                    ))}
+                    <tr className="fila-total">
+                      <td style={{ fontWeight: 800 }}>Total</td>
+                      <td className="r num" style={{ fontWeight: 800 }}><Monto value={totalDia} /></td>
+                      <td></td>
+                    </tr>
+                  </>
+                )}
+              </tbody>
+            </table>
+          </div>
+          <p className="flag" style={{ padding: "8px 14px", margin: 0 }}>Subtotal facturado (FET) por día.</p>
+        </div>
+      </div>
+
+      {/* Venta neta por mes (líneas, más angosta) + Venta por ciudad (mapa) */}
+      <div className="grid two" style={{ alignItems: "start" }}>
+        <div className="card">
+          <div className="chart-head">Venta neta por mes <span className="hact">{anio} vs {anio - 1}</span></div>
+          <div className="card-body">
+            <LineasMensuales
+              categorias={MES_ABBR.slice(1)}
+              series={[
+                { label: `${anio}`, color: "var(--brand)", data: serieActual },
+                { label: `${anio - 1}`, color: "var(--w1)", data: serieAnterior, dash: true },
+              ]}
+            />
+          </div>
+        </div>
+
         {/* Venta por ciudad (mapa) */}
         <div className="card">
           <div className="chart-head">Venta por Ciudad <span className="hact">{mesSel ? `${MESES[mesSel]} ` : ""}{anio}</span></div>
@@ -193,20 +248,6 @@ export default async function VentasPage({ searchParams }: { searchParams: Promi
               </>
             )}
           </div>
-        </div>
-      </div>
-
-      {/* Venta neta por mes — líneas: año en curso vs anterior */}
-      <div className="card">
-        <div className="chart-head">Venta neta por mes <span className="hact">{anio} vs {anio - 1}</span></div>
-        <div className="card-body">
-          <LineasMensuales
-            categorias={MES_ABBR.slice(1)}
-            series={[
-              { label: `${anio}`, color: "var(--brand)", data: serieActual },
-              { label: `${anio - 1}`, color: "var(--w1)", data: serieAnterior, dash: true },
-            ]}
-          />
         </div>
       </div>
     </>
