@@ -5,7 +5,7 @@
 // ==========================================================
 import "server-only";
 import { env } from "@/lib/env";
-import { enviarCorreo, correoConfigurado } from "./mailer";
+import { enviarCorreo } from "./mailer";
 
 const LINK = env.APP_URL && !/localhost/i.test(env.APP_URL) ? env.APP_URL : "https://biosteel.up.railway.app";
 
@@ -26,14 +26,14 @@ export function plantillaBienvenida({ nombre, email, rol }: DatosBienvenida): st
       <div style="background:linear-gradient(135deg,#2A4F98,#1E3A70);padding:30px 24px;text-align:center;color:#ffffff">
         <div style="font-size:40px;line-height:1">🦴</div>
         <div style="font-size:22px;font-weight:800;margin-top:8px;letter-spacing:.2px">¡Te damos la bienvenida!</div>
-        <div style="font-size:13px;opacity:.85;margin-top:4px;text-transform:uppercase;letter-spacing:1.5px">BioSteel · Flujo de Caja</div>
+        <div style="font-size:13px;opacity:.85;margin-top:4px;text-transform:uppercase;letter-spacing:1.5px">APP Bio Steel</div>
       </div>
 
       <!-- Cuerpo -->
       <div style="padding:26px 24px;color:#1B2434">
         <p style="margin:0 0 6px;font-size:16px">Hola <strong>${primer}</strong>,</p>
         <p style="margin:0 0 20px;font-size:14.5px;line-height:1.55;color:#3a4657">
-          Tu acceso al <strong>Sistema de Flujo de Caja de BioSteel de Colombia S.A.S.</strong> ya está activo.
+          Tu acceso a la <strong>APP Bio Steel</strong> de BioSteel de Colombia S.A.S. ya está activo.
           Estos son tus datos de ingreso:
         </p>
 
@@ -68,20 +68,7 @@ export function plantillaBienvenida({ nombre, email, rol }: DatosBienvenida): st
   </div>`;
 }
 
-/** Envía el correo de bienvenida a un usuario. */
+/** Envía el correo de bienvenida a un usuario (automático al crearlo). */
 export async function enviarBienvenida(d: DatosBienvenida): Promise<void> {
-  await enviarCorreo([d.email], "🦴 Bienvenido a BioSteel · tu acceso está listo", plantillaBienvenida(d));
-}
-
-export interface ResultadoBienvenidaMasiva { configurado: boolean; enviados: number; total: number; errores: { email: string; motivo: string }[]; }
-
-/** Envía la bienvenida a varios usuarios (secuencial, tolerante a fallos). */
-export async function enviarBienvenidaAVarios(usuarios: DatosBienvenida[]): Promise<ResultadoBienvenidaMasiva> {
-  const res: ResultadoBienvenidaMasiva = { configurado: correoConfigurado(), enviados: 0, total: usuarios.length, errores: [] };
-  if (!res.configurado) return res;
-  for (const u of usuarios) {
-    try { await enviarBienvenida(u); res.enviados++; }
-    catch (e) { res.errores.push({ email: u.email, motivo: e instanceof Error ? e.message : "error" }); }
-  }
-  return res;
+  await enviarCorreo([d.email], "🦴 Bienvenido a la APP Bio Steel · tu acceso está listo", plantillaBienvenida(d));
 }
