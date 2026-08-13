@@ -30,6 +30,7 @@ export default function CargaPage() {
   const [token, setToken] = useState<string | null>(null);
   const [files, setFiles] = useState<Record<string, File | undefined>>({});
   const [cargando, setCargando] = useState(false);
+  const [progreso, setProgreso] = useState<string | null>(null);
   const [res, setRes] = useState<Resultado | null>(null);
 
   useEffect(() => {
@@ -39,22 +40,40 @@ export default function CargaPage() {
 
   const total = Object.values(files).filter(Boolean).length;
 
+  // Sube cada archivo en su PROPIA petición (secuencial): peticiones más
+  // pequeñas y con feedback por archivo (evita cortes por tamaño del cuerpo).
   async function enviar() {
     if (!token || total === 0 || cargando) return;
     setCargando(true);
     setRes(null);
-    try {
-      const fd = new FormData();
-      for (const d of DATASETS) { const f = files[d.clave]; if (f) fd.append(d.clave, f); }
-      const r = await fetch(`/api/cargar?token=${encodeURIComponent(token)}`, { method: "POST", body: fd });
-      const j = await r.json().catch(() => ({}));
-      setRes({ status: r.status, ...j });
-      if (r.ok && j.ok) setFiles({});
-    } catch {
-      setRes({ status: 0, error: "No se pudo conectar. Revisa tu internet e inténtalo de nuevo." });
-    } finally {
-      setCargando(false);
+    const seleccion = DATASETS.filter((d) => files[d.clave]);
+    const datasets: Record<string, ResDataset> = {};
+    const errores: string[] = [];
+    let ok = true;
+    let lastStatus = 200;
+
+    for (const d of seleccion) {
+      setProgreso(d.titulo);
+      try {
+        const fd = new FormData();
+        fd.append(d.clave, files[d.clave]!);
+        const r = await fetch(`/api/cargar?token=${encodeURIComponent(token)}`, { method: "POST", body: fd });
+        lastStatus = r.status;
+        if (r.status === 401) { ok = false; errores.push("Token inválido."); break; }
+        const j = await r.json().catch(() => ({}));
+        if (j.datasets) Object.assign(datasets, j.datasets);
+        if (j.errores?.length) { ok = false; errores.push(...j.errores); }
+        else if (!r.ok && !j.datasets) { ok = false; errores.push(`${d.titulo}: error ${r.status}.`); }
+      } catch {
+        ok = false;
+        errores.push(`${d.titulo}: no se pudo subir (archivo muy grande o conexión interrumpida).`);
+      }
     }
+
+    setProgreso(null);
+    setRes({ status: lastStatus, ok, datasets, errores });
+    if (ok) setFiles({});
+    setCargando(false);
   }
 
   return (
@@ -118,7 +137,7 @@ export default function CargaPage() {
 
         {cargando && (
           <p style={{ color: "#5B6B82", fontSize: 13, textAlign: "center", marginTop: 10 }}>
-            Los archivos grandes (facturación / gastos) pueden tardar un momento. No cierres esta página.
+            {progreso ? <>Subiendo <strong>{progreso}</strong>… </> : null}Los archivos grandes (facturación / gastos) pueden tardar un momento. No cierres esta página.
           </p>
         )}
 
