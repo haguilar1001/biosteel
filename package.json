@@ -26,6 +26,7 @@
     "db:proveedor-estado": "tsx prisma/set-proveedor-estado.ts",
     "db:pyg": "tsx prisma/set-pyg.ts",
     "db:pyg-excel": "tsx prisma/set-pyg-excel.ts",
+    "sync:flujo": "tsx --conditions=react-server prisma/cron-sync-flujo.ts",
     "db:presupuesto": "tsx prisma/set-presupuesto.ts",
     "db:inventario": "tsx prisma/set-inventario.ts",
     "db:codigos": "tsx prisma/set-codigos.ts",
