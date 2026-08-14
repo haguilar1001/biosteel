@@ -29,38 +29,38 @@ export interface CargaDef {
 const nf = new Intl.NumberFormat("es-CO");
 
 /** Procesa un dataset SIESA reutilizando procesarCarga (un archivo a la vez). */
-async function procesarSiesa(clave: DatasetKey, buffer: Buffer, nombre: string, ip?: string): Promise<ResultadoDataset> {
+async function procesarSiesa(clave: DatasetKey, titulo: string, buffer: Buffer, nombre: string, ip?: string): Promise<ResultadoDataset> {
   const res = await procesarCarga([{ clave, nombre, buffer }], ip);
   const d = res.datasets[clave];
   if (!d) throw new Error(res.errores[0] ?? "No se pudo procesar el archivo.");
-  return d;
+  return { ...d, titulo };
 }
 
 export const CARGAS: CargaDef[] = [
   {
-    clave: "pendientes", titulo: "Pedidos Pendientes Acumulados", permiso: "carga.pendientes",
+    clave: "pendientes", titulo: "Pedidos Pendientes", permiso: "carga.pendientes",
     archivoSugerido: "PEDIDOS PENDIENTES ACUMULADOS.xlsx",
-    procesar: (b, n, ip) => procesarSiesa("pendientes", b, n, ip),
+    procesar: (b, n, ip) => procesarSiesa("pendientes", "Pedidos Pendientes", b, n, ip),
   },
   {
-    clave: "ventas", titulo: "Ventas (facturas por ítem)", permiso: "carga.ventas",
+    clave: "ventas", titulo: "Ventas x Item", permiso: "carga.ventas",
     archivoSugerido: "2026.xlsx",
-    procesar: (b, n, ip) => procesarSiesa("ventas", b, n, ip),
+    procesar: (b, n, ip) => procesarSiesa("ventas", "Ventas x Item", b, n, ip),
   },
   {
-    clave: "facturacion", titulo: "Datos Facturación", permiso: "carga.facturacion",
+    clave: "facturacion", titulo: "Facturación por Usuario", permiso: "carga.facturacion",
     archivoSugerido: "DATOS FACTURACIÓN.xlsx",
-    procesar: (b, n, ip) => procesarSiesa("facturacion", b, n, ip),
+    procesar: (b, n, ip) => procesarSiesa("facturacion", "Facturación por Usuario", b, n, ip),
   },
   {
     clave: "gastos", titulo: "Gastos", permiso: "carga.gastos",
     archivoSugerido: "GASTOS.xlsx",
-    procesar: (b, n, ip) => procesarSiesa("gastos", b, n, ip),
+    procesar: (b, n, ip) => procesarSiesa("gastos", "Gastos", b, n, ip),
   },
   {
-    clave: "anuladas", titulo: "Motivo facturas anuladas", permiso: "carga.anuladas",
+    clave: "anuladas", titulo: "Facturas Anuladas", permiso: "carga.anuladas",
     archivoSugerido: "MOTIVO FACTURAS ANULADAS.xlsx",
-    procesar: (b, n, ip) => procesarSiesa("anuladas", b, n, ip),
+    procesar: (b, n, ip) => procesarSiesa("anuladas", "Facturas Anuladas", b, n, ip),
   },
   {
     clave: "pyg", titulo: "Estado de Resultados", permiso: "carga.pyg",
