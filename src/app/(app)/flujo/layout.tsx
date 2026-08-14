@@ -6,8 +6,9 @@ import { SubNav } from "../_components/SubNav";
 const ITEMS = [
   { href: "/flujo", label: "Resumen" },
   { href: "/flujo/ingresos", label: "Ingresos" },
+  { href: "/flujo/presupuesto/ingresos", label: "Ppto vs Real Ingresos" },
   { href: "/flujo/egresos", label: "Egresos" },
-  { href: "/flujo/presupuesto", label: "Presupuesto vs Real" },
+  { href: "/flujo/presupuesto/egresos", label: "Ppto vs Real Egresos" },
 ];
 
 export default async function FlujoLayout({ children }: { children: React.ReactNode }) {
