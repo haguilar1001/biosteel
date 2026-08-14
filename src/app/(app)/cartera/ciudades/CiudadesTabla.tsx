@@ -3,6 +3,7 @@
 // muestra sus IPS con la participación sobre el total de LA CIUDAD.
 // Formateo local (no importa @/lib/format para no arrastrar Prisma al bundle).
 import { Fragment, useState } from "react";
+import { useOrden } from "../../_components/useOrden";
 
 const nf = new Intl.NumberFormat("es-CO", { maximumFractionDigits: 0 });
 const cop = (v: number) => `$ ${nf.format(Math.round(v))}`;
@@ -28,13 +29,21 @@ export function CiudadesTabla({ ciudades, total, totalDocs }: { ciudades: Ciudad
       return n;
     });
 
+  const ord = useOrden<"ciudad" | "saldo" | "clientes" | "documentos">("saldo");
+  const filas = ord.ordenar(ciudades, (c, col) =>
+    col === "ciudad" ? c.ciudad : col === "clientes" ? c.clientes : col === "documentos" ? c.documentos : c.saldo);
+  const thStyle = { cursor: "pointer", userSelect: "none" as const };
+
   return (
     <div className="tbl-wrap">
       <table data-noorden>
         <thead>
           <tr>
-            <th>Ciudad</th><th className="r">Saldo neto</th><th className="r">% Part.</th>
-            <th className="r">IPS / clientes</th><th className="r">Facturas</th>
+            <th style={thStyle} onClick={() => ord.toggle("ciudad", "asc")}>Ciudad{ord.ind("ciudad")}</th>
+            <th className="r" style={thStyle} onClick={() => ord.toggle("saldo")}>Saldo neto{ord.ind("saldo")}</th>
+            <th className="r" style={thStyle} onClick={() => ord.toggle("saldo")}>% Part.</th>
+            <th className="r" style={thStyle} onClick={() => ord.toggle("clientes")}>IPS / clientes{ord.ind("clientes")}</th>
+            <th className="r" style={thStyle} onClick={() => ord.toggle("documentos")}>Facturas{ord.ind("documentos")}</th>
           </tr>
         </thead>
         <tbody>
@@ -45,7 +54,7 @@ export function CiudadesTabla({ ciudades, total, totalDocs }: { ciudades: Ciudad
             <td className="r num"></td>
             <td className="r num" style={{ fontWeight: 800 }}>{num(totalDocs)}</td>
           </tr>
-          {ciudades.map((c) => {
+          {filas.map((c) => {
             const abierto = open.has(c.ciudad);
             return (
               <Fragment key={c.ciudad}>

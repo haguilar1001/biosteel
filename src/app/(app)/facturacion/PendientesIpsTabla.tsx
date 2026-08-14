@@ -2,6 +2,7 @@
 // Tabla de pendientes por IPS: cada IPS se expande (clic) y muestra sus pedidos
 // (documento, fecha, motivo, días corridos, valor). Formateo local.
 import { Fragment, useState } from "react";
+import { useOrden } from "../_components/useOrden";
 
 const nf = new Intl.NumberFormat("es-CO", { maximumFractionDigits: 0 });
 const cop = (v: number) => `$ ${nf.format(Math.round(v))}`;
@@ -18,13 +19,22 @@ export function PendientesIpsTabla({ items, total }: { items: IpsItem[]; total: 
   const toggle = (c: string) => setOpen((p) => { const n = new Set(p); n.has(c) ? n.delete(c) : n.add(c); return n; });
   const totalPedidos = items.reduce((s, i) => s + i.pedidos, 0);
 
+  const ord = useOrden<"ips" | "pedidos" | "valor" | "diasProm" | "diasMax">("valor");
+  const filas = ord.ordenar(items, (c, col) =>
+    col === "ips" ? c.ips : col === "pedidos" ? c.pedidos : col === "diasProm" ? c.diasProm : col === "diasMax" ? c.diasMax : c.valor);
+  const thStyle = { cursor: "pointer", userSelect: "none" as const };
+
   return (
     <div className="tbl-wrap">
       <table data-noorden>
         <thead>
           <tr>
-            <th>IPS</th><th className="r"># Pedidos</th><th className="r">Valor</th>
-            <th className="r">% Part.</th><th className="r">Días prom.</th><th className="r">Días máx.</th>
+            <th style={thStyle} onClick={() => ord.toggle("ips", "asc")}>IPS{ord.ind("ips")}</th>
+            <th className="r" style={thStyle} onClick={() => ord.toggle("pedidos")}># Pedidos{ord.ind("pedidos")}</th>
+            <th className="r" style={thStyle} onClick={() => ord.toggle("valor")}>Valor{ord.ind("valor")}</th>
+            <th className="r" style={thStyle} onClick={() => ord.toggle("valor")}>% Part.</th>
+            <th className="r" style={thStyle} onClick={() => ord.toggle("diasProm")}>Días prom.{ord.ind("diasProm")}</th>
+            <th className="r" style={thStyle} onClick={() => ord.toggle("diasMax")}>Días máx.{ord.ind("diasMax")}</th>
           </tr>
         </thead>
         <tbody>
@@ -35,7 +45,7 @@ export function PendientesIpsTabla({ items, total }: { items: IpsItem[]; total: 
             <td className="r num" style={{ fontWeight: 800 }}>{pct(100)}</td>
             <td className="r num"></td><td className="r num"></td>
           </tr>
-          {items.map((c) => {
+          {filas.map((c) => {
             const abierto = open.has(c.ips);
             return (
               <Fragment key={c.ips}>
