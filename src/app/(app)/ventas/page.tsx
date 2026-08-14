@@ -14,7 +14,6 @@ import { FiltroAuto } from "../_components/FiltroAuto";
 const MESES = ["", "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 const MES_ABBR = ["", "Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
 const CATS = ["var(--cat-1)", "var(--cat-2)", "var(--cat-3)", "var(--cat-4)", "var(--cat-5)", "var(--cat-6)", "var(--cat-7)", "var(--cat-8)"];
-const mill = (v: number) => `${new Intl.NumberFormat("es-CO", { maximumFractionDigits: 0 }).format(Math.round(v / 1e6))} MM`;
 
 export default async function VentasPage({ searchParams }: { searchParams: Promise<{ anio?: string; mes?: string }> }) {
   await requirePermiso("cxp.view");
@@ -119,9 +118,9 @@ export default async function VentasPage({ searchParams }: { searchParams: Promi
 
       {/* KPIs — centrados */}
       <div className="kpis" style={{ marginBottom: 12 }}>
-        <div className="kpi kc"><div className="klabel">Venta Neta</div><div className="kval num">{mill(kpi.venta)}</div><div className="ksub"><span className="flag"><Monto value={kpi.venta} /></span></div></div>
-        <div className="kpi kc k-egreso"><div className="klabel">Costo</div><div className="kval num">{mill(kpi.costo)}</div><div className="ksub"><span className="flag"><Monto value={kpi.costo} /></span></div></div>
-        <div className="kpi kc k-ok"><div className="klabel">Utilidad</div><div className="kval num">{mill(kpi.utilidad)}</div><div className="ksub"><span className="flag"><Monto value={kpi.utilidad} /></span></div></div>
+        <div className="kpi kc"><div className="klabel">Venta Neta</div><div className="kval num"><Monto value={kpi.venta} /></div></div>
+        <div className="kpi kc k-egreso"><div className="klabel">Costo</div><div className="kval num"><Monto value={kpi.costo} /></div></div>
+        <div className="kpi kc k-ok"><div className="klabel">Utilidad</div><div className="kval num"><Monto value={kpi.utilidad} /></div></div>
         <div className="kpi kc k-w"><div className="klabel">% Utilidad</div><div className="kval num">{formatPorcentaje(kpi.margen)}</div></div>
       </div>
 

@@ -46,7 +46,7 @@ export default function MapaInventarioInner({ data }: { data: BurbujaSede[] }) {
   const SIZE = 40; // diámetro fijo de cada burbuja (iguales, no se montan)
   const pctLabel = (v: number) => {
     const p = (v / granTotal) * 100;
-    return p >= 1 ? `${Math.round(p)}%` : "<1%";
+    return `${p.toLocaleString("es-CO", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} %`;
   };
   const icono = (v: number) =>
     divIcon({

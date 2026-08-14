@@ -3,7 +3,7 @@
 // Donut de conteos y barras apiladas por categoría — SVG puro, tooltips
 // nativos <title>, misma paleta que el resto de la app.
 // ==========================================================
-import { formatNumero } from "@/lib/format";
+import { formatNumero, formatPorcentaje } from "@/lib/format";
 
 export interface Segmento { label: string; valor: number; color: string; }
 
@@ -53,7 +53,7 @@ export function DonutConteo({
         {arcos.map(({ d, s, e }) =>
           e <= s ? null : (
             <path key={d.label} d={arco(cx, cy, r, ir, s, e)} fill={d.color} stroke="var(--surface)" strokeWidth={1}>
-              <title>{d.label}: {formatNumero(d.valor)} ({((d.valor / total) * 100).toFixed(1)} %)</title>
+              <title>{d.label}: {formatNumero(d.valor)} ({formatPorcentaje((d.valor / total) * 100)})</title>
             </path>
           ),
         )}
@@ -70,7 +70,7 @@ export function DonutConteo({
             <i style={{ width: 12, height: 12, borderRadius: 3, background: d.color, flex: "0 0 auto" }} />
             <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{d.label}</span>
             <span className="num" style={{ fontWeight: 700 }}>{formatNumero(d.valor)}</span>
-            <span className="num" style={{ color: "var(--muted)", minWidth: 52, textAlign: "right" }}>{((d.valor / total) * 100).toFixed(1)} %</span>
+            <span className="num" style={{ color: "var(--muted)", minWidth: 52, textAlign: "right" }}>{formatPorcentaje((d.valor / total) * 100)}</span>
           </div>
         ))}
       </div>

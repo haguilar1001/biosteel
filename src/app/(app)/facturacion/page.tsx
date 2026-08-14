@@ -63,7 +63,7 @@ export default async function PendientesPage() {
                 <div key={m.motivo} style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 4, alignItems: "baseline" }}>
                   <span className="rank-label" title={m.motivo.toUpperCase()} style={{ fontSize: 12.5, fontWeight: 600 }}>{m.motivo.toUpperCase()}</span>
                   <span className="num" style={{ fontSize: 12.5, whiteSpace: "nowrap" }}>
-                    {nf.format(m.pedidos)} <span className="flag">· {pctP.toFixed(1).replace(".", ",")}%</span> · <Monto value={m.valor} />
+                    {nf.format(m.pedidos)} <span className="flag">· {formatPorcentaje(pctP)}</span> · <Monto value={m.valor} />
                   </span>
                   <div className="rank-bar" style={{ gridColumn: "1 / -1" }}><div style={{ width: `${Math.max(2, (m.pedidos / maxMotivo) * 100)}%`, background: AZULES[idx % AZULES.length] }} /></div>
                 </div>

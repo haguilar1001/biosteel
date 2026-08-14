@@ -274,7 +274,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                         <div key={g.categoria} style={{ display: "grid", gridTemplateColumns: "minmax(0, 210px) 1fr auto", alignItems: "center", gap: 10 }}>
                           <span className="rank-label" title={g.categoria} style={{ fontSize: 12.5, fontWeight: 600 }}>{g.categoria}</span>
                           <div className="rank-bar"><div style={{ width: `${Math.max(2, (g.real / maxEgr) * 100)}%`, background: AZULES[idx % AZULES.length] }} /></div>
-                          <span className="num" style={{ fontSize: 12.5, whiteSpace: "nowrap" }}><Monto value={g.real} /> <span className="flag">· {pct.toFixed(1).replace(".", ",")}%</span></span>
+                          <span className="num" style={{ fontSize: 12.5, whiteSpace: "nowrap" }}><Monto value={g.real} /> <span className="flag">· {formatPorcentaje(pct)}</span></span>
                         </div>
                       );
                     })}

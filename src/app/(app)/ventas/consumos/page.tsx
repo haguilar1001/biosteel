@@ -10,7 +10,6 @@ import { aniosConVenta, mesesConVenta, ventaPorMarcaConIps } from "@/lib/negocio
 import { FiltroAuto } from "../../_components/FiltroAuto";
 
 const MESES = ["", "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
-const mill = (v: number) => `${new Intl.NumberFormat("es-CO", { maximumFractionDigits: 0 }).format(Math.round(v / 1e6))} MM`;
 const margen = (venta: number, costo: number) => (venta > 0 ? ((venta - costo) / venta) * 100 : 0);
 
 export default async function ConsumosPage({ searchParams }: { searchParams: Promise<{ anio?: string; mes?: string }> }) {
@@ -59,15 +58,15 @@ export default async function ConsumosPage({ searchParams }: { searchParams: Pro
       <div className="grid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", marginBottom: 12 }}>
         <div className="card">
           <div className="chart-head">Venta Neta</div>
-          <div className="card-body kpi-body"><div className="num kpi-val">{mill(venta)}</div><div className="ksub" style={{ justifyContent: "center" }}><span className="flag"><Monto value={venta} /></span></div></div>
+          <div className="card-body kpi-body"><div className="num kpi-val"><Monto value={venta} /></div></div>
         </div>
         <div className="card">
           <div className="chart-head">Costo</div>
-          <div className="card-body kpi-body"><div className="num kpi-val">{mill(costo)}</div><div className="ksub" style={{ justifyContent: "center" }}><span className="flag"><Monto value={costo} /></span></div></div>
+          <div className="card-body kpi-body"><div className="num kpi-val"><Monto value={costo} /></div></div>
         </div>
         <div className="card">
           <div className="chart-head">Utilidad Bruta</div>
-          <div className="card-body kpi-body"><div className="num kpi-val">{mill(utilidad)}</div><div className="ksub" style={{ justifyContent: "center" }}><span className="flag"><Monto value={utilidad} /></span></div></div>
+          <div className="card-body kpi-body"><div className="num kpi-val"><Monto value={utilidad} /></div></div>
         </div>
         <div className="card">
           <div className="chart-head">% Utilidad</div>

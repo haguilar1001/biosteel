@@ -62,10 +62,10 @@ export default async function NominaPage({ searchParams }: { searchParams: Promi
 
       {/* KPIs */}
       <div className="kpis" style={{ marginBottom: 12 }}>
-        <div className="kpi kc k-egreso"><div className="klabel">Costo mensual</div><div className="kval num">{mill(kpi.costoMensual)}</div><div className="ksub"><span className="flag"><Monto value={kpi.costoMensual} /></span></div></div>
-        <div className="kpi kc k-egreso"><div className="klabel">Costo anual (×12)</div><div className="kval num">{mill(kpi.costoAnual)}</div><div className="ksub"><span className="flag"><Monto value={kpi.costoAnual} /></span></div></div>
+        <div className="kpi kc k-egreso"><div className="klabel">Costo mensual</div><div className="kval num"><Monto value={kpi.costoMensual} /></div></div>
+        <div className="kpi kc k-egreso"><div className="klabel">Costo anual (×12)</div><div className="kval num"><Monto value={kpi.costoAnual} /></div></div>
         <div className="kpi kc"><div className="klabel">Empleados</div><div className="kval num">{formatNumero(kpi.headcount)}</div></div>
-        <div className="kpi kc k-w"><div className="klabel">Salario base prom.</div><div className="kval num">{mill(kpi.salarioPromedio)}</div><div className="ksub"><span className="flag"><Monto value={kpi.salarioPromedio} /></span></div></div>
+        <div className="kpi kc k-w"><div className="klabel">Salario base prom.</div><div className="kval num"><Monto value={kpi.salarioPromedio} /></div></div>
       </div>
 
       {/* Composición + rankings por proceso y ciudad, en una sola fila. */}
