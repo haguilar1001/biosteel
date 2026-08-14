@@ -4,9 +4,9 @@
 // Filtros de año y mes (auto-envío).
 // ==========================================================
 import { requirePermiso } from "@/server/auth-context";
-import { formatPorcentaje } from "@/lib/format";
+import { formatPorcentaje, formatNumero } from "@/lib/format";
 import { Monto } from "../../_components/Monto";
-import { aniosConVenta, mesesConVenta, ventaPorMarcaConIps } from "@/lib/negocio/ventas";
+import { aniosConVenta, mesesConVenta, ventaPorMarcaConIps, itemsPorMarca } from "@/lib/negocio/ventas";
 import { FiltroAuto } from "../../_components/FiltroAuto";
 
 const MESES = ["", "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
@@ -24,13 +24,17 @@ export default async function ConsumosPage({ searchParams }: { searchParams: Pro
   const mesesDisp = await mesesConVenta(anio);
   const mesSel = sp.mes && mesesDisp.includes(Number(sp.mes)) ? Number(sp.mes) : undefined;
 
-  const marcas = await ventaPorMarcaConIps(anio, mesSel ? [mesSel] : undefined);
+  const [marcas, itemsMap] = await Promise.all([
+    ventaPorMarcaConIps(anio, mesSel ? [mesSel] : undefined),
+    itemsPorMarca(anio, mesSel ? [mesSel] : undefined),
+  ]);
   const venta = marcas.reduce((s, m) => s + m.valor, 0);
   const costo = marcas.reduce((s, m) => s + m.costo, 0);
   const utilidad = venta - costo;
   const maxVenta = marcas.length ? Math.max(...marcas.map((m) => m.valor)) : 1;
   const periodo = mesSel ? `${MESES[mesSel]} ${anio}` : `${anio}`;
   const GRID = "minmax(160px, 2fr) 150px 150px 150px 90px 90px";
+  const GRID_ITEM = "minmax(220px, 3fr) 90px 130px 140px";
 
   return (
     <>
@@ -119,6 +123,28 @@ export default async function ConsumosPage({ searchParams }: { searchParams: Pro
                       );
                     })}
                   </div>
+
+                  {(itemsMap.get(m.marca)?.length ?? 0) > 0 && (
+                    <div style={{ background: "var(--surface-2, #f6f8fc)", padding: "2px 12px 12px" }}>
+                      <div style={{ fontWeight: 700, fontSize: 11, textTransform: "uppercase", letterSpacing: ".5px", color: "var(--muted)", padding: "8px 0 4px", borderTop: "1px dashed var(--line)" }}>
+                        🔩 Consumo por ítem ({itemsMap.get(m.marca)!.length})
+                      </div>
+                      <div style={{ display: "grid", gridTemplateColumns: GRID_ITEM, gap: 8, padding: "4px 0", fontSize: 10.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".4px", color: "var(--muted)" }}>
+                        <span>Descripción</span>
+                        <span style={{ textAlign: "right" }}>Cantidad</span>
+                        <span style={{ textAlign: "right" }}>Costo unit.</span>
+                        <span style={{ textAlign: "right" }}>Costo total</span>
+                      </div>
+                      {itemsMap.get(m.marca)!.map((it, k) => (
+                        <div key={`${it.referencia}-${k}`} style={{ display: "grid", gridTemplateColumns: GRID_ITEM, gap: 8, alignItems: "start", padding: "5px 0", fontSize: 12, borderTop: "1px solid var(--line)" }}>
+                          <span style={{ lineHeight: 1.3 }}><span className="flag" style={{ fontWeight: 700 }}>{it.referencia}</span> {it.descripcion}</span>
+                          <span className="num" style={{ textAlign: "right" }}>{formatNumero(it.cantidad)}</span>
+                          <span className="num flag" style={{ textAlign: "right" }}><Monto value={it.cantidad > 0 ? it.costo / it.cantidad : 0} /></span>
+                          <span className="num" style={{ textAlign: "right", fontWeight: 600 }}><Monto value={it.costo} /></span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </details>
               );
             })

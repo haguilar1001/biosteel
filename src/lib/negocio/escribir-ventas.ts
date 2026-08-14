@@ -38,6 +38,7 @@ export async function escribirAgregados(prisma: PrismaClient, filas: FilaVenta[]
   const clientes = [...agg.porCliente];
   const marcas = [...agg.porMarca];
   const marcaIps = [...agg.porMarcaIps];
+  const items = agg.porItem; // el detalle por ítem no recibe ajustes sintéticos
   const anios = [...agg.anios];
   const aniosData = new Set(agg.anios);
   for (const aj of ajustes) {
@@ -56,16 +57,19 @@ export async function escribirAgregados(prisma: PrismaClient, filas: FilaVenta[]
     const C = clientes.filter((e) => e.anio === anio);
     const M = marcas.filter((e) => e.anio === anio);
     const MI = marcaIps.filter((e) => e.anio === anio);
+    const I = items.filter((e) => e.anio === anio);
     await prisma.$transaction([
       prisma.ventaLinea.deleteMany({ where: { anio } }),
       prisma.ventaCliente.deleteMany({ where: { anio } }),
       prisma.ventaMarca.deleteMany({ where: { anio } }),
       prisma.ventaMarcaIps.deleteMany({ where: { anio } }),
+      prisma.ventaItem.deleteMany({ where: { anio } }),
     ]);
     await crearEnLotes(L, (c) => prisma.ventaLinea.createMany({ data: c.map((e) => ({ anio: e.anio, mes: e.mes, linea: e.linea, valor: r2(e.valor), costo: r2(e.costo) })) }));
     await crearEnLotes(C, (c) => prisma.ventaCliente.createMany({ data: c.map((e) => ({ anio: e.anio, mes: e.mes, clienteNombre: e.clienteNombre, nit: e.nit, valor: r2(e.valor), costo: r2(e.costo) })) }));
     await crearEnLotes(M, (c) => prisma.ventaMarca.createMany({ data: c.map((e) => ({ anio: e.anio, mes: e.mes, marca: e.marca, valor: r2(e.valor), costo: r2(e.costo) })) }));
     await crearEnLotes(MI, (c) => prisma.ventaMarcaIps.createMany({ data: c.map((e) => ({ anio: e.anio, mes: e.mes, marca: e.marca, ips: e.ips, valor: r2(e.valor), costo: r2(e.costo) })) }));
+    await crearEnLotes(I, (c) => prisma.ventaItem.createMany({ data: c.map((e) => ({ anio: e.anio, mes: e.mes, marca: e.marca, referencia: e.referencia, descripcion: e.descripcion, cantidad: r2(e.cantidad), valor: r2(e.valor), costo: r2(e.costo) })) }));
   }
 
   // Venta neta por día: reemplazo total (sin ajustes mensuales).
@@ -80,12 +84,13 @@ export function docABitVenta(d: {
   nro: string; tipo: string; aprobada: boolean; fecha: Date; anio: number; mes: number;
   ips: string | null; suc: string; bod: string; notas: string; conv: string; proc: string;
   linea: string; subtotal: { toNumber(): number }; fbd: string | null; costo: { toNumber(): number };
-  cliente: string; nit: string | null; marca: string;
+  cliente: string; nit: string | null; marca: string; referencia?: string; cantidad?: { toNumber(): number };
 }): FilaVenta {
   return {
     nro: d.nro, tipo: d.tipo, aprobada: d.aprobada, ms: d.fecha.getTime(), anio: d.anio, mes: d.mes,
     ips: d.ips, suc: d.suc, bod: d.bod, notas: d.notas, conv: d.conv, proc: d.proc, linea: d.linea,
     subtotal: d.subtotal.toNumber(), fbd: d.fbd ?? undefined, costo: d.costo.toNumber(),
     cliente: d.cliente, nit: d.nit, marca: d.marca,
+    referencia: d.referencia ?? "", cantidad: d.cantidad ? d.cantidad.toNumber() : 0,
   };
 }

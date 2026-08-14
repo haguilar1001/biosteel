@@ -1059,9 +1059,30 @@ model VentaDoc {
   cliente  String   @default("")
   nit      String?
   marca    String   @default("")
+  referencia String @default("") // código/referencia del ítem (SIESA "Referencia")
+  cantidad Decimal  @default(0) @db.Decimal(18, 2) // unidades del renglón (SIESA "Cantidad")
 
   @@index([anio, mes])
   @@index([fecha])
+}
+
+// Venta neta, costo y cantidad por ÍTEM (referencia) × MARCA × mes.
+// Alimenta el "Consumo por Ítem" (desplegable bajo cada proveedor).
+// descripcion = "Notas ítem" del reporte; costo unit = costo / cantidad.
+model VentaItem {
+  id          Int     @id @default(autoincrement())
+  anio        Int
+  mes         Int     // 1–12
+  marca       String  // p.ej. "1003 - SAMPEDRO"
+  referencia  String  // código del ítem (p.ej. "TC3550")
+  descripcion String  // descripción larga (p.ej. "TORNILLO CORTICAL…")
+  cantidad    Decimal @default(0) @db.Decimal(18, 2)
+  valor       Decimal @db.Decimal(18, 2) // venta neta
+  costo       Decimal @default(0) @db.Decimal(18, 2)
+
+  @@unique([anio, mes, marca, referencia])
+  @@index([anio, mes])
+  @@index([marca])
 }
 
 // Venta neta por día (derivada de VentaDoc, misma fórmula que la mensual).

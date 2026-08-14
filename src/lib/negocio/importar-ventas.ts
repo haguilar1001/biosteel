@@ -15,6 +15,8 @@ export interface FilaVenta extends VentaRow {
   cliente: string;
   nit: string | null;
   marca: string;
+  referencia: string; // código del ítem (SIESA "Referencia")
+  cantidad: number;   // unidades del renglón (SIESA "Cantidad")
 }
 
 /** "$ 1,234.00" / "(1,234)" → número. Tolerante a formato es-CO con símbolo. */
@@ -56,7 +58,7 @@ export function leerRenglones(buffer: Buffer | ArrayBuffer): RenglonesLeidos {
     suc: ix("Desc. sucursal factura"), bod: ix("Desc. bodega"), notas: ix("Notas ítem"),
     conv: ix("Convenio"), costo: ix("Costo promedio total"), sub: ix("Valor subtotal local"),
     proc: ix("Procedimiento"), linea: ix("LÍNEA"), fbd: ix("Factura base devolución"),
-    marca: ix("MARCA"),
+    marca: ix("MARCA"), ref: ix("Referencia"), cant: ix("Cantidad"),
   };
   if (C.doc < 0 || C.fecha < 0 || C.sub < 0) {
     throw new Error("No parece un reporte SIESA de ventas: faltan columnas 'Nro documento' / 'Fecha' / 'Valor subtotal local'.");
@@ -86,6 +88,8 @@ export function leerRenglones(buffer: Buffer | ArrayBuffer): RenglonesLeidos {
       cliente: cliente || "(sin cliente)",
       nit: C.nit >= 0 && r[C.nit] != null ? String(r[C.nit]).trim() : null,
       marca: (C.marca >= 0 ? String(r[C.marca] ?? "").trim() : "") || "(sin marca)",
+      referencia: C.ref >= 0 ? String(r[C.ref] ?? "").trim() : "",
+      cantidad: C.cant >= 0 ? limpiarMonto(r[C.cant]) : 0,
     });
   }
   return { filas, sinFecha, hoja: nombreHoja };
@@ -95,6 +99,7 @@ export interface FilaLineaAgg { anio: number; mes: number; linea: string; valor:
 export interface FilaClienteAgg { anio: number; mes: number; clienteNombre: string; nit: string | null; valor: number; costo: number }
 export interface FilaMarcaAgg { anio: number; mes: number; marca: string; valor: number; costo: number }
 export interface FilaMarcaIpsAgg { anio: number; mes: number; marca: string; ips: string; valor: number; costo: number }
+export interface FilaItemAgg { anio: number; mes: number; marca: string; referencia: string; descripcion: string; cantidad: number; valor: number; costo: number }
 export interface FilaDiaAgg { anio: number; mes: number; dia: number; valor: number; costo: number }
 
 export interface AgregadosVenta {
@@ -103,6 +108,7 @@ export interface AgregadosVenta {
   porCliente: FilaClienteAgg[];
   porMarca: FilaMarcaAgg[];
   porMarcaIps: FilaMarcaIpsAgg[];
+  porItem: FilaItemAgg[];
   porDia: FilaDiaAgg[];
   /** Venta neta total por año. */
   netoPorAnio: Map<number, number>;
@@ -133,6 +139,7 @@ export function agregarVentas(filas: FilaVenta[], params: ParamNC[], excluidos: 
   const porCliente = new Map<string, FilaClienteAgg>();
   const porMarca = new Map<string, FilaMarcaAgg>();
   const porMarcaIps = new Map<string, FilaMarcaIpsAgg>();
+  const porItem = new Map<string, FilaItemAgg>();
   const porDia = new Map<string, FilaDiaAgg>();
   const anios = new Set<number>();
   const netoPorAnio = new Map<number, number>();
@@ -171,6 +178,12 @@ export function agregarVentas(filas: FilaVenta[], params: ParamNC[], excluidos: 
     const eMI = porMarcaIps.get(kMI) ?? { anio: r.anio, mes: r.mes, marca: r.marca, ips: r.cliente, valor: 0, costo: 0 };
     eMI.valor += neto; eMI.costo += r.costo;
     porMarcaIps.set(kMI, eMI);
+
+    const ref = r.referencia?.trim() || "(sin ref)";
+    const kI = `${r.anio}|${r.mes}|${r.marca}|${ref}`;
+    const eI = porItem.get(kI) ?? { anio: r.anio, mes: r.mes, marca: r.marca, referencia: ref, descripcion: (r.notas || "").trim() || ref, cantidad: 0, valor: 0, costo: 0 };
+    eI.cantidad += r.cantidad; eI.valor += neto; eI.costo += r.costo;
+    porItem.set(kI, eI);
   }
 
   return {
@@ -179,6 +192,7 @@ export function agregarVentas(filas: FilaVenta[], params: ParamNC[], excluidos: 
     porCliente: [...porCliente.values()],
     porMarca: [...porMarca.values()],
     porMarcaIps: [...porMarcaIps.values()],
+    porItem: [...porItem.values()],
     porDia: [...porDia.values()],
     netoPorAnio, totalNC, renglones: filas.length,
   };

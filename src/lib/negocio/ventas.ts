@@ -97,6 +97,34 @@ export async function ventaPorMarcaConIps(anio: number, meses?: number[]): Promi
   return arr.sort((a, b) => b.valor - a.valor);
 }
 
+export interface ItemFila { referencia: string; descripcion: string; cantidad: number; valor: number; costo: number }
+
+/**
+ * Ítems (referencia) por MARCA para el período, agregados sobre los meses.
+ * Devuelve un mapa marca → ítems (ordenados por costo total desc). Alimenta el
+ * "Consumo por Ítem" desplegable bajo cada proveedor.
+ */
+export async function itemsPorMarca(anio: number, meses?: number[]): Promise<Map<string, ItemFila[]>> {
+  const where: Prisma.VentaItemWhereInput = { anio, ...(meses && meses.length ? { mes: { in: meses } } : {}) };
+  const grupos = await prisma.ventaItem.groupBy({
+    by: ["marca", "referencia", "descripcion"], where,
+    _sum: { cantidad: true, valor: true, costo: true },
+  });
+  const map = new Map<string, ItemFila[]>();
+  for (const g of grupos) {
+    const arr = map.get(g.marca) ?? [];
+    arr.push({
+      referencia: g.referencia, descripcion: g.descripcion,
+      cantidad: g._sum.cantidad?.toNumber() ?? 0,
+      valor: g._sum.valor?.toNumber() ?? 0,
+      costo: g._sum.costo?.toNumber() ?? 0,
+    });
+    map.set(g.marca, arr);
+  }
+  for (const arr of map.values()) arr.sort((a, b) => b.costo - a.costo);
+  return map;
+}
+
 export interface ProveedorFila { marca: string; valor: number; costo: number; estado: string; motivo: string }
 
 /** Marcas con venta del período + su estado/motivo (Sin clasificar si no tiene). */
