@@ -12,7 +12,9 @@ import { FiltroAuto } from "../../_components/FiltroAuto";
 const MESES = ["", "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 const margen = (venta: number, costo: number) => (venta > 0 ? ((venta - costo) / venta) * 100 : 0);
 
-export default async function ConsumosPage({ searchParams }: { searchParams: Promise<{ anio?: string; mes?: string }> }) {
+type OrdenCol = "marca" | "venta" | "costo" | "utilidad" | "margen";
+
+export default async function ConsumosPage({ searchParams }: { searchParams: Promise<{ anio?: string; mes?: string; orden?: string; dir?: string; vista?: string }> }) {
   await requirePermiso("cxp.view");
   const sp = await searchParams;
 
@@ -36,12 +38,50 @@ export default async function ConsumosPage({ searchParams }: { searchParams: Pro
   const GRID = "minmax(160px, 2fr) 150px 150px 150px 90px 90px";
   const GRID_ITEM = "minmax(220px, 3fr) 90px 130px 140px";
 
+  // Orden de proveedores por columna (clic en el encabezado). Por defecto venta desc.
+  const ORDENES: OrdenCol[] = ["marca", "venta", "costo", "utilidad", "margen"];
+  const orden: OrdenCol = ORDENES.includes(sp.orden as OrdenCol) ? (sp.orden as OrdenCol) : "venta";
+  const dir: "asc" | "desc" = sp.dir === "asc" ? "asc" : "desc";
+  const clave = (m: { marca: string; valor: number; costo: number }): number | string =>
+    orden === "marca" ? m.marca
+      : orden === "venta" ? m.valor
+      : orden === "costo" ? m.costo
+      : orden === "utilidad" ? m.valor - m.costo
+      : margen(m.valor, m.costo);
+  marcas.sort((a, b) => {
+    const va = clave(a), vb = clave(b);
+    const c = typeof va === "string" ? va.localeCompare(vb as string, "es") : (va as number) - (vb as number);
+    return dir === "asc" ? c : -c;
+  });
+  // Vista: desglose por IPS o por Ítem (toggle al nivel de los filtros). Por defecto Ítem.
+  const vista: "ips" | "item" = sp.vista === "ips" ? "ips" : "item";
+  const base = `/ventas/consumos?anio=${anio}${mesSel ? `&mes=${mesSel}` : ""}`;
+  const ordenBase = `${base}&vista=${vista}`;
+  const linkVista = (v: "ips" | "item") => `${base}&orden=${orden}&dir=${dir}&vista=${v}`;
+  const thOrden = (key: OrdenCol, label: string, defDir: "asc" | "desc" = "desc") => {
+    const activo = orden === key;
+    const nuevaDir = activo ? (dir === "asc" ? "desc" : "asc") : defDir;
+    return (
+      <a href={`${ordenBase}&orden=${key}&dir=${nuevaDir}`} title="Ordenar" style={{ color: "inherit", textDecoration: "none", cursor: "pointer", whiteSpace: "nowrap" }}>
+        {label}{activo ? (dir === "asc" ? " ▲" : " ▼") : ""}
+      </a>
+    );
+  };
+
   return (
     <>
       <div className="card" style={{ marginBottom: 12 }}>
         <div className="card-body" style={{ paddingBottom: 12, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
           <div className="eyebrow" style={{ fontSize: 15 }}>Informe de Consumos · {periodo} · {marcas.length} proveedores</div>
           <FiltroAuto className="toolbar">
+            {/* Preserva vista/orden al cambiar año o mes. */}
+            <input type="hidden" name="vista" value={vista} />
+            <input type="hidden" name="orden" value={orden} />
+            <input type="hidden" name="dir" value={dir} />
+            <span role="group" aria-label="Ver por" style={{ display: "inline-flex", gap: 4, alignSelf: "center" }}>
+              <a href={linkVista("item")} className={`btn ${vista === "item" ? "primary" : ""}`}>Por Ítem</a>
+              <a href={linkVista("ips")} className={`btn ${vista === "ips" ? "primary" : ""}`}>Por IPS</a>
+            </span>
             <label className="flag" style={{ alignSelf: "center" }}>Año:</label>
             <select name="anio" defaultValue={anio} className="select">
               {anios.map((a) => <option key={a} value={a}>{a}</option>)}
@@ -53,7 +93,7 @@ export default async function ConsumosPage({ searchParams }: { searchParams: Pro
                 <option key={m} value={m}>{MESES[m]}</option>
               ))}
             </select>
-            {mesSel ? <a href={`/ventas/consumos?anio=${anio}`} className="btn">Todos</a> : null}
+            {mesSel ? <a href={`/ventas/consumos?anio=${anio}&orden=${orden}&dir=${dir}&vista=${vista}`} className="btn">Todos los meses</a> : null}
           </FiltroAuto>
         </div>
       </div>
@@ -80,15 +120,15 @@ export default async function ConsumosPage({ searchParams }: { searchParams: Pro
 
       {/* % Utilidad por proveedor (MARCA), desplegable por IPS */}
       <div className="card">
-        <div className="chart-head">Utilidad por Proveedor <span className="hact">{periodo} · clic para ver por IPS</span></div>
+        <div className="chart-head">Utilidad por Proveedor <span className="hact">{periodo} · {vista === "item" ? "por ítem" : "por IPS"} · clic en un proveedor para desplegar · clic en las columnas para ordenar</span></div>
         <div style={{ overflowX: "auto" }}>
           {/* Encabezado */}
           <div style={{ display: "grid", gridTemplateColumns: GRID, gap: 8, alignItems: "center", padding: "8px 12px", fontWeight: 700, fontSize: 11, textTransform: "uppercase", letterSpacing: ".5px", color: "var(--muted)", borderBottom: "1px solid var(--line)" }}>
-            <span>Proveedor (marca)</span>
-            <span style={{ textAlign: "right" }}>Venta neta</span>
-            <span style={{ textAlign: "right" }}>Costo</span>
-            <span style={{ textAlign: "right" }}>Utilidad</span>
-            <span style={{ textAlign: "right" }}>% Utilidad</span>
+            <span>{thOrden("marca", "Proveedor (marca)", "asc")}</span>
+            <span style={{ textAlign: "right" }}>{thOrden("venta", "Venta neta")}</span>
+            <span style={{ textAlign: "right" }}>{thOrden("costo", "Costo")}</span>
+            <span style={{ textAlign: "right" }}>{thOrden("utilidad", "Utilidad")}</span>
+            <span style={{ textAlign: "right" }}>{thOrden("margen", "% Utilidad")}</span>
             <span />
           </div>
           {marcas.length === 0 ? (
@@ -100,7 +140,7 @@ export default async function ConsumosPage({ searchParams }: { searchParams: Pro
                 <details key={m.marca} className="cons-det">
                   <summary>
                     <div style={{ display: "grid", gridTemplateColumns: GRID, gap: 8, alignItems: "center", padding: "9px 12px" }}>
-                      <span style={{ fontWeight: 600 }}><span className="cons-chev">▸</span> {m.marca} <span className="flag">({m.ips.length} IPS)</span></span>
+                      <span style={{ fontWeight: 600 }}><span className="cons-chev">▸</span> {m.marca} <span className="flag">({vista === "ips" ? `${m.ips.length} IPS` : `${itemsMap.get(m.marca)?.length ?? 0} ítems`})</span></span>
                       <span className="num" style={{ textAlign: "right" }}><Monto value={m.valor} /></span>
                       <span className="num flag" style={{ textAlign: "right" }}><Monto value={m.costo} /></span>
                       <span className="num" style={{ textAlign: "right" }}><Monto value={m.valor - m.costo} /></span>
@@ -108,28 +148,25 @@ export default async function ConsumosPage({ searchParams }: { searchParams: Pro
                       <span><div className="rank-bar"><div style={{ width: `${Math.max(2, (m.valor / maxVenta) * 100)}%`, background: "var(--az-2)" }} /></div></span>
                     </div>
                   </summary>
-                  <div style={{ background: "var(--surface-2, #f6f8fc)", paddingBottom: 4 }}>
-                    {m.ips.map((x) => {
-                      const p = margen(x.valor, x.costo);
-                      return (
-                        <div key={x.ips} style={{ display: "grid", gridTemplateColumns: GRID, gap: 8, alignItems: "center", padding: "5px 12px", fontSize: 12.5 }}>
-                          <span style={{ paddingLeft: 26 }}>{x.ips}</span>
-                          <span className="num" style={{ textAlign: "right" }}><Monto value={x.valor} /></span>
-                          <span className="num flag" style={{ textAlign: "right" }}><Monto value={x.costo} /></span>
-                          <span className="num" style={{ textAlign: "right" }}><Monto value={x.valor - x.costo} /></span>
-                          <span className="num" style={{ textAlign: "right", fontWeight: 600, color: p < 0 ? "var(--bad)" : undefined }}>{formatPorcentaje(p)}</span>
-                          <span />
-                        </div>
-                      );
-                    })}
-                  </div>
-
-                  {(itemsMap.get(m.marca)?.length ?? 0) > 0 && (
+                  {vista === "ips" ? (
+                    <div style={{ background: "var(--surface-2, #f6f8fc)", paddingBottom: 4 }}>
+                      {m.ips.map((x) => {
+                        const p = margen(x.valor, x.costo);
+                        return (
+                          <div key={x.ips} style={{ display: "grid", gridTemplateColumns: GRID, gap: 8, alignItems: "center", padding: "5px 12px", fontSize: 12.5 }}>
+                            <span style={{ paddingLeft: 26 }}>{x.ips}</span>
+                            <span className="num" style={{ textAlign: "right" }}><Monto value={x.valor} /></span>
+                            <span className="num flag" style={{ textAlign: "right" }}><Monto value={x.costo} /></span>
+                            <span className="num" style={{ textAlign: "right" }}><Monto value={x.valor - x.costo} /></span>
+                            <span className="num" style={{ textAlign: "right", fontWeight: 600, color: p < 0 ? "var(--bad)" : undefined }}>{formatPorcentaje(p)}</span>
+                            <span />
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (itemsMap.get(m.marca)?.length ?? 0) > 0 ? (
                     <div style={{ background: "var(--surface-2, #f6f8fc)", padding: "2px 12px 12px" }}>
-                      <div style={{ fontWeight: 700, fontSize: 11, textTransform: "uppercase", letterSpacing: ".5px", color: "var(--muted)", padding: "8px 0 4px", borderTop: "1px dashed var(--line)" }}>
-                        🔩 Consumo por ítem ({itemsMap.get(m.marca)!.length})
-                      </div>
-                      <div style={{ display: "grid", gridTemplateColumns: GRID_ITEM, gap: 8, padding: "4px 0", fontSize: 10.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".4px", color: "var(--muted)" }}>
+                      <div style={{ display: "grid", gridTemplateColumns: GRID_ITEM, gap: 8, padding: "6px 0 4px", fontSize: 10.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".4px", color: "var(--muted)" }}>
                         <span>Descripción</span>
                         <span style={{ textAlign: "right" }}>Cantidad</span>
                         <span style={{ textAlign: "right" }}>Costo unit.</span>
@@ -144,6 +181,8 @@ export default async function ConsumosPage({ searchParams }: { searchParams: Pro
                         </div>
                       ))}
                     </div>
+                  ) : (
+                    <div className="flag" style={{ background: "var(--surface-2, #f6f8fc)", padding: "8px 12px 10px", fontSize: 12 }}>Sin ítems para este proveedor en el período.</div>
                   )}
                 </details>
               );
