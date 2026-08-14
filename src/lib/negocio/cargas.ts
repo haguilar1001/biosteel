@@ -15,8 +15,9 @@ import type { PermisoClave } from "@/lib/rbac/permissions";
 import { procesarCarga, type ResultadoDataset, type DatasetKey } from "./carga-siesa";
 import { parsePygExcel, persistirPyg } from "./importar-pyg-excel";
 import { sincronizarFlujoDesdeBuffer } from "./sync-flujo";
+import { parsePresupuesto, persistirPresupuesto } from "./importar-presupuesto";
 
-export type CargaClave = DatasetKey | "pyg" | "flujo";
+export type CargaClave = DatasetKey | "pyg" | "flujo" | "presupuesto";
 
 export interface CargaDef {
   clave: CargaClave;
@@ -89,6 +90,21 @@ export const CARGAS: CargaDef[] = [
         titulo: "Ingresos y Egresos", archivo: nombre, hoja: "Flujo Caja",
         filas: r.movimientos + r.omitidas, cargadas: r.movimientos, omitidas: r.omitidas,
         estrategia: `reemplaza año(s) ${r.anios.join(", ")}: ${nf.format(r.movimientos)} movimientos (ing. ${nf.format(r.ingresos)} / egr. ${nf.format(r.egresos)})${cats}`,
+      };
+    },
+  },
+  {
+    clave: "presupuesto", titulo: "Presupuesto de Egresos", permiso: "carga.presupuesto",
+    archivoSugerido: "PRESUPUESTO BIO STEEL PROYECTADO 2026.xlsx",
+    async procesar(buffer, nombre) {
+      const anio = new Date().getFullYear();
+      const parse = parsePresupuesto(buffer);
+      if (!parse.filas.length) throw new Error("No se encontraron valores de presupuesto (hoja Presupuesto_Terceros, columnas ENE..DIC).");
+      const { cargadas, meses } = await persistirPresupuesto(prisma, anio, parse);
+      return {
+        titulo: "Presupuesto de Egresos", archivo: nombre, hoja: parse.hoja,
+        filas: parse.filas.length, cargadas, omitidas: parse.omitidas,
+        estrategia: `reemplaza ${anio} meses [${meses.join(", ")}]: ${nf.format(cargadas)} renglones de presupuesto`,
       };
     },
   },

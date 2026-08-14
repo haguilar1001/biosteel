@@ -27,7 +27,7 @@ export const MENU_BASE: MenuGrupoDef[] = [
     { href: "/dashboard", label: "🏠 Inicio", permiso: "dashboard.view" },
     { href: "/consultas", label: "🤖 Asistente", permiso: "cxp.view" },
     { href: "/cargar", label: "⬆️ Cargar archivos", permiso: "carga.pendientes",
-      permisosOr: ["carga.pendientes", "carga.ventas", "carga.facturacion", "carga.gastos", "carga.anuladas", "carga.pyg", "carga.flujo"] },
+      permisosOr: ["carga.pendientes", "carga.ventas", "carga.facturacion", "carga.gastos", "carga.anuladas", "carga.pyg", "carga.flujo", "carga.presupuesto"] },
   ] },
   { id: "tesoreria", label: "Tesorería", icon: "💰", items: [
     { href: "/flujo", label: "💵 Flujo de Caja", permiso: "cxp.view" },
