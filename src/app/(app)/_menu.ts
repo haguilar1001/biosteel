@@ -12,7 +12,13 @@ import type { PermisoClave } from "@/lib/rbac/permissions";
 import { ADMIN_SECCIONES } from "./admin/_nav";
 import type { Grupo } from "./_components/GroupNav";
 
-export interface MenuItemDef { href: string; label: string; permiso: PermisoClave; }
+export interface MenuItemDef {
+  href: string;
+  label: string;
+  permiso: PermisoClave;
+  /** Visible si tiene CUALQUIERA de estos permisos (OR). Si se omite, usa `permiso`. */
+  permisosOr?: PermisoClave[];
+}
 export interface MenuGrupoDef { id: string; label: string; icon: string; items: MenuItemDef[]; }
 
 // Catálogo base (grupos de módulos). El grupo "Administración" se arma aparte.
@@ -20,6 +26,8 @@ export const MENU_BASE: MenuGrupoDef[] = [
   { id: "inicio", label: "Inicio", icon: "🏠", items: [
     { href: "/dashboard", label: "🏠 Inicio", permiso: "dashboard.view" },
     { href: "/consultas", label: "🤖 Asistente", permiso: "cxp.view" },
+    { href: "/cargar", label: "⬆️ Cargar archivos", permiso: "carga.pendientes",
+      permisosOr: ["carga.pendientes", "carga.ventas", "carga.facturacion", "carga.gastos", "carga.anuladas", "carga.pyg", "carga.flujo"] },
   ] },
   { id: "tesoreria", label: "Tesorería", icon: "💰", items: [
     { href: "/flujo", label: "💵 Flujo de Caja", permiso: "cxp.view" },
@@ -71,7 +79,11 @@ export async function construirMenu(usuario: UsuarioConRol): Promise<Grupo[]> {
       const it = g.items[ii]!;
       const cfg = iCfg.get(it.href);
       if (cfg && !cfg.visible) continue;
-      if (!(await puede(usuario, it.permiso))) continue;
+      // Visible si tiene el permiso del ítem, o cualquiera de `permisosOr` (OR).
+      const claves = it.permisosOr ?? [it.permiso];
+      let visible = false;
+      for (const clave of claves) { if (await puede(usuario, clave)) { visible = true; break; } }
+      if (!visible) continue;
       eff.push({ href: it.href, label: cfg?.label || it.label, grupo: cfg?.grupoClave || g.id, orden: cfg?.orden ?? gi * 100 + ii });
     }
   }
