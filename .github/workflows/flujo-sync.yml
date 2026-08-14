@@ -1,0 +1,25 @@
+name: Sync Flujo diario
+
+# Sincroniza el Flujo de Caja desde OneDrive una vez al día.
+# 08:00 UTC = 3:00 a. m. Colombia (UTC-5).
+# También se puede ejecutar a mano: pestaña Actions → "Sync Flujo diario" → Run workflow.
+#
+# Requiere el secreto de repositorio CRON_SECRET (Settings → Secrets and
+# variables → Actions), con el MISMO valor que la variable CRON_SECRET del
+# servicio biosteel en Railway. Llama al endpoint público protegido por token.
+on:
+  schedule:
+    - cron: "0 8 * * *"
+  workflow_dispatch: {}
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Sincronizar flujo desde OneDrive
+        run: |
+          echo "Llamando al endpoint de sincronización de flujo…"
+          resp=$(curl -sS --max-time 300 "https://biosteel.up.railway.app/api/flujo/sync?secret=${{ secrets.CRON_SECRET }}")
+          echo "Respuesta: $resp"
+          echo "$resp" | grep -q '"ok":true' || { echo "❌ La sincronización no fue exitosa (revisa el mensaje de arriba)."; exit 1; }
+          echo "✅ Sincronización OK"
