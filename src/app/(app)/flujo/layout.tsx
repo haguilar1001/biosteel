@@ -1,8 +1,8 @@
 // Layout del módulo Flujo de Caja: sub-navegación. Cada página valida su permiso.
 import { requireUsuario } from "@/server/auth-context";
-import { puede } from "@/lib/rbac/authorize";
 import { SubNav } from "../_components/SubNav";
 
+// La importación se hace desde "Cargar archivos" (menú Inicio), no aquí.
 const ITEMS = [
   { href: "/flujo", label: "Resumen" },
   { href: "/flujo/ingresos", label: "Ingresos" },
@@ -11,11 +11,8 @@ const ITEMS = [
 ];
 
 export default async function FlujoLayout({ children }: { children: React.ReactNode }) {
-  const usuario = await requireUsuario();
-  // La pestaña de importación solo se muestra a quien puede gestionar el flujo.
-  const items = (await puede(usuario, "flujo.manage"))
-    ? [...ITEMS, { href: "/flujo/importar", label: "⬆️ Importar SIESA" }]
-    : ITEMS;
+  await requireUsuario();
+  const items = ITEMS;
   return (
     <>
       <div className="page-head" style={{ marginBottom: 8 }}>
