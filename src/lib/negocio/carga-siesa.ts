@@ -9,7 +9,7 @@
 //                   fecha) y RECALCULA la venta neta sobre todo VentaDoc.
 // El parseo vive en importar-siesa-pendientes.ts (compartido con el CLI).
 // El CLI db:pendientes hace reemplazo total (carga inicial / reseteo).
-// Ver la ruta pública: src/app/api/cargar/route.ts
+// Se usa desde el registro unificado src/lib/negocio/cargas.ts (carga in-app).
 // ==========================================================
 import "server-only";
 import { prisma } from "@/lib/db";

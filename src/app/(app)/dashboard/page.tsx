@@ -18,6 +18,7 @@ import { MapaCartera } from "../_components/charts/MapaCartera";
 import { CiudadesTabla, type CiudadItem } from "../cartera/ciudades/CiudadesTabla";
 import { Sparkline } from "../_components/charts/Sparkline";
 import { FiltroAuto } from "../_components/FiltroAuto";
+import { CARGAS } from "@/lib/negocio/cargas";
 
 const ANIO = 2026;
 const PRESUPUESTO_VENTA_MES = 2_000_000_000; // meta mensual de venta (COP)
@@ -47,6 +48,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const sp = await searchParams;
   const mesEgr = sp.mes && /^\d+$/.test(sp.mes) ? Number(sp.mes) : undefined;
   const verCxp = await puede(usuario, "cxp.view");
+  // ¿Puede cargar algún archivo? (muestra el botón "Cargar archivos").
+  const puedeCargar = (await Promise.all(CARGAS.map((c) => puede(usuario, c.permiso)))).some(Boolean);
   const alcanceCartera = await alcanceDe(usuario, "cartera.view");
   const alcInd = alcanceCartera === "ninguno" ? "todos" : alcanceCartera;
 
@@ -132,6 +135,11 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           <div className="eyebrow">Inicio</div>
           <h1>APP Bio Steel</h1>
           <p>Corte a {hoy} · {usuario.rol.nombre}</p>
+          {puedeCargar && (
+            <a href="/cargar" className="btn" style={{ marginTop: 10, display: "inline-flex", alignItems: "center", gap: 8, background: "var(--brand)", color: "#fff", fontWeight: 700, textDecoration: "none" }}>
+              ⬆️ Cargar archivos
+            </a>
+          )}
         </div>
         {verCxp && ventas && (
           <Medidor valor={cumplimiento} etiqueta="cumplimiento de la meta" color={colorMeta} size={210} />

@@ -30,6 +30,14 @@ export const PERMISOS = [
   { clave: "rol.manage", modulo: "Administración", descripcion: "Gestionar roles y permisos" },
   { clave: "parametro.manage", modulo: "Administración", descripcion: "Gestionar parámetros del sistema" },
   { clave: "auditoria.view", modulo: "Administración", descripcion: "Ver el registro de auditoría" },
+  // --- Cargas de archivos (formulario /cargar). Un permiso por dataset. ---
+  { clave: "carga.pendientes", modulo: "Cargas", descripcion: "Cargar Pedidos Pendientes Acumulados" },
+  { clave: "carga.ventas", modulo: "Cargas", descripcion: "Cargar Ventas (facturas por ítem)" },
+  { clave: "carga.facturacion", modulo: "Cargas", descripcion: "Cargar Datos Facturación" },
+  { clave: "carga.gastos", modulo: "Cargas", descripcion: "Cargar Gastos" },
+  { clave: "carga.anuladas", modulo: "Cargas", descripcion: "Cargar Motivo facturas anuladas" },
+  { clave: "carga.pyg", modulo: "Cargas", descripcion: "Cargar Estado de Resultados" },
+  { clave: "carga.flujo", modulo: "Cargas", descripcion: "Cargar Ingresos y Egresos" },
 ] as const satisfies readonly PermisoDef[];
 
 export type PermisoClave = (typeof PERMISOS)[number]["clave"];
@@ -58,6 +66,8 @@ export const MATRIZ_ROLES: Record<RolNombre, Partial<Record<PermisoClave, Alcanc
     "pago.create": T, "nota.manage": T, "reporte.view": T, "tercero.manage": T,
     "inventario.view": T, "inventario.manage": T, "flujo.manage": T, "ventas.manage": T,
     "usuario.manage": T, "rol.manage": T, "parametro.manage": T, "auditoria.view": T,
+    "carga.pendientes": T, "carga.ventas": T, "carga.facturacion": T, "carga.gastos": T,
+    "carga.anuladas": T, "carga.pyg": T, "carga.flujo": T,
   },
   Gerente: {
     "dashboard.view": T, "cartera.view": T, "recaudo.create": N, "cxp.view": T,

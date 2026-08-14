@@ -1,7 +1,7 @@
 // Módulo Facturación (S1ESA): sub-navegación. Cada página valida su permiso.
 import { requireUsuario } from "@/server/auth-context";
 import { puede } from "@/lib/rbac/authorize";
-import { env } from "@/lib/env";
+import { CARGAS } from "@/lib/negocio/cargas";
 import { SubNav } from "../_components/SubNav";
 
 const ITEMS = [
@@ -13,9 +13,8 @@ const ITEMS = [
 
 export default async function FacturacionLayout({ children }: { children: React.ReactNode }) {
   const usuario = await requireUsuario();
-  // El botón de carga expone el token, así que solo se muestra a quien gestiona.
-  const puedeCargar = (await puede(usuario, "ventas.manage")) && !!env.CARGA_TOKEN;
-  const cargaUrl = `/cargar?token=${encodeURIComponent(env.CARGA_TOKEN ?? "")}`;
+  // Botón de carga in-app: visible si tiene permiso sobre algún archivo.
+  const puedeCargar = (await Promise.all(CARGAS.map((c) => puede(usuario, c.permiso)))).some(Boolean);
 
   return (
     <>
@@ -26,7 +25,7 @@ export default async function FacturacionLayout({ children }: { children: React.
         </div>
         {puedeCargar && (
           <div className="toolbar">
-            <a href={cargaUrl} target="_blank" rel="noopener noreferrer" className="btn primary" title="Abrir el formulario de carga de archivos de S1ESA">
+            <a href="/cargar" className="btn primary" title="Cargar archivos">
               ⬆️ Cargar archivos
             </a>
           </div>
