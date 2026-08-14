@@ -197,7 +197,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                 <div className="card-body" style={{ paddingTop: 6 }}>
                   <Medidor valor={Math.min(i.cumplimiento ?? 0, 160)} color={color} size={150} />
                   <div style={{ textAlign: "center", marginTop: 2 }}>
-                    <div className="num" style={{ fontSize: 18, fontWeight: 800, color }}>{i.real != null ? fmtInd(i.real, i.unidad) : "—"}</div>
+                    <div className="num" style={{ fontSize: 18, fontWeight: 800, color }}>{i.real == null ? "—" : i.unidad === "cop" ? <Monto value={i.real} /> : fmtInd(i.real, i.unidad)}</div>
                     <div className="flag">meta {i.metaTexto}</div>
                   </div>
                 </div>
@@ -215,28 +215,28 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         <div className="card">
           <div className="chart-head">Cartera (por cobrar)</div>
           <div className="card-body kpi-body">
-            <div className="num kpi-val">{cartera ? formatCOP(cartera.total) : "—"}</div>
-            <div className="ksub" style={{ justifyContent: "center" }}><span className="flag">{cartera ? `vencida ${formatCOP(cartera.vencido)}` : "sin acceso"}</span></div>
+            <div className="num kpi-val">{cartera ? <Monto value={cartera.total} /> : "—"}</div>
+            <div className="ksub" style={{ justifyContent: "center" }}><span className="flag">{cartera ? <>vencida <Monto value={cartera.vencido} /></> : "sin acceso"}</span></div>
           </div>
         </div>
         <div className="card">
           <div className="chart-head">Cuentas por pagar</div>
           <div className="card-body kpi-body">
-            <div className="num kpi-val">{cxp ? formatCOP(cxp.total) : "—"}</div>
-            <div className="ksub" style={{ justifyContent: "center" }}><span className="flag">{cxp ? `vencida ${formatCOP(cxp.vencido)}` : "sin acceso"}</span></div>
+            <div className="num kpi-val">{cxp ? <Monto value={cxp.total} /> : "—"}</div>
+            <div className="ksub" style={{ justifyContent: "center" }}><span className="flag">{cxp ? <>vencida <Monto value={cxp.vencido} /></> : "sin acceso"}</span></div>
           </div>
         </div>
         <div className="card">
           <div className="chart-head">Obligaciones financieras</div>
           <div className="card-body kpi-body">
-            <div className="num kpi-val">{oblig ? formatCOP(oblig.totalSaldo) : "—"}</div>
-            <div className="ksub" style={{ justifyContent: "center" }}><span className="flag">{oblig ? `cuota mensual ${formatCOP(oblig.totalCuotaMensual)}` : ""}</span></div>
+            <div className="num kpi-val">{oblig ? <Monto value={oblig.totalSaldo} /> : "—"}</div>
+            <div className="ksub" style={{ justifyContent: "center" }}><span className="flag">{oblig ? <>cuota mensual <Monto value={oblig.totalCuotaMensual} /></> : ""}</span></div>
           </div>
         </div>
         <div className="card">
           <div className="chart-head">Flujo neto {ANIO}</div>
           <div className="card-body kpi-body" style={{ position: "relative" }}>
-            <div className="num kpi-val">{tot ? formatCOP(tot.neto) : "—"}</div>
+            <div className="num kpi-val">{tot ? <Monto value={tot.neto} /> : "—"}</div>
             <div className="ksub" style={{ justifyContent: "center" }}><span className="flag">{tot ? `ejecución presup. ${formatPorcentaje(tot.ejecucion)}` : ""}</span></div>
             {meses && meses.length > 1 && (
               <div style={{ position: "absolute", right: 12, bottom: 8 }}>
@@ -296,7 +296,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                         <td style={{ fontWeight: 600 }}><span style={{ textTransform: "uppercase" }}>{o.entidad}</span> <span className="flag">· {tipoLabel(o.tipo)}</span></td>
                         <td className="r num"><Monto value={o.saldoCapital} /></td>
                         <td>{o.proximaFecha ? <>{formatFecha(o.proximaFecha)} <span className={`tag ${b.clase}`}>{b.texto}</span></> : "—"}</td>
-                        <td className="r num">{o.cuotaMensual != null ? formatCOP(o.cuotaMensual) : "—"}</td>
+                        <td className="r num">{o.cuotaMensual != null ? <Monto value={o.cuotaMensual} /> : "—"}</td>
                       </tr>
                     );
                   })}

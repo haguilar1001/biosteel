@@ -6,7 +6,6 @@ import { useEffect, useState } from "react";
 
 const K_FONT = "ui.font";
 const K_ZOOM = "ui.zoom";
-const K_MONTOS = "montos";
 
 // 10 fuentes disponibles de fábrica en Windows (no requieren internet).
 // El valor es la pila CSS completa, con familia genérica de respaldo.
@@ -38,7 +37,6 @@ const TAMANOS: Tamano[] = [
 export function Parametrizador() {
   const [fontId, setFontId] = useState("default");
   const [zoom, setZoom] = useState("1");
-  const [montos, setMontos] = useState<"completo" | "resumido">("completo");
 
   // Lee lo guardado al montar (evita desajuste con el render del servidor).
   useEffect(() => {
@@ -48,18 +46,8 @@ export function Parametrizador() {
       const match = FUENTES.find((x) => x.stack === f);
       setFontId(f && match ? match.id : "default");
       if (z && TAMANOS.some((t) => t.zoom === z)) setZoom(z);
-      const m = localStorage.getItem(K_MONTOS);
-      if (m === "resumido" || m === "completo") setMontos(m);
     } catch { /* localStorage no disponible */ }
   }, []);
-
-  function aplicarMontos(m: "completo" | "resumido") {
-    setMontos(m);
-    try {
-      document.documentElement.dataset.montos = m;
-      localStorage.setItem(K_MONTOS, m);
-    } catch { /* noop */ }
-  }
 
   function aplicarFuente(f: Fuente) {
     setFontId(f.id);
@@ -159,27 +147,6 @@ export function Parametrizador() {
           </div>
           <p style={{ margin: "12px 0 0", color: "var(--muted)", fontSize: 12.5 }}>
             El tamaño escala todo por igual (texto, tablas, gráficas e iconos).
-          </p>
-        </div>
-      </div>
-
-      {/* ---- Formato de montos ---- */}
-      <div className="card">
-        <div className="chart-head">
-          💲 Formato de montos
-          <span className="hact">completos o resumidos, en toda la app</span>
-        </div>
-        <div style={{ padding: 14 }}>
-          <div className="toolbar">
-            <button type="button" className={montos === "completo" ? "btn primary" : "btn"} onClick={() => aplicarMontos("completo")} aria-pressed={montos === "completo"}>
-              Completos · $ 2.345.678.900
-            </button>
-            <button type="button" className={montos === "resumido" ? "btn primary" : "btn"} onClick={() => aplicarMontos("resumido")} aria-pressed={montos === "resumido"}>
-              Resumidos · $ 2.345,68 M
-            </button>
-          </div>
-          <p style={{ margin: "12px 0 0", color: "var(--muted)", fontSize: 12.5 }}>
-            También puedes alternarlo con el botón <strong>$0 / $M</strong> de la barra superior. Se guarda en este navegador.
           </p>
         </div>
       </div>
