@@ -5,9 +5,10 @@
 // dataset (uno por archivo). Procesa y devuelve el ResultadoDataset.
 // ==========================================================
 import { NextResponse } from "next/server";
+import { prisma } from "@/lib/db";
 import { getUsuarioActual } from "@/lib/auth/current-user";
 import { puede } from "@/lib/rbac/authorize";
-import { CARGAS, cargaDef } from "@/lib/negocio/cargas";
+import { CARGAS } from "@/lib/negocio/cargas";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -45,9 +46,16 @@ export async function POST(req: Request) {
   try {
     const buffer = Buffer.from(await file.arrayBuffer());
     const dataset = await def.procesar(buffer, file.name, ip);
+    // Bitácora unificada de la carga manual (con el usuario que la subió).
+    await prisma.cargaSiesa.create({
+      data: { ok: true, resumen: { datasets: { [def.clave]: dataset }, usuario: usuario.nombre } as object, origenIp: ip ?? null },
+    });
     return NextResponse.json({ ok: true, datasets: { [def.clave]: dataset } }, { status: 200 });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "error al procesar";
+    await prisma.cargaSiesa.create({
+      data: { ok: false, resumen: { datasets: {}, usuario: usuario.nombre, dataset: def.titulo, archivo: file.name } as object, mensaje: `${def.titulo} (${file.name}): ${msg}`, origenIp: ip ?? null },
+    }).catch(() => {});
     return NextResponse.json({ ok: false, errores: [`${def.titulo} (${file.name}): ${msg}`] }, { status: 207 });
   }
 }

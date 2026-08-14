@@ -21,12 +21,15 @@ export default async function CargarPage() {
   return (
     <>
       <div className="card" style={{ marginBottom: 12 }}>
-        <div className="card-body" style={{ paddingBottom: 12 }}>
-          <div className="eyebrow" style={{ fontSize: 15 }}>⬆️ Cargar archivos</div>
-          <p className="flag" style={{ margin: "6px 0 0" }}>
-            Sube los archivos exportados en <strong>.xlsx</strong>. Cada archivo reemplaza o agrega sus datos según su tipo.
-            Solo ves los archivos que tienes permitido cargar.
-          </p>
+        <div className="card-body" style={{ paddingBottom: 12, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
+          <div>
+            <div className="eyebrow" style={{ fontSize: 15 }}>⬆️ Cargar archivos</div>
+            <p className="flag" style={{ margin: "6px 0 0" }}>
+              Sube los archivos exportados en <strong>.xlsx</strong>. Cada archivo reemplaza o agrega sus datos según su tipo.
+              Solo ves los archivos que tienes permitido cargar.
+            </p>
+          </div>
+          <a href="/cargar/historial" className="btn">🕑 Historial</a>
         </div>
       </div>
 

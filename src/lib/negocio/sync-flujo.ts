@@ -158,8 +158,12 @@ async function descargarGraph(shareUrl: string): Promise<Buffer> {
   return buf;
 }
 
-/** Sincroniza desde un buffer .xlsx ya descargado (útil para probar). */
-export async function sincronizarFlujoDesdeBuffer(buffer: Buffer, origenIp?: string): Promise<ResultadoFlujoSync> {
+/**
+ * Sincroniza desde un buffer .xlsx ya descargado (útil para probar).
+ * `registrar` = escribir la bitácora en CargaSiesa (true por defecto: lo usa el
+ * cron). La carga in-app pasa false y registra aparte con el usuario.
+ */
+export async function sincronizarFlujoDesdeBuffer(buffer: Buffer, origenIp?: string, registrar = true): Promise<ResultadoFlujoSync> {
   const res: ResultadoFlujoSync = { ok: true, movimientos: 0, omitidas: 0, anios: [], ingresos: 0, egresos: 0, categoriasCreadas: [] };
   try {
     const { hoja, movimientos, omitidas } = parseFlujoDiario(buffer);
@@ -177,9 +181,11 @@ export async function sincronizarFlujoDesdeBuffer(buffer: Buffer, origenIp?: str
     res.ok = false;
     res.error = e instanceof Error ? e.message : "error";
   }
-  await prisma.cargaSiesa.create({
-    data: { ok: res.ok, resumen: { flujo: res } as unknown as object, mensaje: res.error ?? null, origenIp: origenIp ?? null },
-  });
+  if (registrar) {
+    await prisma.cargaSiesa.create({
+      data: { ok: res.ok, resumen: { flujo: res } as unknown as object, mensaje: res.error ?? null, origenIp: origenIp ?? null },
+    });
+  }
   return res;
 }
 

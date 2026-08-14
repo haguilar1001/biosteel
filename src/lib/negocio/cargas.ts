@@ -31,7 +31,7 @@ const nf = new Intl.NumberFormat("es-CO");
 
 /** Procesa un dataset SIESA reutilizando procesarCarga (un archivo a la vez). */
 async function procesarSiesa(clave: DatasetKey, titulo: string, buffer: Buffer, nombre: string, ip?: string): Promise<ResultadoDataset> {
-  const res = await procesarCarga([{ clave, nombre, buffer }], ip);
+  const res = await procesarCarga([{ clave, nombre, buffer }], ip, false);
   const d = res.datasets[clave];
   if (!d) throw new Error(res.errores[0] ?? "No se pudo procesar el archivo.");
   return { ...d, titulo };
@@ -83,7 +83,7 @@ export const CARGAS: CargaDef[] = [
     clave: "flujo", titulo: "Ingresos y Egresos", permiso: "carga.flujo",
     archivoSugerido: "Flujo de Caja Diario.xlsx",
     async procesar(buffer, nombre, ip) {
-      const r = await sincronizarFlujoDesdeBuffer(buffer, ip);
+      const r = await sincronizarFlujoDesdeBuffer(buffer, ip, false);
       if (!r.ok) throw new Error(r.error ?? "No se pudo procesar el flujo de caja.");
       const cats = r.categoriasCreadas.length ? ` · ${r.categoriasCreadas.length} categoría(s) nueva(s)` : "";
       return {

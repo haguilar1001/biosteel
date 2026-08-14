@@ -89,8 +89,12 @@ async function persistirVentas(filas: FilaVenta[]): Promise<Persistencia> {
 
 export interface ArchivoEntrada { clave: DatasetKey; nombre: string; buffer: Buffer; }
 
-/** Procesa los archivos recibidos según su estrategia y deja bitácora. */
-export async function procesarCarga(archivos: ArchivoEntrada[], origenIp?: string): Promise<ResultadoCarga> {
+/**
+ * Procesa los archivos recibidos según su estrategia. `registrar` = escribir la
+ * bitácora en CargaSiesa (true por defecto). La carga in-app pasa false y
+ * registra aparte con el usuario que la subió.
+ */
+export async function procesarCarga(archivos: ArchivoEntrada[], origenIp?: string, registrar = true): Promise<ResultadoCarga> {
   const res: ResultadoCarga = { ok: true, datasets: {}, errores: [] };
   const titulo = (k: DatasetKey) => DATASETS.find((d) => d.clave === k)!.titulo;
 
@@ -112,8 +116,10 @@ export async function procesarCarga(archivos: ArchivoEntrada[], origenIp?: strin
     }
   }
 
-  await prisma.cargaSiesa.create({
-    data: { ok: res.ok, resumen: res as unknown as object, mensaje: res.errores.join(" · ") || null, origenIp: origenIp ?? null },
-  });
+  if (registrar) {
+    await prisma.cargaSiesa.create({
+      data: { ok: res.ok, resumen: res as unknown as object, mensaje: res.errores.join(" · ") || null, origenIp: origenIp ?? null },
+    });
+  }
   return res;
 }
