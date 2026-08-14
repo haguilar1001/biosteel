@@ -110,7 +110,7 @@ export default function ImportadorForm() {
               <>
                 <div className="subhead" style={{ margin: "6px 0" }}>Clasificación automática por categoría</div>
                 <div className="tbl-wrap" style={{ marginBottom: 12 }}>
-                  <table className="tabla-fit">
+                  <table data-noorden className="tabla-fit">
                     <thead><tr><th>Categoría</th><th className="r" style={{ width: 120 }}>Movimientos</th><th className="r" style={{ width: 160 }}>Suma</th></tr></thead>
                     <tbody>
                       {state.porCategoria.map((c) => (
@@ -129,7 +129,7 @@ export default function ImportadorForm() {
             {/* Errores */}
             {state.erroresLista && state.erroresLista.length > 0 && (
               <div className="tbl-wrap" style={{ marginBottom: 12 }}>
-                <table className="tabla-fit">
+                <table data-noorden className="tabla-fit">
                   <thead><tr><th style={{ width: 80 }}>Fila</th><th style={{ width: 160 }}>Documento</th><th>Motivo</th></tr></thead>
                   <tbody>
                     {state.erroresLista.map((e, i) => (
@@ -147,7 +147,7 @@ export default function ImportadorForm() {
                   {commiteado ? "Movimientos cargados" : "Vista previa"} (primeros {state.muestra.length} de {r.nuevos})
                 </div>
                 <div className="tbl-wrap">
-                  <table className="tabla-fit">
+                  <table data-noorden className="tabla-fit">
                     <thead>
                       <tr><th style={{ width: 130 }}>Documento</th><th style={{ width: 100 }}>Fecha</th><th>Tercero</th><th style={{ width: 110 }}>NIT</th><th>Detalle</th><th style={{ width: 150 }}>Categoría</th><th className="r" style={{ width: 140 }}>Valor</th></tr>
                     </thead>

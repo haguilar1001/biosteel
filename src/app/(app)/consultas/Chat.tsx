@@ -82,7 +82,7 @@ function RespuestaView({ r }: { r: Respuesta }) {
       {r.tabla && r.tabla.filas.length > 0 && (
         <div className="card">
           <div className="tbl-wrap">
-            <table>
+            <table data-noorden>
               <thead>
                 <tr>{r.tabla.columnas.map((col, i) => <th key={i} className={col.align === "r" ? "r" : undefined}>{col.titulo}</th>)}</tr>
               </thead>

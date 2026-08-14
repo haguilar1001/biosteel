@@ -179,7 +179,7 @@ export function RecaudoForm({
               </button>
             </div>
             <div className="tbl-wrap">
-              <table>
+              <table data-noorden>
                 <thead><tr><th>Factura</th><th className="r">Saldo</th><th className="r">Aplicar</th></tr></thead>
                 <tbody>
                   {facturas.map((f) => (

@@ -40,7 +40,7 @@ export function ImportadorForm() {
               {state.preview ? " · (previsualización — nada escrito aún)" : ""}
             </p>
             <div className="tbl-wrap">
-              <table className="tabla-fit">
+              <table data-noorden className="tabla-fit">
                 <thead><tr><th>Año</th><th className="r">Venta neta</th><th className="r">Líneas</th><th className="r">Clientes</th></tr></thead>
                 <tbody>
                   {state.anios.map((a) => (

@@ -112,7 +112,7 @@ function ResultadoView({ res }: { res: Resultado }) {
       <div style={{ padding: 14 }}>
         {filas.length > 0 && (
           <div className="tbl-wrap">
-            <table>
+            <table data-noorden>
               <thead>
                 <tr><th>Archivo</th><th className="r">En archivo</th><th className="r">Cargadas</th></tr>
               </thead>

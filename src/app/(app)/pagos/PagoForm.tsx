@@ -121,7 +121,7 @@ export function PagoForm({
               <button type="button" className="btn" onClick={pagarTodo}>Pagar saldo total</button>
             </div>
             <div className="tbl-wrap">
-              <table>
+              <table data-noorden>
                 <thead><tr><th>Documento</th><th>Mon.</th><th className="r">Saldo COP</th><th className="r">Aplicar COP</th></tr></thead>
                 <tbody>
                   {documentos.map((d) => (

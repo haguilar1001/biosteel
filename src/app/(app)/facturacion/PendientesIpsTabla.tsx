@@ -20,7 +20,7 @@ export function PendientesIpsTabla({ items, total }: { items: IpsItem[]; total: 
 
   return (
     <div className="tbl-wrap">
-      <table>
+      <table data-noorden>
         <thead>
           <tr>
             <th>IPS</th><th className="r"># Pedidos</th><th className="r">Valor</th>

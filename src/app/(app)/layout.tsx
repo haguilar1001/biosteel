@@ -9,6 +9,7 @@ import { puede } from "@/lib/rbac/authorize";
 import { logoutAction } from "../login/actions";
 import { GruposBar, SubMenu } from "./_components/GroupNav";
 import { MontosToggle } from "./_components/MontosToggle";
+import { EnhanceTablas } from "./_components/EnhanceTablas";
 import { construirMenu } from "./_menu";
 
 function iniciales(nombre: string): string {
@@ -50,6 +51,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <SubMenu grupos={grupos} />
 
       <main className="wrap">{children}</main>
+      <EnhanceTablas />
     </>
   );
 }

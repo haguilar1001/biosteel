@@ -30,7 +30,7 @@ export function CiudadesTabla({ ciudades, total, totalDocs }: { ciudades: Ciudad
 
   return (
     <div className="tbl-wrap">
-      <table>
+      <table data-noorden>
         <thead>
           <tr>
             <th>Ciudad</th><th className="r">Saldo neto</th><th className="r">% Part.</th>

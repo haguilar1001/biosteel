@@ -126,7 +126,7 @@ export default function InventarioCliente({ equipos, sedes, categorias, marcas, 
           <span className="flag">{filtrados.length} equipos · {totalItems} ítems</span>
         </div>
         <div className="tbl-wrap">
-          <table>
+          <table data-noorden>
             <thead>
               <tr>
                 <th style={{ width: 34 }}>#</th>

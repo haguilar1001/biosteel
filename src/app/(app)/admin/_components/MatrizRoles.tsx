@@ -67,7 +67,7 @@ export function MatrizRoles({
         </div>
       </div>
       <div className="tbl-wrap">
-        <table>
+        <table data-noorden>
           <thead>
             <tr>
               <th>Opción</th>
