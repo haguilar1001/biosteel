@@ -11,7 +11,7 @@ import { resumenCxp } from "@/lib/negocio/cxp";
 import { resumenCartera, carteraPorCiudad } from "@/lib/negocio/cartera";
 import { resumenObligaciones, listarObligaciones, tipoLabel, type NivelAlerta } from "@/lib/negocio/obligaciones";
 import { calcularIndicadores, type IndicadorCalc } from "@/lib/negocio/indicadores";
-import { ventaMensualDetalle } from "@/lib/negocio/ventas";
+import { ventaMensualDetalle, ventaNetaPorDia } from "@/lib/negocio/ventas";
 import { Medidor } from "../_components/charts/Medidor";
 import { Donut } from "../_components/charts/Donut";
 import { MapaCartera } from "../_components/charts/MapaCartera";
@@ -96,7 +96,13 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const diaHoy = ahora.getUTCFullYear() === ANIO ? ahora.getUTCDate() : 31;
   const diasMes = new Date(Date.UTC(ANIO, mesActual, 0)).getUTCDate();
   const ventaMesActual = ventas ? (ventas[mesActual - 1]?.venta ?? 0) : 0;
-  const ventaProyectada = diaHoy > 0 ? (ventaMesActual / diaHoy) * diasMes : ventaMesActual;
+  // Día de corte = ÚLTIMO día del mes con venta cargada (no la fecha de hoy). Si
+  // los datos van atrasados (p. ej. hoy es 15 pero la venta llega al 13), se
+  // proyecta sobre 13 días para no subestimar. Se acota a la fecha de hoy.
+  const diasDelMes = verCxp ? await ventaNetaPorDia(ANIO, mesActual) : [];
+  const ultimoDiaVenta = diasDelMes.length ? Math.max(...diasDelMes.map((d) => d.dia)) : 0;
+  const diaCorte = Math.min(ultimoDiaVenta || diaHoy, diaHoy);
+  const ventaProyectada = diaCorte > 0 ? (ventaMesActual / diaCorte) * diasMes : ventaMesActual;
   const difPresupuesto = ventaProyectada - PRESUPUESTO_VENTA_MES;
   // Cumplimiento de la meta (proyectado / presupuesto) y color semáforo.
   const cumplimiento = PRESUPUESTO_VENTA_MES > 0 ? (ventaProyectada / PRESUPUESTO_VENTA_MES) * 100 : 0;
@@ -143,7 +149,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         <>
           <div style={{ margin: "4px 0 10px", display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
             <h2 style={{ fontSize: 26, fontWeight: 800, margin: 0 }}>Informe de {MESES_FULL[mesActual]}</h2>
-            <span className="flag" style={{ fontSize: 14 }}>{ANIO} · mes actual · corte día {diaHoy} de {diasMes}</span>
+            <span className="flag" style={{ fontSize: 14 }}>{ANIO} · mes actual · venta hasta el día {diaCorte} de {diasMes}</span>
           </div>
 
           <div className="grid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", marginBottom: 12 }}>
@@ -151,14 +157,14 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
               <div className="chart-head">Venta del mes</div>
               <div className="card-body kpi-body">
                 <div className="num kpi-val"><Monto value={ventaMesActual} /></div>
-                <div className="ksub" style={{ justifyContent: "center" }}><span className="flag">acumulada al día {diaHoy}</span></div>
+                <div className="ksub" style={{ justifyContent: "center" }}><span className="flag">acumulada al día {diaCorte}</span></div>
               </div>
             </div>
             <div className="card">
               <div className="chart-head" style={{ background: colorMeta }}>Proyectado a fin de mes</div>
               <div className="card-body kpi-body">
                 <div className="num kpi-val" style={{ color: colorMeta }}><Monto value={ventaProyectada} /></div>
-                <div className="ksub" style={{ justifyContent: "center" }}><span className="flag">{formatPorcentaje(cumplimiento)} de la meta · {diaHoy}/{diasMes} días</span></div>
+                <div className="ksub" style={{ justifyContent: "center" }}><span className="flag">{formatPorcentaje(cumplimiento)} de la meta · {diaCorte}/{diasMes} días</span></div>
               </div>
             </div>
             <div className="card">
