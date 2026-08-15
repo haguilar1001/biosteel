@@ -85,7 +85,6 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const maxBar = meses ? Math.max(1, ...meses.map((m) => Math.max(m.ingresos, m.egresos))) : 1;
   const obligOrden = obligLista ? [...obligLista].sort((a, b) => (a.proximaFecha?.getTime() ?? Infinity) - (b.proximaFecha?.getTime() ?? Infinity)) : [];
   const ahora = new Date();
-  const hoy = formatFecha(ahora);
 
   // Mes cerrado que reflejan los medidores Venta/Recaudo (último mes con flujo).
   const mesCerrado = meses && meses.length ? meses[meses.length - 1]!.mes : null;
@@ -103,6 +102,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const ultimoDiaVenta = diasDelMes.length ? Math.max(...diasDelMes.map((d) => d.dia)) : 0;
   const diaCorte = Math.min(ultimoDiaVenta || diaHoy, diaHoy);
   const ventaProyectada = diaCorte > 0 ? (ventaMesActual / diaCorte) * diasMes : ventaMesActual;
+  // Fecha de corte del tablero = último día con venta cargada (no la de hoy).
+  const fechaCorte = formatFecha(new Date(Date.UTC(ANIO, mesActual - 1, diaCorte)));
   const difPresupuesto = ventaProyectada - PRESUPUESTO_VENTA_MES;
   // Cumplimiento de la meta (proyectado / presupuesto) y color semáforo.
   const cumplimiento = PRESUPUESTO_VENTA_MES > 0 ? (ventaProyectada / PRESUPUESTO_VENTA_MES) * 100 : 0;
@@ -137,7 +138,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         <div>
           <div className="eyebrow">Inicio</div>
           <h1>APP Bio Steel</h1>
-          <p>Corte a {hoy} · {usuario.rol.nombre}</p>
+          <p>Corte a {fechaCorte} · {usuario.rol.nombre}</p>
         </div>
         {verCxp && ventas && (
           <Medidor valor={cumplimiento} etiqueta="cumplimiento de la meta" color={colorMeta} size={210} />
