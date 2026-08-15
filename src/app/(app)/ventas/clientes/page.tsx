@@ -4,11 +4,13 @@
 import { requirePermiso } from "@/server/auth-context";
 import { formatPorcentaje, formatNumero } from "@/lib/format";
 import { Monto } from "../../_components/Monto";
-import { ventaPorCliente, resumenAnual, aniosConVenta } from "@/lib/negocio/ventas";
+import { ventaPorCliente, resumenAnual, aniosConVenta, mesesConVenta } from "@/lib/negocio/ventas";
 import { TopRanking, type RankItem } from "../../_components/charts/TopRanking";
 import { FiltroAuto } from "../../_components/FiltroAuto";
 
-export default async function VentasClientesPage({ searchParams }: { searchParams: Promise<{ anio?: string }> }) {
+const MESES = ["", "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+
+export default async function VentasClientesPage({ searchParams }: { searchParams: Promise<{ anio?: string; mes?: string }> }) {
   await requirePermiso("cxp.view");
   const sp = await searchParams;
 
@@ -17,19 +19,29 @@ export default async function VentasClientesPage({ searchParams }: { searchParam
     return <div className="card"><div className="card-body"><div className="empty">Sin ventas cargadas. Corre <code>npm run db:ventas</code>.</div></div></div>;
   }
   const anio = sp.anio && anios.includes(Number(sp.anio)) ? Number(sp.anio) : anios[anios.length - 1]!;
+  const mesesDisp = await mesesConVenta(anio);
+  const mesSel = sp.mes && mesesDisp.includes(Number(sp.mes)) ? Number(sp.mes) : undefined;
+  const meses = mesSel ? [mesSel] : undefined;
+  const periodo = mesSel ? `${MESES[mesSel]} ${anio}` : `${anio}`;
 
-  const [clientes, kpi] = await Promise.all([ventaPorCliente(anio), resumenAnual(anio)]);
+  const [clientes, kpi] = await Promise.all([ventaPorCliente(anio, meses), resumenAnual(anio, meses)]);
   const rank: RankItem[] = clientes.map((c) => ({ label: c.clienteNombre, valor: c.valor, sub: `util. ${formatPorcentaje(c.valor > 0 ? ((c.valor - c.costo) / c.valor) * 100 : 0)}` }));
 
   return (
     <>
       <div className="card" style={{ marginBottom: 12 }}>
         <div className="card-body" style={{ paddingBottom: 12, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
-          <div className="eyebrow" style={{ fontSize: 15 }}>Ventas por Cliente · {anio} · {formatNumero(clientes.length)} clientes</div>
+          <div className="eyebrow" style={{ fontSize: 15 }}>Ventas por Cliente · {periodo} · {formatNumero(clientes.length)} clientes</div>
           <FiltroAuto className="toolbar">
             <label className="flag" style={{ alignSelf: "center" }}>Año:</label>
             <select name="anio" defaultValue={anio} className="select">{anios.map((a) => <option key={a} value={a}>{a}</option>)}</select>
-            <a href={`/ventas/clientes/export?anio=${anio}`} className="btn" title="Descargar ventas por cliente en Excel">⬇️ Excel</a>
+            <label className="flag" style={{ alignSelf: "center" }}>Mes:</label>
+            <select name="mes" defaultValue={mesSel ?? ""} className="select">
+              <option value="">Todos los meses</option>
+              {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => <option key={m} value={m}>{MESES[m]}</option>)}
+            </select>
+            {mesSel ? <a href={`/ventas/clientes?anio=${anio}`} className="btn">Todos los meses</a> : null}
+            <a href={`/ventas/clientes/export?anio=${anio}${mesSel ? `&mes=${mesSel}` : ""}`} className="btn" title="Descargar ventas por cliente en Excel">⬇️ Excel</a>
           </FiltroAuto>
         </div>
       </div>
