@@ -5,10 +5,12 @@
 import { requirePermiso } from "@/server/auth-context";
 import { formatNumero, formatFecha, formatPorcentaje } from "@/lib/format";
 import { Monto } from "../_components/Monto";
-import { resumenCartera, listarFacturas } from "@/lib/negocio/cartera";
+import { resumenCartera, listarFacturas, aniosCartera } from "@/lib/negocio/cartera";
 import { CUBETAS, type CubetaAging } from "@/lib/negocio/aging";
+import { MESES_LABEL } from "@/lib/negocio/flujo";
 import { Buscador } from "../_components/Buscador";
 import { BotonImprimir } from "../_components/BotonImprimir";
+import { FiltroAuto } from "../_components/FiltroAuto";
 
 const CUBETA_TAG: Record<CubetaAging, string> = {
   d1_30: "t-ok", d31_60: "t-w1", d61_90: "t-w2", d91_120: "t-bad", mas120: "t-bad",
@@ -24,15 +26,25 @@ const DEF_DIR: Record<SortK, "asc" | "desc"> = { numero: "asc", cliente: "asc", 
 export default async function CarteraPage({
   searchParams,
 }: {
-  searchParams: Promise<{ edad?: string; q?: string; sort?: string; dir?: string }>;
+  searchParams: Promise<{ edad?: string; q?: string; sort?: string; dir?: string; anio?: string; mes?: string }>;
 }) {
   const { usuario, alcance } = await requirePermiso("cartera.view");
   const sp = await searchParams;
   const { edad, q } = sp;
   const cubetaFiltro = CUBETAS.some((c) => c.clave === edad) ? (edad as CubetaAging) : undefined;
 
-  const resumen = await resumenCartera(usuario, alcance);
-  const { filas: filasRaw, total, suma } = await listarFacturas(usuario, alcance, { cubeta: cubetaFiltro, q });
+  // Periodo por fecha de EMISIÓN de la factura. Sin selección = toda la cartera.
+  const anio = sp.anio && /^d{4}$/.test(sp.anio) ? Number(sp.anio) : undefined;
+  const mesNum = sp.mes && /^d{1,2}$/.test(sp.mes) ? Number(sp.mes) : undefined;
+  const mes = mesNum && mesNum >= 1 && mesNum <= 12 ? mesNum : undefined;
+  const periodo = anio && mes ? `${MESES_LABEL[mes]} ${anio}`
+    : anio ? `año ${anio}`
+    : mes ? `${MESES_LABEL[mes]} · todos los años`
+    : "todos los meses";
+
+  const anios = await aniosCartera(usuario, alcance);
+  const resumen = await resumenCartera(usuario, alcance, new Date(), { anio, mes });
+  const { filas: filasRaw, total, suma } = await listarFacturas(usuario, alcance, { cubeta: cubetaFiltro, q, anio, mes });
   const carteraPositiva = CUBETAS.reduce((s, c) => s + resumen.porCubeta[c.clave].monto, 0);
   const facturasAging = CUBETAS.reduce((s, c) => s + resumen.porCubeta[c.clave].cantidad, 0);
 
@@ -51,19 +63,34 @@ export default async function CarteraPage({
       case "numero": return String(a.numero).localeCompare(String(b.numero), "es-CO", { numeric: true }) * factor;
     }
   });
+  // Construye URLs conservando los filtros vigentes (búsqueda, edad, periodo).
+  const params = (over: Record<string, string | undefined> = {}) => {
+    const base: Record<string, string | undefined> = {
+      q: q || undefined,
+      edad: cubetaFiltro,
+      anio: anio ? String(anio) : undefined,
+      mes: mes ? String(mes) : undefined,
+      ...over,
+    };
+    const p = new URLSearchParams();
+    for (const [k, v] of Object.entries(base)) if (v) p.set(k, v);
+    return p;
+  };
+  const href = (over: Record<string, string | undefined> = {}) => {
+    const s = params(over).toString();
+    return `/cartera${s ? `?${s}` : ""}`;
+  };
+  const ocultos: Record<string, string> = {};
+  if (cubetaFiltro) ocultos.edad = cubetaFiltro;
+  if (anio) ocultos.anio = String(anio);
+  if (mes) ocultos.mes = String(mes);
+
   const thHref = (k: SortK) => {
     const nextDir = sort === k ? (dir === "asc" ? "desc" : "asc") : DEF_DIR[k];
-    const p = new URLSearchParams();
-    if (q) p.set("q", q);
-    if (cubetaFiltro) p.set("edad", cubetaFiltro);
-    p.set("sort", k);
-    p.set("dir", nextDir);
-    return `/cartera?${p.toString()}`;
+    return href({ sort: k, dir: nextDir });
   };
 
-  const expParams = new URLSearchParams();
-  if (q) expParams.set("q", q);
-  if (cubetaFiltro) expParams.set("edad", cubetaFiltro);
+  const expParams = params();
   const expHref = `/cartera/export${expParams.toString() ? `?${expParams}` : ""}`;
 
   return (
@@ -72,7 +99,7 @@ export default async function CarteraPage({
         <div>
           <div className="eyebrow">Cartera</div>
           <h1>Cuentas por Cobrar</h1>
-          <p>Saldo neto · corte 30 jun 2026 · alcance <code>{alcance}</code></p>
+          <p>Saldo neto · corte 30 jun 2026 · emisión: {periodo} · alcance <code>{alcance}</code></p>
         </div>
         <div className="toolbar">
           <a href="/cartera/ciudades" className="btn primary">Por ciudad</a>
@@ -80,6 +107,30 @@ export default async function CarteraPage({
           <a href="/cartera/ventas-recaudos" className="btn">Ventas vs Recaudos</a>
           <a href={expHref} className="btn" title="Descargar en Excel el detalle filtrado">⬇️ Excel</a>
           <BotonImprimir />
+        </div>
+      </div>
+
+      <div className="card no-print" style={{ marginBottom: 12 }}>
+        <div className="card-body" style={{ paddingBottom: 12 }}>
+          <FiltroAuto className="toolbar">
+            {Object.entries(ocultos)
+              .filter(([k]) => k !== "anio" && k !== "mes")
+              .map(([k, v]) => <input key={k} type="hidden" name={k} value={v} />)}
+            {q ? <input type="hidden" name="q" value={q} /> : null}
+            <label className="flag" style={{ alignSelf: "center" }}>Año:</label>
+            <select name="anio" defaultValue={anio ?? ""} className="select">
+              <option value="">Todos los años</option>
+              {anios.map((a) => <option key={a} value={a}>{a}</option>)}
+            </select>
+            <label className="flag" style={{ alignSelf: "center" }}>Mes:</label>
+            <select name="mes" defaultValue={mes ?? ""} className="select">
+              <option value="">Todos los meses</option>
+              {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
+                <option key={m} value={m}>{MESES_LABEL[m]}</option>
+              ))}
+            </select>
+            {anio || mes ? <a href={href({ anio: undefined, mes: undefined })} className="btn">Toda la cartera</a> : null}
+          </FiltroAuto>
         </div>
       </div>
 
@@ -126,7 +177,7 @@ export default async function CarteraPage({
                 return (
                   <tr key={c.clave} style={{ background: activo ? "var(--brand-tint)" : undefined }}>
                     <td>
-                      <a href={activo ? "/cartera" : `/cartera?edad=${c.clave}`}
+                      <a href={href({ edad: activo ? undefined : c.clave })}
                         style={{ textDecoration: "none", color: activo ? "var(--brand)" : "inherit", display: "inline-flex", alignItems: "center", gap: 8, fontWeight: activo ? 700 : 600 }}>
                         <i style={{ width: 11, height: 11, borderRadius: 3, background: c.color, flex: "0 0 auto" }} />
                         {c.etiqueta}{activo ? " ✕" : ""}
@@ -153,7 +204,13 @@ export default async function CarteraPage({
           </span>
         </div>
         <div className="card-body" style={{ paddingBottom: 0 }}>
-          <Buscador action="/cartera" q={q} placeholder="Cliente, NIT, N.º de factura o concepto…" />
+          <Buscador
+            action="/cartera"
+            q={q}
+            extra={ocultos}
+            limpiarHref={href({ q: undefined })}
+            placeholder="Cliente, NIT, N.º de factura o concepto…"
+          />
         </div>
         <div className="tbl-wrap">
           <table className="tabla-fit">

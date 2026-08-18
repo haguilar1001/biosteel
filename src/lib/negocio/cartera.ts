@@ -57,11 +57,13 @@ export async function resumenCartera(
   usuario: UsuarioConRol,
   alcance: Alcance,
   corte: Date = new Date(),
+  periodo: { anio?: number; mes?: number } = {},
 ): Promise<ResumenCartera> {
-  const facturas = await prisma.facturaVenta.findMany({
-    where: whereConSaldo(usuario, alcance),
-    select: { saldo: true, fechaVencimiento: true },
+  const todas = await prisma.facturaVenta.findMany({
+    where: { ...whereConSaldo(usuario, alcance), ...filtroPeriodo(periodo.anio, periodo.mes) },
+    select: { saldo: true, fechaEmision: true, fechaVencimiento: true },
   });
+  const facturas = enMes(todas, periodo.anio, periodo.mes);
 
   const porCubeta = celdasVacias();
   const r: ResumenCartera = {
@@ -104,6 +106,35 @@ function filtroBusqueda(q?: string): Prisma.FacturaVentaWhereInput {
 export interface FiltrosCartera {
   cubeta?: CubetaAging;
   q?: string;
+  anio?: number;
+  mes?: number;
+}
+
+/**
+ * Rango por fecha de EMISIÓN de la factura. Sin año ni mes no filtra nada
+ * (cartera completa: el comportamiento por defecto de la vista).
+ * Con mes y sin año el filtro se aplica en memoria (ver enMes).
+ */
+function filtroPeriodo(anio?: number, mes?: number): Prisma.FacturaVentaWhereInput {
+  if (!anio) return {};
+  const desde = mes ? new Date(Date.UTC(anio, mes - 1, 1)) : new Date(Date.UTC(anio, 0, 1));
+  const hasta = mes ? new Date(Date.UTC(anio, mes, 1)) : new Date(Date.UTC(anio + 1, 0, 1));
+  return { fechaEmision: { gte: desde, lt: hasta } };
+}
+
+/** Mes suelto (sin año): Prisma no filtra por parte de fecha, se hace aquí. */
+function enMes<T extends { fechaEmision: Date }>(filas: T[], anio?: number, mes?: number): T[] {
+  if (!mes || anio) return filas;
+  return filas.filter((f) => f.fechaEmision.getUTCMonth() + 1 === mes);
+}
+
+/** Años con facturas en cartera (para el selector de la vista). */
+export async function aniosCartera(usuario: UsuarioConRol, alcance: Alcance): Promise<number[]> {
+  const facturas = await prisma.facturaVenta.findMany({
+    where: whereConSaldo(usuario, alcance),
+    select: { fechaEmision: true },
+  });
+  return [...new Set(facturas.map((f) => f.fechaEmision.getUTCFullYear()))].sort((a, b) => b - a);
 }
 
 export async function listarFacturas(
@@ -112,10 +143,17 @@ export async function listarFacturas(
   filtros: FiltrosCartera = {},
   corte: Date = new Date(),
 ): Promise<{ filas: FilaCartera[]; total: number; suma: number }> {
-  const where: Prisma.FacturaVentaWhereInput = { ...whereConSaldo(usuario, alcance), ...filtroBusqueda(filtros.q) };
+  const where: Prisma.FacturaVentaWhereInput = {
+    ...whereConSaldo(usuario, alcance),
+    ...filtroBusqueda(filtros.q),
+    ...filtroPeriodo(filtros.anio, filtros.mes),
+  };
+  // Con mes suelto (sin año) el corte no se puede delegar a la BD: se traen las
+  // facturas del filtro y el total/suma se recalculan sobre las que quedan.
+  const mesSuelto = !!filtros.mes && !filtros.anio;
   const [total, agg, facturas] = await Promise.all([
-    prisma.facturaVenta.count({ where }),
-    prisma.facturaVenta.aggregate({ where, _sum: { saldo: true } }),
+    mesSuelto ? Promise.resolve(0) : prisma.facturaVenta.count({ where }),
+    mesSuelto ? Promise.resolve(null) : prisma.facturaVenta.aggregate({ where, _sum: { saldo: true } }),
     prisma.facturaVenta.findMany({
       where,
       select: {
@@ -124,11 +162,11 @@ export async function listarFacturas(
         tercero: { select: { nombre: true, nit: true } },
       },
       orderBy: { saldo: "desc" },
-      take: 300,
+      ...(mesSuelto ? {} : { take: 300 }),
     }),
   ]);
 
-  let filas = facturas.map((f): FilaCartera => {
+  let filas = enMes(facturas, filtros.anio, filtros.mes).map((f): FilaCartera => {
     const dias = diasVencido(f.fechaVencimiento, corte);
     return {
       id: f.id, numero: f.numero, cliente: f.tercero.nombre, nit: f.tercero.nit,
@@ -138,7 +176,11 @@ export async function listarFacturas(
     };
   });
   if (filtros.cubeta) filas = filas.filter((f) => f.cubeta === filtros.cubeta && f.saldo > 0);
-  return { filas, total, suma: agg._sum.saldo?.toNumber() ?? 0 };
+  if (mesSuelto) {
+    const suma = filas.reduce((s, f) => s + f.saldo, 0);
+    return { filas: filas.slice(0, 300), total: filas.length, suma };
+  }
+  return { filas, total, suma: agg!._sum.saldo?.toNumber() ?? 0 };
 }
 
 /** Facturas del filtro SIN límite (para exportar a Excel). Respeta el alcance RBAC. */
@@ -148,7 +190,11 @@ export async function exportarFacturas(
   filtros: FiltrosCartera = {},
   corte: Date = new Date(),
 ): Promise<FilaCartera[]> {
-  const where: Prisma.FacturaVentaWhereInput = { ...whereConSaldo(usuario, alcance), ...filtroBusqueda(filtros.q) };
+  const where: Prisma.FacturaVentaWhereInput = {
+    ...whereConSaldo(usuario, alcance),
+    ...filtroBusqueda(filtros.q),
+    ...filtroPeriodo(filtros.anio, filtros.mes),
+  };
   const facturas = await prisma.facturaVenta.findMany({
     where,
     select: {
@@ -158,7 +204,7 @@ export async function exportarFacturas(
     },
     orderBy: { saldo: "desc" },
   });
-  let filas = facturas.map((f): FilaCartera => {
+  let filas = enMes(facturas, filtros.anio, filtros.mes).map((f): FilaCartera => {
     const dias = diasVencido(f.fechaVencimiento, corte);
     return {
       id: f.id, numero: f.numero, cliente: f.tercero.nombre, nit: f.tercero.nit,

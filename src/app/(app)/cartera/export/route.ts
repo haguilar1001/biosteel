@@ -1,5 +1,5 @@
 // Exporta a Excel el detalle de cartera (CxC) respetando el alcance RBAC
-// y los filtros de la URL (edad/aging, búsqueda).
+// y los filtros de la URL (edad/aging, búsqueda, periodo de emisión).
 import type { NextRequest } from "next/server";
 import { getUsuarioActual } from "@/lib/auth/current-user";
 import { exigirPermiso } from "@/lib/rbac/authorize";
@@ -22,8 +22,13 @@ export async function GET(req: NextRequest) {
   const edad = sp.get("edad");
   const cubeta = CUBETAS.some((c) => c.clave === edad) ? (edad as CubetaAging) : undefined;
   const q = sp.get("q") ?? undefined;
+  const anioRaw = sp.get("anio");
+  const mesRaw = sp.get("mes");
+  const anio = anioRaw && /^d{4}$/.test(anioRaw) ? Number(anioRaw) : undefined;
+  const mesNum = mesRaw && /^d{1,2}$/.test(mesRaw) ? Number(mesRaw) : undefined;
+  const mes = mesNum && mesNum >= 1 && mesNum <= 12 ? mesNum : undefined;
 
-  const filas = await exportarFacturas(usuario, alcance, { cubeta, q });
+  const filas = await exportarFacturas(usuario, alcance, { cubeta, q, anio, mes });
   const cuerpo: (string | number)[][] = filas.map((f) => [
     f.numero, f.cliente, f.nit ?? "", f.concepto ?? "",
     formatFecha(f.fechaEmision), formatFecha(f.fechaVencimiento), f.dias, f.estado, f.saldo,
@@ -35,6 +40,6 @@ export async function GET(req: NextRequest) {
     encabezado: ["Factura", "Cliente", "NIT", "Concepto", "Emisión", "Vence", "Días", "Estado", "Saldo"],
     filas: cuerpo,
     anchos: [14, 34, 14, 34, 12, 12, 8, 14, 16],
-    archivo: `cartera${cubeta ? `-${cubeta}` : ""}.xlsx`,
+    archivo: `cartera${cubeta ? `-${cubeta}` : ""}${anio ? `-${anio}` : ""}${mes ? `-${String(mes).padStart(2, "0")}` : ""}.xlsx`,
   });
 }
