@@ -36,10 +36,14 @@ export default async function VentasRecaudosPage({
 
   const mesesRec = await mesesConMovimiento(ANIO, "ingreso");
   const ultimo = mesesRec.length ? mesesRec[mesesRec.length - 1]! : new Date().getMonth() + 1;
-  const mes = sp.mes && /^\d+$/.test(sp.mes) ? Number(sp.mes) : ultimo;
+  // mes = "all" → año corrido (todos los meses); vacío → último mes con recaudos.
+  const todos = sp.mes === "all";
+  const mes = todos ? undefined : sp.mes && /^\d+$/.test(sp.mes) ? Number(sp.mes) : ultimo;
+  const etiqueta = todos ? `año corrido ${ANIO}` : `${MESES_LABEL[mes!]} ${ANIO}`;
+  const etiquetaCorta = todos ? "Año corrido" : MESES_LABEL[mes!];
 
   const [ventas, recaudos, internos] = await Promise.all([
-    ventaPorCliente(ANIO, [mes]),
+    ventaPorCliente(ANIO, mes ? [mes] : undefined),
     movimientosPorTercero("ingreso", { anio: ANIO, mes }),
     nombresInternos(),
   ]);
@@ -79,7 +83,7 @@ export default async function VentasRecaudosPage({
         <div>
           <div className="eyebrow">Cartera</div>
           <h1>Ventas vs Recaudos</h1>
-          <p>Por cliente · {MESES_LABEL[mes]} {ANIO} · ventas (facturación) contra recaudos (abonos)</p>
+          <p>Por cliente · {etiqueta} · ventas (facturación) contra recaudos (abonos)</p>
         </div>
         <div className="toolbar">
           <a href="/cartera/clientes" className="btn">Por cliente (saldo)</a>
@@ -91,9 +95,10 @@ export default async function VentasRecaudosPage({
         <div className="card-body" style={{ paddingBottom: 12 }}>
           <FiltroAuto className="toolbar">
             <label className="flag" style={{ alignSelf: "center" }}>Mes:</label>
-            <select name="mes" defaultValue={mes} className="select">
+            <select name="mes" defaultValue={todos ? "all" : mes} className="select">
+              <option value="all">Todos los meses</option>
               {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
-                <option key={m} value={m}>{MESES_LABEL[m]}</option>
+                <option key={m} value={m}>{MESES_LABEL[m]}{mesesRec.includes(m) ? "" : " (sin recaudos)"}</option>
               ))}
             </select>
           </FiltroAuto>
@@ -102,12 +107,12 @@ export default async function VentasRecaudosPage({
 
       <div className="kpis" style={{ marginBottom: 12 }}>
         <div className="kpi">
-          <div className="klabel">Ventas del mes</div>
+          <div className="klabel">Ventas {todos ? "del año" : "del mes"}</div>
           <div className="kval num" style={{ color: "var(--cat-1)" }}><Monto value={totVentas} /></div>
           <div className="ksub"><span className="flag">facturación neta (por línea)</span></div>
         </div>
         <div className="kpi">
-          <div className="klabel">Recaudos del mes</div>
+          <div className="klabel">Recaudos {todos ? "del año" : "del mes"}</div>
           <div className="kval num" style={{ color: "var(--cat-3)" }}><Monto value={totRecaudos} /></div>
           <div className="ksub"><span className="flag">abonos a cartera</span></div>
         </div>
@@ -120,7 +125,7 @@ export default async function VentasRecaudosPage({
 
       <div style={{ marginBottom: 12 }}>
         <BarrasComparativas
-          titulo={`Ventas vs Recaudos · ${MESES_LABEL[mes]}`}
+          titulo={`Ventas vs Recaudos · ${etiquetaCorta}`}
           items={items}
           labelA="Ventas" labelB="Recaudos"
           colorA="var(--cat-1)" colorB="var(--cat-3)"
@@ -145,7 +150,7 @@ export default async function VentasRecaudosPage({
                 </tr>
               )}
               {filas.length === 0 ? (
-                <tr><td colSpan={4} className="empty">Sin datos para {MESES_LABEL[mes]}.</td></tr>
+                <tr><td colSpan={4} className="empty">Sin datos para {etiqueta}.</td></tr>
               ) : (
                 filas.map((f) => (
                   <tr key={f.label}>
