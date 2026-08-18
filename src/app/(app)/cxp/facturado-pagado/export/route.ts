@@ -7,18 +7,19 @@ import { facturadoVsPagado } from "@/lib/negocio/cxp";
 import { mesesConMovimiento } from "@/lib/negocio/flujo";
 import { libroDescarga } from "@/lib/xlsx-export";
 
-const ANIO = 2026;
-
 export async function GET(req: NextRequest) {
   const usuario = await requireUsuario();
   if (!(await puede(usuario, "cxp.view"))) return new Response("No autorizado", { status: 403 });
 
-  const mesRaw = req.nextUrl.searchParams.get("mes");
-  const meses = await mesesConMovimiento(ANIO, "egreso");
+  const sp = req.nextUrl.searchParams;
+  const anioRaw = sp.get("anio");
+  const anio = anioRaw && /^\d{4}$/.test(anioRaw) ? Number(anioRaw) : new Date().getFullYear();
+  const mesRaw = sp.get("mes");
+  const meses = await mesesConMovimiento(anio, "egreso");
   const ultimo = meses.length ? meses[meses.length - 1]! : new Date().getMonth() + 1;
   const mes = mesRaw === "all" ? undefined : mesRaw && /^\d+$/.test(mesRaw) ? Number(mesRaw) : ultimo;
 
-  const filas = (await facturadoVsPagado(ANIO, mes)).filter((f) => f.facturado > 0 || f.pagado > 0);
+  const filas = (await facturadoVsPagado(anio, mes)).filter((f) => f.facturado > 0 || f.pagado > 0);
   const cuerpo: (string | number)[][] = filas.map((f) => [
     f.proveedor, f.nit ?? "", f.facturado, f.pagado, f.pagado - f.facturado,
     f.facturado > 0 ? Number(((f.pagado / f.facturado) * 100).toFixed(2)) : "",
@@ -35,6 +36,6 @@ export async function GET(req: NextRequest) {
     encabezado: ["Proveedor", "NIT", "Facturado", "Pagado", "Diferencia", "% Pagado"],
     filas: cuerpo,
     anchos: [40, 14, 18, 18, 18, 12],
-    archivo: `facturado-vs-pagado-${ANIO}${mes ? `-${String(mes).padStart(2, "0")}` : "-anio"}.xlsx`,
+    archivo: `facturado-vs-pagado-${anio}${mes ? `-${String(mes).padStart(2, "0")}` : "-anio"}.xlsx`,
   });
 }

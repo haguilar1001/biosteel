@@ -6,9 +6,11 @@
 import { requirePermiso } from "@/server/auth-context";
 import { formatNumero, formatFecha } from "@/lib/format";
 import { Monto } from "../_components/Monto";
-import { resumenCxp, listarDocumentosCxp, diasParaVencer } from "@/lib/negocio/cxp";
+import { resumenCxp, listarDocumentosCxp, diasParaVencer, aniosCxp } from "@/lib/negocio/cxp";
+import { leerPeriodo, etiquetaPeriodo } from "@/lib/periodo";
 import { Buscador } from "../_components/Buscador";
 import { BotonImprimir } from "../_components/BotonImprimir";
+import { FiltroPeriodo } from "../_components/FiltroPeriodo";
 
 function tagVencimiento(dias: number): { clase: string; texto: string } {
   if (dias < 0) return { clase: "t-bad", texto: `Vencido ${Math.abs(dias)}d` };
@@ -19,13 +21,37 @@ function tagVencimiento(dias: number): { clase: string; texto: string } {
 export default async function CxpPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string }>;
+  searchParams: Promise<{ q?: string; anio?: string; mes?: string }>;
 }) {
   await requirePermiso("cxp.view");
-  const { q } = await searchParams;
+  const sp = await searchParams;
+  const { q } = sp;
 
-  const resumen = await resumenCxp();
-  const { filas, total, suma } = await listarDocumentosCxp(q);
+  // Periodo por fecha de VENCIMIENTO. Sin selección = toda la CxP.
+  const { anio, mes } = leerPeriodo(sp);
+  const periodo = etiquetaPeriodo({ anio, mes });
+  const params = (over: Record<string, string | undefined> = {}) => {
+    const base: Record<string, string | undefined> = {
+      q: q || undefined,
+      anio: anio ? String(anio) : undefined,
+      mes: mes ? String(mes) : undefined,
+      ...over,
+    };
+    const p = new URLSearchParams();
+    for (const [k, v] of Object.entries(base)) if (v) p.set(k, v);
+    return p;
+  };
+  const href = (over: Record<string, string | undefined> = {}) => {
+    const s = params(over).toString();
+    return `/cxp${s ? `?${s}` : ""}`;
+  };
+  const ocultos: Record<string, string> = {};
+  if (anio) ocultos.anio = String(anio);
+  if (mes) ocultos.mes = String(mes);
+
+  const anios = await aniosCxp();
+  const resumen = await resumenCxp(new Date(), { anio, mes });
+  const { filas, total, suma } = await listarDocumentosCxp(q, new Date(), { anio, mes });
 
   return (
     <>
@@ -33,16 +59,24 @@ export default async function CxpPage({
         <div>
           <div className="eyebrow">Cuentas por Pagar</div>
           <h1>Obligaciones con Proveedores</h1>
-          <p>Saldo neto (lo que realmente se debe · incluye anticipos)</p>
+          <p>Saldo neto (lo que realmente se debe · incluye anticipos) · vence: {periodo}</p>
         </div>
         <div className="toolbar">
           <a href="/cxp/proveedores" className="btn primary">Informe por proveedor</a>
           <a href="/cxp/facturado-pagado" className="btn">Facturado vs Pagado</a>
           <a href="/cxp/anticipos" className="btn">Anticipos</a>
-          <a href={`/cxp/export${q ? `?q=${encodeURIComponent(q)}` : ""}`} className="btn" title="Descargar en Excel el detalle filtrado">⬇️ Excel</a>
+          <a href={`/cxp/export${params().toString() ? `?${params()}` : ""}`} className="btn" title="Descargar en Excel el detalle filtrado">⬇️ Excel</a>
           <BotonImprimir />
         </div>
       </div>
+
+      <FiltroPeriodo
+        anios={anios}
+        periodo={{ anio, mes }}
+        ocultos={q ? { q } : undefined}
+        hrefTodo={href({ anio: undefined, mes: undefined })}
+        textoTodo="Toda la CxP"
+      />
 
       <div className="kpis">
         <div className="kpi">
@@ -76,7 +110,13 @@ export default async function CxpPage({
           </span>
         </div>
         <div className="card-body" style={{ paddingBottom: 0 }}>
-          <Buscador action="/cxp" q={q} placeholder="Proveedor, N.º de documento o concepto…" />
+          <Buscador
+            action="/cxp"
+            q={q}
+            extra={ocultos}
+            limpiarHref={href({ q: undefined })}
+            placeholder="Proveedor, N.º de documento o concepto…"
+          />
         </div>
         <div className="tbl-wrap">
           <table className="tabla-fit">

@@ -3,10 +3,10 @@ import { requirePermiso } from "@/server/auth-context";
 import { formatCOP, formatPorcentaje, formatNumero } from "@/lib/format";
 import { Monto } from "../../_components/Monto";
 import { carteraPorCliente, aniosCartera } from "@/lib/negocio/cartera";
-import { MESES_LABEL } from "@/lib/negocio/flujo";
+import { leerPeriodo, etiquetaPeriodo } from "@/lib/periodo";
 import { Buscador } from "../../_components/Buscador";
 import { BotonImprimir } from "../../_components/BotonImprimir";
-import { FiltroAuto } from "../../_components/FiltroAuto";
+import { FiltroPeriodo } from "../../_components/FiltroPeriodo";
 
 export default async function CarteraPorClientePage({
   searchParams,
@@ -18,13 +18,8 @@ export default async function CarteraPorClientePage({
   const { q } = sp;
 
   // Periodo por fecha de VENCIMIENTO, igual que en la vista de facturas.
-  const anio = sp.anio && /^\d{4}$/.test(sp.anio) ? Number(sp.anio) : undefined;
-  const mesNum = sp.mes && /^\d{1,2}$/.test(sp.mes) ? Number(sp.mes) : undefined;
-  const mes = mesNum && mesNum >= 1 && mesNum <= 12 ? mesNum : undefined;
-  const periodo = anio && mes ? `${MESES_LABEL[mes]} ${anio}`
-    : anio ? `año ${anio}`
-    : mes ? `${MESES_LABEL[mes]} · todos los años`
-    : "todos los meses";
+  const { anio, mes } = leerPeriodo(sp);
+  const periodo = etiquetaPeriodo({ anio, mes });
 
   const params = (over: Record<string, string | undefined> = {}) => {
     const base: Record<string, string | undefined> = {
@@ -67,26 +62,13 @@ export default async function CarteraPorClientePage({
         </div>
       </div>
 
-      <div className="card no-print" style={{ marginBottom: 12 }}>
-        <div className="card-body" style={{ paddingBottom: 12 }}>
-          <FiltroAuto className="toolbar">
-            {q ? <input type="hidden" name="q" value={q} /> : null}
-            <label className="flag" style={{ alignSelf: "center" }}>Vencimiento — Año:</label>
-            <select name="anio" defaultValue={anio ?? ""} className="select">
-              <option value="">Todos los años</option>
-              {anios.map((a) => <option key={a} value={a}>{a}</option>)}
-            </select>
-            <label className="flag" style={{ alignSelf: "center" }}>Mes:</label>
-            <select name="mes" defaultValue={mes ?? ""} className="select">
-              <option value="">Todos los meses</option>
-              {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
-                <option key={m} value={m}>{MESES_LABEL[m]}</option>
-              ))}
-            </select>
-            {anio || mes ? <a href={href({ anio: undefined, mes: undefined })} className="btn">Toda la cartera</a> : null}
-          </FiltroAuto>
-        </div>
-      </div>
+      <FiltroPeriodo
+        anios={anios}
+        periodo={{ anio, mes }}
+        ocultos={q ? { q } : undefined}
+        hrefTodo={href({ anio: undefined, mes: undefined })}
+        textoTodo="Toda la cartera"
+      />
 
       <div className="card">
         <div className="card-body" style={{ paddingBottom: 0 }}>

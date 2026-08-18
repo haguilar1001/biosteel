@@ -4,16 +4,33 @@
 // ==========================================================
 import { requirePermiso } from "@/server/auth-context";
 import { Monto } from "../../_components/Monto";
-import { carteraPorCiudad } from "@/lib/negocio/cartera";
+import { carteraPorCiudad, aniosCartera } from "@/lib/negocio/cartera";
+import { leerPeriodo, etiquetaPeriodo } from "@/lib/periodo";
 import { MapaCartera } from "../../_components/charts/MapaCartera";
 import { BotonImprimir } from "../../_components/BotonImprimir";
+import { FiltroPeriodo } from "../../_components/FiltroPeriodo";
 import { CiudadesTabla, type CiudadItem } from "./CiudadesTabla";
 
 const CATS = ["var(--cat-1)", "var(--cat-2)", "var(--cat-3)", "var(--cat-4)", "var(--cat-5)", "var(--cat-6)", "var(--cat-7)", "var(--cat-8)"];
 
-export default async function CarteraPorCiudadPage() {
+export default async function CarteraPorCiudadPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ anio?: string; mes?: string }>;
+}) {
   const { usuario, alcance } = await requirePermiso("cartera.view");
-  const ciudades = await carteraPorCiudad(usuario, alcance);
+  const sp = await searchParams;
+
+  // Periodo por fecha de VENCIMIENTO, igual que en las demás vistas de cartera.
+  const { anio, mes } = leerPeriodo(sp);
+  const periodo = etiquetaPeriodo({ anio, mes });
+  const qs = new URLSearchParams();
+  if (anio) qs.set("anio", String(anio));
+  if (mes) qs.set("mes", String(mes));
+  const sufijo = qs.toString() ? `?${qs}` : "";
+
+  const anios = await aniosCartera(usuario, alcance);
+  const ciudades = await carteraPorCiudad(usuario, alcance, { anio, mes });
   const total = ciudades.reduce((s, c) => s + c.saldo, 0);
   const totalDocs = ciudades.reduce((s, c) => s + c.documentos, 0);
 
@@ -37,14 +54,21 @@ export default async function CarteraPorCiudadPage() {
         <div>
           <div className="eyebrow">Cartera</div>
           <h1>Cartera por ciudad</h1>
-          <p>Clic en una ciudad para desplegar sus IPS (% sobre el total de la ciudad)</p>
+          <p>Vence: {periodo} · clic en una ciudad para desplegar sus IPS (% sobre el total de la ciudad)</p>
         </div>
         <div className="toolbar">
-          <a href="/cartera/ciudades/export" className="btn" title="Descargar en Excel">⬇️ Excel</a>
+          <a href={`/cartera/ciudades/export${sufijo}`} className="btn" title="Descargar en Excel">⬇️ Excel</a>
           <BotonImprimir />
           <a href="/cartera" className="btn">← Facturas</a>
         </div>
       </div>
+
+      <FiltroPeriodo
+        anios={anios}
+        periodo={{ anio, mes }}
+        hrefTodo="/cartera/ciudades"
+        textoTodo="Toda la cartera"
+      />
 
       <div className="card no-print" style={{ marginBottom: 12 }}>
         <div className="chart-head">Mapa de cartera <span className="hact">{ciudades.length} ciudades · <Monto value={total} /></span></div>

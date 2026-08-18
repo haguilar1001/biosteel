@@ -245,11 +245,13 @@ export interface FilaCiudad {
 export async function carteraPorCiudad(
   usuario: UsuarioConRol,
   alcance: Alcance,
+  periodo: { anio?: number; mes?: number } = {},
 ): Promise<FilaCiudad[]> {
-  const facturas = await prisma.facturaVenta.findMany({
-    where: whereConSaldo(usuario, alcance),
-    select: { saldo: true, terceroId: true, tercero: { select: { nombre: true, ciudad: true } } },
+  const todas = await prisma.facturaVenta.findMany({
+    where: { ...whereConSaldo(usuario, alcance), ...filtroPeriodo(periodo.anio, periodo.mes) },
+    select: { saldo: true, fechaVencimiento: true, terceroId: true, tercero: { select: { nombre: true, ciudad: true } } },
   });
+  const facturas = enMes(todas, periodo.anio, periodo.mes);
 
   const ciudades = new Map<string, { saldo: number; documentos: number; porCliente: Map<number, IpsEnCiudad> }>();
   for (const f of facturas) {

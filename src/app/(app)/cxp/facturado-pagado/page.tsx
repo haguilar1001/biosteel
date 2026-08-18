@@ -6,13 +6,11 @@
 import { requirePermiso } from "@/server/auth-context";
 import { formatNumero } from "@/lib/format";
 import { Monto } from "../../_components/Monto";
-import { facturadoVsPagado } from "@/lib/negocio/cxp";
-import { mesesConMovimiento, MESES_LABEL } from "@/lib/negocio/flujo";
+import { facturadoVsPagado, aniosConCompras } from "@/lib/negocio/cxp";
+import { mesesConMovimiento, aniosConMovimiento, MESES_LABEL } from "@/lib/negocio/flujo";
 import { BarrasComparativas, type BarraItem } from "../../_components/charts/BarrasComparativas";
 import { BotonImprimir } from "../../_components/BotonImprimir";
 import { FiltroAuto } from "../../_components/FiltroAuto";
-
-const ANIO = 2026;
 
 // Semáforo de cobertura = pagado / facturado.
 function pctTag(facturado: number, pagado: number) {
@@ -25,20 +23,25 @@ function pctTag(facturado: number, pagado: number) {
 export default async function FacturadoPagadoPage({
   searchParams,
 }: {
-  searchParams: Promise<{ mes?: string }>;
+  searchParams: Promise<{ anio?: string; mes?: string }>;
 }) {
   await requirePermiso("cxp.view");
   const sp = await searchParams;
 
-  const mesesData = await mesesConMovimiento(ANIO, "egreso");
+  // Años disponibles: los que tienen compras (CxP) o pagos (flujo) cargados.
+  const [aniosCompra, aniosPago] = await Promise.all([aniosConCompras(), aniosConMovimiento("egreso")]);
+  const anios = [...new Set([...aniosCompra, ...aniosPago])].sort((a, b) => b - a);
+  const anio = sp.anio && anios.includes(Number(sp.anio)) ? Number(sp.anio) : anios[0] ?? new Date().getFullYear();
+
+  const mesesData = await mesesConMovimiento(anio, "egreso");
   const ultimo = mesesData.length ? mesesData[mesesData.length - 1]! : new Date().getMonth() + 1;
   // mes = "all" → año corrido (todos los meses); vacío → último mes con pagos.
   const todos = sp.mes === "all";
   const mes = todos ? undefined : sp.mes && /^\d+$/.test(sp.mes) ? Number(sp.mes) : ultimo;
-  const etiqueta = todos ? `año corrido ${ANIO}` : `${MESES_LABEL[mes!]} ${ANIO}`;
-  const etiquetaCorta = todos ? "Año corrido" : MESES_LABEL[mes!];
+  const etiqueta = todos ? `año corrido ${anio}` : `${MESES_LABEL[mes!]} ${anio}`;
+  const etiquetaCorta = todos ? `Año ${anio}` : `${MESES_LABEL[mes!]} ${anio}`;
 
-  const filas = await facturadoVsPagado(ANIO, mes);
+  const filas = await facturadoVsPagado(anio, mes);
   const totFact = filas.reduce((s, f) => s + f.facturado, 0);
   const totPag = filas.reduce((s, f) => s + f.pagado, 0);
 
@@ -55,7 +58,7 @@ export default async function FacturadoPagadoPage({
           <p>Por proveedor · {etiqueta} · facturado (CxP) contra pagado (flujo)</p>
         </div>
         <div className="toolbar">
-          <a href={`/cxp/facturado-pagado/export?mes=${todos ? "all" : mes}`} className="btn" title="Descargar en Excel">⬇️ Excel</a>
+          <a href={`/cxp/facturado-pagado/export?anio=${anio}&mes=${todos ? "all" : mes}`} className="btn" title="Descargar en Excel">⬇️ Excel</a>
           <BotonImprimir />
           <a href="/cxp/proveedores" className="btn">Por proveedor (saldo)</a>
           <a href="/cxp" className="btn">← Documentos</a>
@@ -65,6 +68,10 @@ export default async function FacturadoPagadoPage({
       <div className="card no-print" style={{ marginBottom: 12 }}>
         <div className="card-body" style={{ paddingBottom: 12 }}>
           <FiltroAuto className="toolbar">
+            <label className="flag" style={{ alignSelf: "center" }}>Año:</label>
+            <select name="anio" defaultValue={anio} className="select">
+              {anios.map((a) => <option key={a} value={a}>{a}</option>)}
+            </select>
             <label className="flag" style={{ alignSelf: "center" }}>Mes:</label>
             <select name="mes" defaultValue={todos ? "all" : mes} className="select">
               <option value="all">Todos los meses</option>

@@ -6,23 +6,31 @@
 import { requirePermiso } from "@/server/auth-context";
 import { formatCOP, formatPorcentaje, formatNumero } from "@/lib/format";
 import { Monto } from "../../_components/Monto";
-import { cxpPorProveedor, type TipoProveedorFiltro } from "@/lib/negocio/cxp";
+import { cxpPorProveedor, aniosCxp, type TipoProveedorFiltro } from "@/lib/negocio/cxp";
+import { leerPeriodo, etiquetaPeriodo } from "@/lib/periodo";
 import { Buscador } from "../../_components/Buscador";
 import { BotonImprimir } from "../../_components/BotonImprimir";
+import { FiltroPeriodo } from "../../_components/FiltroPeriodo";
 import { Donut } from "../../_components/charts/Donut";
 import { TopRanking, type RankItem } from "../../_components/charts/TopRanking";
 
 export default async function CxpPorProveedorPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; tipo?: string }>;
+  searchParams: Promise<{ q?: string; tipo?: string; anio?: string; mes?: string }>;
 }) {
   await requirePermiso("cxp.view");
-  const { q, tipo: tipoRaw } = await searchParams;
+  const sp = await searchParams;
+  const { q, tipo: tipoRaw } = sp;
   const tipo: TipoProveedorFiltro | undefined =
     tipoRaw === "interno" || tipoRaw === "externo" ? tipoRaw : undefined;
 
-  const filas = await cxpPorProveedor(q, tipo);
+  // Periodo por fecha de VENCIMIENTO. Sin selección = toda la CxP.
+  const { anio, mes } = leerPeriodo(sp);
+  const periodo = etiquetaPeriodo({ anio, mes });
+
+  const anios = await aniosCxp();
+  const filas = await cxpPorProveedor(q, tipo, new Date(), { anio, mes });
   const tot = filas.reduce(
     (a, f) => ({ docs: a.docs + f.documentos, saldo: a.saldo + f.saldoNeto, vencido: a.vencido + f.vencido }),
     { docs: 0, saldo: 0, vencido: 0 },
@@ -31,7 +39,7 @@ export default async function CxpPorProveedorPage({
   // Para los visuales usamos SIEMPRE ambos tipos (respeta la búsqueda, ignora el filtro tipo).
   // Composición sobre el POR-PAGAR (saldos positivos): los internos netean negativo (anticipos),
   // así que un neto por tipo no representa "a quién le debemos". Usamos exposición positiva.
-  const paraViz = tipo ? await cxpPorProveedor(q) : filas;
+  const paraViz = tipo ? await cxpPorProveedor(q, undefined, new Date(), { anio, mes }) : filas;
   const internoT = paraViz.filter((f) => f.interno).reduce((s, f) => s + Math.max(0, f.saldoNeto), 0);
   const externoT = paraViz.filter((f) => !f.interno).reduce((s, f) => s + Math.max(0, f.saldoNeto), 0);
   const totalViz = internoT + externoT;
@@ -43,8 +51,28 @@ export default async function CxpPorProveedorPage({
     .sort((a, b) => b.saldoNeto - a.saldoNeto)
     .map((f) => ({ label: f.proveedor, valor: f.saldoNeto, sub: `${formatNumero(f.documentos)} docs · ${f.interno ? "Interno" : "Externo"}` }));
 
-  const qs = q ? `&q=${encodeURIComponent(q)}` : "";
-  const filtro = (t?: TipoProveedorFiltro) => (t ? `/cxp/proveedores?tipo=${t}${qs}` : `/cxp/proveedores${q ? `?q=${encodeURIComponent(q)}` : ""}`);
+  // URLs que conservan los filtros vigentes (búsqueda, tipo, periodo).
+  const params = (over: Record<string, string | undefined> = {}) => {
+    const base: Record<string, string | undefined> = {
+      q: q || undefined,
+      tipo,
+      anio: anio ? String(anio) : undefined,
+      mes: mes ? String(mes) : undefined,
+      ...over,
+    };
+    const p = new URLSearchParams();
+    for (const [k, v] of Object.entries(base)) if (v) p.set(k, v);
+    return p;
+  };
+  const href = (over: Record<string, string | undefined> = {}) => {
+    const s = params(over).toString();
+    return `/cxp/proveedores${s ? `?${s}` : ""}`;
+  };
+  const ocultos: Record<string, string> = {};
+  if (tipo) ocultos.tipo = tipo;
+  if (anio) ocultos.anio = String(anio);
+  if (mes) ocultos.mes = String(mes);
+  const filtro = (t?: TipoProveedorFiltro) => href({ tipo: t });
 
   return (
     <>
@@ -52,17 +80,25 @@ export default async function CxpPorProveedorPage({
         <div>
           <div className="eyebrow">Cuentas por Pagar</div>
           <h1>Informe por proveedor</h1>
-          <p>{formatNumero(filas.length)} proveedores · saldo neto <Monto value={tot.saldo} /></p>
+          <p>{formatNumero(filas.length)} proveedores · vence: {periodo} · saldo neto <Monto value={tot.saldo} /></p>
         </div>
         <div className="toolbar">
           <a href={filtro(undefined)} className={`btn${!tipo ? " primary" : ""}`}>Todos</a>
           <a href={filtro("externo")} className={`btn${tipo === "externo" ? " primary" : ""}`}>Externos</a>
           <a href={filtro("interno")} className={`btn${tipo === "interno" ? " primary" : ""}`}>Internos</a>
-          <a href={`/cxp/proveedores/export?${new URLSearchParams({ ...(tipo ? { tipo } : {}), ...(q ? { q } : {}) }).toString()}`} className="btn" title="Descargar en Excel">⬇️ Excel</a>
+          <a href={`/cxp/proveedores/export${params().toString() ? `?${params()}` : ""}`} className="btn" title="Descargar en Excel">⬇️ Excel</a>
           <BotonImprimir />
           <a href="/cxp" className="btn">← Documentos</a>
         </div>
       </div>
+
+      <FiltroPeriodo
+        anios={anios}
+        periodo={{ anio, mes }}
+        ocultos={{ ...(tipo ? { tipo } : {}), ...(q ? { q } : {}) }}
+        hrefTodo={href({ anio: undefined, mes: undefined })}
+        textoTodo="Toda la CxP"
+      />
 
       <div className="grid two no-print" style={{ marginBottom: 12 }}>
         <div className="card">
@@ -78,7 +114,13 @@ export default async function CxpPorProveedorPage({
 
       <div className="card">
         <div className="card-body" style={{ paddingBottom: 0 }}>
-          <Buscador action="/cxp/proveedores" q={q} placeholder="Buscar proveedor o NIT…" />
+          <Buscador
+            action="/cxp/proveedores"
+            q={q}
+            extra={ocultos}
+            limpiarHref={href({ q: undefined })}
+            placeholder="Buscar proveedor o NIT…"
+          />
         </div>
         <div className="tbl-wrap">
           <table>

@@ -3,6 +3,7 @@ import type { NextRequest } from "next/server";
 import { requireUsuario } from "@/server/auth-context";
 import { puede } from "@/lib/rbac/authorize";
 import { cxpPorProveedor, type TipoProveedorFiltro } from "@/lib/negocio/cxp";
+import { leerPeriodo } from "@/lib/periodo";
 import { libroDescarga } from "@/lib/xlsx-export";
 
 export async function GET(req: NextRequest) {
@@ -14,7 +15,9 @@ export async function GET(req: NextRequest) {
   const tipoRaw = sp.get("tipo");
   const tipo: TipoProveedorFiltro | undefined = tipoRaw === "interno" || tipoRaw === "externo" ? tipoRaw : undefined;
 
-  const filas = await cxpPorProveedor(q, tipo);
+  const { anio, mes } = leerPeriodo({ anio: sp.get("anio") ?? undefined, mes: sp.get("mes") ?? undefined });
+
+  const filas = await cxpPorProveedor(q, tipo, new Date(), { anio, mes });
   const cuerpo: (string | number)[][] = filas.map((f) => [
     f.proveedor, f.nit ?? "", f.interno ? "Interno" : "Externo", f.documentos, f.saldoNeto, f.vencido, f.diasMax,
   ]);
@@ -31,6 +34,6 @@ export async function GET(req: NextRequest) {
     encabezado: ["Proveedor", "NIT", "Tipo", "Docs", "Saldo neto", "Vencido", "Mora máx (días)"],
     filas: cuerpo,
     anchos: [40, 14, 10, 8, 18, 18, 16],
-    archivo: `cxp-por-proveedor${tipo ? `-${tipo}` : ""}.xlsx`,
+    archivo: `cxp-por-proveedor${tipo ? `-${tipo}` : ""}${anio ? `-${anio}` : ""}${mes ? `-${String(mes).padStart(2, "0")}` : ""}.xlsx`,
   });
 }

@@ -4,6 +4,7 @@ import type { NextRequest } from "next/server";
 import { getUsuarioActual } from "@/lib/auth/current-user";
 import { exigirPermiso } from "@/lib/rbac/authorize";
 import { exportarFacturas } from "@/lib/negocio/cartera";
+import { leerPeriodo } from "@/lib/periodo";
 import { CUBETAS, type CubetaAging } from "@/lib/negocio/aging";
 import { libroDescarga } from "@/lib/xlsx-export";
 import { formatFecha } from "@/lib/format";
@@ -22,11 +23,7 @@ export async function GET(req: NextRequest) {
   const edad = sp.get("edad");
   const cubeta = CUBETAS.some((c) => c.clave === edad) ? (edad as CubetaAging) : undefined;
   const q = sp.get("q") ?? undefined;
-  const anioRaw = sp.get("anio");
-  const mesRaw = sp.get("mes");
-  const anio = anioRaw && /^d{4}$/.test(anioRaw) ? Number(anioRaw) : undefined;
-  const mesNum = mesRaw && /^d{1,2}$/.test(mesRaw) ? Number(mesRaw) : undefined;
-  const mes = mesNum && mesNum >= 1 && mesNum <= 12 ? mesNum : undefined;
+  const { anio, mes } = leerPeriodo({ anio: sp.get("anio") ?? undefined, mes: sp.get("mes") ?? undefined });
 
   const filas = await exportarFacturas(usuario, alcance, { cubeta, q, anio, mes });
   const cuerpo: (string | number)[][] = filas.map((f) => [
