@@ -281,11 +281,13 @@ export async function carteraPorCliente(
   alcance: Alcance,
   q?: string,
   corte: Date = new Date(),
+  periodo: { anio?: number; mes?: number } = {},
 ): Promise<FilaClienteCartera[]> {
-  const facturas = await prisma.facturaVenta.findMany({
-    where: { ...whereConSaldo(usuario, alcance), ...filtroBusqueda(q) },
+  const todas = await prisma.facturaVenta.findMany({
+    where: { ...whereConSaldo(usuario, alcance), ...filtroBusqueda(q), ...filtroPeriodo(periodo.anio, periodo.mes) },
     select: { saldo: true, fechaVencimiento: true, terceroId: true, tercero: { select: { nombre: true, nit: true } } },
   });
+  const facturas = enMes(todas, periodo.anio, periodo.mes);
   const mapa = new Map<number, FilaClienteCartera>();
   for (const f of facturas) {
     const s = f.saldo.toNumber();

@@ -2,19 +2,51 @@
 import { requirePermiso } from "@/server/auth-context";
 import { formatCOP, formatPorcentaje, formatNumero } from "@/lib/format";
 import { Monto } from "../../_components/Monto";
-import { carteraPorCliente } from "@/lib/negocio/cartera";
+import { carteraPorCliente, aniosCartera } from "@/lib/negocio/cartera";
+import { MESES_LABEL } from "@/lib/negocio/flujo";
 import { Buscador } from "../../_components/Buscador";
 import { BotonImprimir } from "../../_components/BotonImprimir";
+import { FiltroAuto } from "../../_components/FiltroAuto";
 
 export default async function CarteraPorClientePage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string }>;
+  searchParams: Promise<{ q?: string; anio?: string; mes?: string }>;
 }) {
   const { usuario, alcance } = await requirePermiso("cartera.view");
-  const { q } = await searchParams;
+  const sp = await searchParams;
+  const { q } = sp;
 
-  const filas = await carteraPorCliente(usuario, alcance, q);
+  // Periodo por fecha de VENCIMIENTO, igual que en la vista de facturas.
+  const anio = sp.anio && /^\d{4}$/.test(sp.anio) ? Number(sp.anio) : undefined;
+  const mesNum = sp.mes && /^\d{1,2}$/.test(sp.mes) ? Number(sp.mes) : undefined;
+  const mes = mesNum && mesNum >= 1 && mesNum <= 12 ? mesNum : undefined;
+  const periodo = anio && mes ? `${MESES_LABEL[mes]} ${anio}`
+    : anio ? `año ${anio}`
+    : mes ? `${MESES_LABEL[mes]} · todos los años`
+    : "todos los meses";
+
+  const params = (over: Record<string, string | undefined> = {}) => {
+    const base: Record<string, string | undefined> = {
+      q: q || undefined,
+      anio: anio ? String(anio) : undefined,
+      mes: mes ? String(mes) : undefined,
+      ...over,
+    };
+    const p = new URLSearchParams();
+    for (const [k, v] of Object.entries(base)) if (v) p.set(k, v);
+    return p;
+  };
+  const href = (over: Record<string, string | undefined> = {}) => {
+    const s = params(over).toString();
+    return `/cartera/clientes${s ? `?${s}` : ""}`;
+  };
+  const ocultos: Record<string, string> = {};
+  if (anio) ocultos.anio = String(anio);
+  if (mes) ocultos.mes = String(mes);
+
+  const anios = await aniosCartera(usuario, alcance);
+  const filas = await carteraPorCliente(usuario, alcance, q, new Date(), { anio, mes });
   const tot = filas.reduce(
     (a, f) => ({ docs: a.docs + f.documentos, saldo: a.saldo + f.saldoNeto, vencido: a.vencido + f.vencido }),
     { docs: 0, saldo: 0, vencido: 0 },
@@ -26,18 +58,45 @@ export default async function CarteraPorClientePage({
         <div>
           <div className="eyebrow">Cartera</div>
           <h1>Informe por cliente</h1>
-          <p>{formatNumero(filas.length)} clientes · saldo neto <Monto value={tot.saldo} /></p>
+          <p>{formatNumero(filas.length)} clientes · vence: {periodo} · saldo neto <Monto value={tot.saldo} /></p>
         </div>
         <div className="toolbar">
-          <a href={`/cartera/clientes/export${q ? `?q=${encodeURIComponent(q)}` : ""}`} className="btn" title="Descargar en Excel">⬇️ Excel</a>
+          <a href={`/cartera/clientes/export${params().toString() ? `?${params()}` : ""}`} className="btn" title="Descargar en Excel">⬇️ Excel</a>
           <BotonImprimir />
           <a href="/cartera" className="btn">← Facturas</a>
         </div>
       </div>
 
+      <div className="card no-print" style={{ marginBottom: 12 }}>
+        <div className="card-body" style={{ paddingBottom: 12 }}>
+          <FiltroAuto className="toolbar">
+            {q ? <input type="hidden" name="q" value={q} /> : null}
+            <label className="flag" style={{ alignSelf: "center" }}>Vencimiento — Año:</label>
+            <select name="anio" defaultValue={anio ?? ""} className="select">
+              <option value="">Todos los años</option>
+              {anios.map((a) => <option key={a} value={a}>{a}</option>)}
+            </select>
+            <label className="flag" style={{ alignSelf: "center" }}>Mes:</label>
+            <select name="mes" defaultValue={mes ?? ""} className="select">
+              <option value="">Todos los meses</option>
+              {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
+                <option key={m} value={m}>{MESES_LABEL[m]}</option>
+              ))}
+            </select>
+            {anio || mes ? <a href={href({ anio: undefined, mes: undefined })} className="btn">Toda la cartera</a> : null}
+          </FiltroAuto>
+        </div>
+      </div>
+
       <div className="card">
         <div className="card-body" style={{ paddingBottom: 0 }}>
-          <Buscador action="/cartera/clientes" q={q} placeholder="Buscar cliente o NIT…" />
+          <Buscador
+            action="/cartera/clientes"
+            q={q}
+            extra={ocultos}
+            limpiarHref={href({ q: undefined })}
+            placeholder="Buscar cliente o NIT…"
+          />
         </div>
         <div className="tbl-wrap">
           <table>

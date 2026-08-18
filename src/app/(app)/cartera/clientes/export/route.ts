@@ -1,4 +1,5 @@
-// Exporta a Excel el informe de cartera por cliente (neto). Alcance RBAC + búsqueda.
+// Exporta a Excel el informe de cartera por cliente (neto).
+// Alcance RBAC + búsqueda + periodo de vencimiento (año/mes).
 import type { NextRequest } from "next/server";
 import { getUsuarioActual } from "@/lib/auth/current-user";
 import { exigirPermiso } from "@/lib/rbac/authorize";
@@ -15,8 +16,15 @@ export async function GET(req: NextRequest) {
     return new Response("No autorizado", { status: 403 });
   }
 
-  const q = req.nextUrl.searchParams.get("q") ?? undefined;
-  const filas = await carteraPorCliente(usuario, alcance, q);
+  const sp = req.nextUrl.searchParams;
+  const q = sp.get("q") ?? undefined;
+  const anioRaw = sp.get("anio");
+  const mesRaw = sp.get("mes");
+  const anio = anioRaw && /^\d{4}$/.test(anioRaw) ? Number(anioRaw) : undefined;
+  const mesNum = mesRaw && /^\d{1,2}$/.test(mesRaw) ? Number(mesRaw) : undefined;
+  const mes = mesNum && mesNum >= 1 && mesNum <= 12 ? mesNum : undefined;
+
+  const filas = await carteraPorCliente(usuario, alcance, q, new Date(), { anio, mes });
   const cuerpo: (string | number)[][] = filas.map((f) => [
     f.cliente, f.nit ?? "", f.documentos, f.saldoNeto, f.vencido, f.diasMax,
   ]);
@@ -33,6 +41,6 @@ export async function GET(req: NextRequest) {
     encabezado: ["Cliente", "NIT", "Facturas", "Saldo neto", "Vencido", "Mora máx (días)"],
     filas: cuerpo,
     anchos: [40, 14, 10, 18, 18, 16],
-    archivo: "cartera-por-cliente.xlsx",
+    archivo: `cartera-por-cliente${anio ? `-${anio}` : ""}${mes ? `-${String(mes).padStart(2, "0")}` : ""}.xlsx`,
   });
 }
