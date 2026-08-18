@@ -260,6 +260,11 @@ export async function presupuestoVsReal(anio: number, mes?: number): Promise<Fil
 }
 
 /** Meses (1–12) con movimientos del tipo dado, ascendente. */
+export async function aniosConMovimiento(tipo: TipoMovimiento): Promise<number[]> {
+  const grupos = await prisma.movimientoFlujo.groupBy({ by: ["anio"], where: { tipo }, _count: { _all: true } });
+  return grupos.map((g) => g.anio).sort((a, b) => a - b);
+}
+
 export async function mesesConMovimiento(anio: number, tipo: TipoMovimiento): Promise<number[]> {
   const grupos = await prisma.movimientoFlujo.groupBy({ by: ["mes"], where: { anio, tipo }, _count: { _all: true } });
   return grupos.map((g) => g.mes).sort((a, b) => a - b);

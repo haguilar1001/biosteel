@@ -8,12 +8,10 @@
 import { requirePermiso } from "@/server/auth-context";
 import { formatCOP, formatNumero } from "@/lib/format";
 import { Monto } from "../../_components/Monto";
-import { ventaPorCliente } from "@/lib/negocio/ventas";
-import { movimientosPorTercero, mesesConMovimiento, nombresInternos, MESES_LABEL } from "@/lib/negocio/flujo";
+import { ventaPorCliente, aniosConVenta } from "@/lib/negocio/ventas";
+import { movimientosPorTercero, mesesConMovimiento, aniosConMovimiento, nombresInternos, MESES_LABEL } from "@/lib/negocio/flujo";
 import { BarrasComparativas, type BarraItem } from "../../_components/charts/BarrasComparativas";
 import { FiltroAuto } from "../../_components/FiltroAuto";
-
-const ANIO = 2026;
 
 /** Normaliza el nombre para cruzar clientes entre fuentes distintas. */
 function norm(s: string): string {
@@ -29,22 +27,27 @@ function norm(s: string): string {
 export default async function VentasRecaudosPage({
   searchParams,
 }: {
-  searchParams: Promise<{ mes?: string }>;
+  searchParams: Promise<{ anio?: string; mes?: string }>;
 }) {
   await requirePermiso("cartera.view");
   const sp = await searchParams;
 
-  const mesesRec = await mesesConMovimiento(ANIO, "ingreso");
+  // Años disponibles: los que tienen ventas o recaudos cargados (recientes primero).
+  const [aniosVenta, aniosRec] = await Promise.all([aniosConVenta(), aniosConMovimiento("ingreso")]);
+  const anios = [...new Set([...aniosVenta, ...aniosRec])].sort((a, b) => b - a);
+  const anio = sp.anio && anios.includes(Number(sp.anio)) ? Number(sp.anio) : anios[0] ?? new Date().getFullYear();
+
+  const mesesRec = await mesesConMovimiento(anio, "ingreso");
   const ultimo = mesesRec.length ? mesesRec[mesesRec.length - 1]! : new Date().getMonth() + 1;
   // mes = "all" → año corrido (todos los meses); vacío → último mes con recaudos.
   const todos = sp.mes === "all";
   const mes = todos ? undefined : sp.mes && /^\d+$/.test(sp.mes) ? Number(sp.mes) : ultimo;
-  const etiqueta = todos ? `año corrido ${ANIO}` : `${MESES_LABEL[mes!]} ${ANIO}`;
-  const etiquetaCorta = todos ? "Año corrido" : MESES_LABEL[mes!];
+  const etiqueta = todos ? `año corrido ${anio}` : `${MESES_LABEL[mes!]} ${anio}`;
+  const etiquetaCorta = todos ? `Año ${anio}` : `${MESES_LABEL[mes!]} ${anio}`;
 
   const [ventas, recaudos, internos] = await Promise.all([
-    ventaPorCliente(ANIO, mes ? [mes] : undefined),
-    movimientosPorTercero("ingreso", { anio: ANIO, mes }),
+    ventaPorCliente(anio, mes ? [mes] : undefined),
+    movimientosPorTercero("ingreso", { anio, mes }),
     nombresInternos(),
   ]);
   // Excluye internos / partes relacionadas (p.ej. la propia BioSteel).
@@ -94,6 +97,10 @@ export default async function VentasRecaudosPage({
       <div className="card" style={{ marginBottom: 12 }}>
         <div className="card-body" style={{ paddingBottom: 12 }}>
           <FiltroAuto className="toolbar">
+            <label className="flag" style={{ alignSelf: "center" }}>Año:</label>
+            <select name="anio" defaultValue={anio} className="select">
+              {anios.map((a) => <option key={a} value={a}>{a}</option>)}
+            </select>
             <label className="flag" style={{ alignSelf: "center" }}>Mes:</label>
             <select name="mes" defaultValue={todos ? "all" : mes} className="select">
               <option value="all">Todos los meses</option>
