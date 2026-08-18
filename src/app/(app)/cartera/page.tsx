@@ -33,7 +33,7 @@ export default async function CarteraPage({
   const { edad, q } = sp;
   const cubetaFiltro = CUBETAS.some((c) => c.clave === edad) ? (edad as CubetaAging) : undefined;
 
-  // Periodo por fecha de EMISIÓN de la factura. Sin selección = toda la cartera.
+  // Periodo por fecha de VENCIMIENTO de la factura. Sin selección = toda la cartera.
   const anio = sp.anio && /^d{4}$/.test(sp.anio) ? Number(sp.anio) : undefined;
   const mesNum = sp.mes && /^d{1,2}$/.test(sp.mes) ? Number(sp.mes) : undefined;
   const mes = mesNum && mesNum >= 1 && mesNum <= 12 ? mesNum : undefined;
@@ -99,7 +99,7 @@ export default async function CarteraPage({
         <div>
           <div className="eyebrow">Cartera</div>
           <h1>Cuentas por Cobrar</h1>
-          <p>Saldo neto · corte 30 jun 2026 · emisión: {periodo} · alcance <code>{alcance}</code></p>
+          <p>Saldo neto · corte 30 jun 2026 · vence: {periodo} · alcance <code>{alcance}</code></p>
         </div>
         <div className="toolbar">
           <a href="/cartera/ciudades" className="btn primary">Por ciudad</a>
@@ -117,7 +117,7 @@ export default async function CarteraPage({
               .filter(([k]) => k !== "anio" && k !== "mes")
               .map(([k, v]) => <input key={k} type="hidden" name={k} value={v} />)}
             {q ? <input type="hidden" name="q" value={q} /> : null}
-            <label className="flag" style={{ alignSelf: "center" }}>Año:</label>
+            <label className="flag" style={{ alignSelf: "center" }}>Vencimiento — Año:</label>
             <select name="anio" defaultValue={anio ?? ""} className="select">
               <option value="">Todos los años</option>
               {anios.map((a) => <option key={a} value={a}>{a}</option>)}

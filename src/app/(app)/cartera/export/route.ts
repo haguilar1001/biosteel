@@ -1,5 +1,5 @@
 // Exporta a Excel el detalle de cartera (CxC) respetando el alcance RBAC
-// y los filtros de la URL (edad/aging, búsqueda, periodo de emisión).
+// y los filtros de la URL (edad/aging, búsqueda, periodo de vencimiento).
 import type { NextRequest } from "next/server";
 import { getUsuarioActual } from "@/lib/auth/current-user";
 import { exigirPermiso } from "@/lib/rbac/authorize";

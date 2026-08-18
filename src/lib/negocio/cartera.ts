@@ -61,7 +61,7 @@ export async function resumenCartera(
 ): Promise<ResumenCartera> {
   const todas = await prisma.facturaVenta.findMany({
     where: { ...whereConSaldo(usuario, alcance), ...filtroPeriodo(periodo.anio, periodo.mes) },
-    select: { saldo: true, fechaEmision: true, fechaVencimiento: true },
+    select: { saldo: true, fechaVencimiento: true },
   });
   const facturas = enMes(todas, periodo.anio, periodo.mes);
 
@@ -111,7 +111,7 @@ export interface FiltrosCartera {
 }
 
 /**
- * Rango por fecha de EMISIÓN de la factura. Sin año ni mes no filtra nada
+ * Rango por fecha de VENCIMIENTO de la factura. Sin año ni mes no filtra nada
  * (cartera completa: el comportamiento por defecto de la vista).
  * Con mes y sin año el filtro se aplica en memoria (ver enMes).
  */
@@ -119,22 +119,22 @@ function filtroPeriodo(anio?: number, mes?: number): Prisma.FacturaVentaWhereInp
   if (!anio) return {};
   const desde = mes ? new Date(Date.UTC(anio, mes - 1, 1)) : new Date(Date.UTC(anio, 0, 1));
   const hasta = mes ? new Date(Date.UTC(anio, mes, 1)) : new Date(Date.UTC(anio + 1, 0, 1));
-  return { fechaEmision: { gte: desde, lt: hasta } };
+  return { fechaVencimiento: { gte: desde, lt: hasta } };
 }
 
 /** Mes suelto (sin año): Prisma no filtra por parte de fecha, se hace aquí. */
-function enMes<T extends { fechaEmision: Date }>(filas: T[], anio?: number, mes?: number): T[] {
+function enMes<T extends { fechaVencimiento: Date }>(filas: T[], anio?: number, mes?: number): T[] {
   if (!mes || anio) return filas;
-  return filas.filter((f) => f.fechaEmision.getUTCMonth() + 1 === mes);
+  return filas.filter((f) => f.fechaVencimiento.getUTCMonth() + 1 === mes);
 }
 
-/** Años con facturas en cartera (para el selector de la vista). */
+/** Años de vencimiento presentes en cartera (para el selector de la vista). */
 export async function aniosCartera(usuario: UsuarioConRol, alcance: Alcance): Promise<number[]> {
   const facturas = await prisma.facturaVenta.findMany({
     where: whereConSaldo(usuario, alcance),
-    select: { fechaEmision: true },
+    select: { fechaVencimiento: true },
   });
-  return [...new Set(facturas.map((f) => f.fechaEmision.getUTCFullYear()))].sort((a, b) => b - a);
+  return [...new Set(facturas.map((f) => f.fechaVencimiento.getUTCFullYear()))].sort((a, b) => b - a);
 }
 
 export async function listarFacturas(
