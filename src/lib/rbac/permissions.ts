@@ -39,6 +39,9 @@ export const PERMISOS = [
   { clave: "carga.pyg", modulo: "Cargas", descripcion: "Cargar Estado de Resultados" },
   { clave: "carga.flujo", modulo: "Cargas", descripcion: "Cargar Ingresos y Egresos" },
   { clave: "carga.presupuesto", modulo: "Cargas", descripcion: "Cargar Presupuesto de Egresos" },
+  { clave: "carga.inv.bodegas", modulo: "Cargas", descripcion: "Cargar Tablas Auxiliares de inventario (bodegas)" },
+  { clave: "carga.inv.balance", modulo: "Cargas", descripcion: "Cargar Balance de inventario mensual" },
+  { clave: "carga.inv.movimientos", modulo: "Cargas", descripcion: "Cargar Movimientos de inventario" },
 ] as const satisfies readonly PermisoDef[];
 
 export type PermisoClave = (typeof PERMISOS)[number]["clave"];
@@ -69,6 +72,7 @@ export const MATRIZ_ROLES: Record<RolNombre, Partial<Record<PermisoClave, Alcanc
     "usuario.manage": T, "rol.manage": T, "parametro.manage": T, "auditoria.view": T,
     "carga.pendientes": T, "carga.ventas": T, "carga.facturacion": T, "carga.gastos": T,
     "carga.anuladas": T, "carga.pyg": T, "carga.flujo": T, "carga.presupuesto": T,
+    "carga.inv.bodegas": T, "carga.inv.balance": T, "carga.inv.movimientos": T,
   },
   Gerente: {
     "dashboard.view": T, "cartera.view": T, "recaudo.create": N, "cxp.view": T,

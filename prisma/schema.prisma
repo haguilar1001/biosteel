@@ -107,20 +107,20 @@ enum TipoItemInventario {
 }
 
 enum TipoNovedad {
-  compra              // Alta / ingreso de un equipo nuevo
-  baja                // Retiro definitivo del inventario
-  dano                // Reporte de daño
-  reparacion          // Envío a reparación
-  retorno_reparacion  // Retorno de reparación (queda activo)
-  traslado            // Movimiento entre sedes
+  compra // Alta / ingreso de un equipo nuevo
+  baja // Retiro definitivo del inventario
+  dano // Reporte de daño
+  reparacion // Envío a reparación
+  retorno_reparacion // Retorno de reparación (queda activo)
+  traslado // Movimiento entre sedes
 }
 
 // =============== 1. ORGANIZACIÓN ===============
 
 model Empresa {
-  id          Int     @id @default(autoincrement())
+  id          Int      @id @default(autoincrement())
   razonSocial String
-  nit         String  @unique
+  nit         String   @unique
   sedes       Sede[]
   createdAt   DateTime @default(now())
 }
@@ -134,22 +134,22 @@ model Sede {
   empresaId Int
   activo    Boolean  @default(true)
 
-  usuarios  Usuario[]
-  cuentas   CuentaBancaria[]
-  facturas  FacturaVenta[]
-  equipos   EquipoInventario[]
+  usuarios Usuario[]
+  cuentas  CuentaBancaria[]
+  facturas FacturaVenta[]
+  equipos  EquipoInventario[]
 
   @@index([empresaId])
 }
 
 model CuentaBancaria {
-  id       Int      @id @default(autoincrement())
-  banco    String
-  numero   String
-  moneda   String   @default("COP")
-  sede     Sede     @relation(fields: [sedeId], references: [id])
-  sedeId   Int
-  activo   Boolean  @default(true)
+  id     Int     @id @default(autoincrement())
+  banco  String
+  numero String
+  moneda String  @default("COP")
+  sede   Sede    @relation(fields: [sedeId], references: [id])
+  sedeId Int
+  activo Boolean @default(true)
 
   recaudos Recaudo[]
   pagos    Pago[]
@@ -158,51 +158,51 @@ model CuentaBancaria {
 }
 
 model Moneda {
-  codigo  String  @id // COP, USD, EUR
+  codigo  String       @id // COP, USD, EUR
   nombre  String
   simbolo String
   tasas   TasaCambio[]
 }
 
 model TasaCambio {
-  id            Int      @id @default(autoincrement())
-  moneda        Moneda   @relation(fields: [monedaCodigo], references: [codigo])
-  monedaCodigo  String
-  fecha         DateTime @db.Date
-  valorCop      Decimal  @db.Decimal(18, 4)
+  id           Int      @id @default(autoincrement())
+  moneda       Moneda   @relation(fields: [monedaCodigo], references: [codigo])
+  monedaCodigo String
+  fecha        DateTime @db.Date
+  valorCop     Decimal  @db.Decimal(18, 4)
 
   @@unique([monedaCodigo, fecha])
   @@index([fecha])
 }
 
 model ConceptoRetencion {
-  id          Int           @id @default(autoincrement())
+  id          Int                @id @default(autoincrement())
   nombre      String
   tipo        TipoRetencion
-  porcentaje  Decimal       @db.Decimal(7, 4)
-  activo      Boolean       @default(true)
+  porcentaje  Decimal            @db.Decimal(7, 4)
+  activo      Boolean            @default(true)
   retenciones RecaudoRetencion[]
 }
 
 // =============== 2. SEGURIDAD ===============
 
 model Usuario {
-  id              Int       @id @default(autoincrement())
-  nombre          String
-  email           String    @unique
-  passwordHash    String
-  rol             Rol       @relation(fields: [rolId], references: [id])
-  rolId           Int
-  sede            Sede?     @relation(fields: [sedeId], references: [id])
-  sedeId          Int?      // null = todas las sedes (alcance global)
-  dobleFactor     Boolean   @default(false)
-  totpSecret      String?   // cifrado a nivel de app (ver BIO-SEC-013)
-  intentosFallidos Int      @default(0)
-  bloqueadoHasta  DateTime?
-  ultimoAcceso    DateTime?
-  activo          Boolean   @default(true)
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  id               Int       @id @default(autoincrement())
+  nombre           String
+  email            String    @unique
+  passwordHash     String
+  rol              Rol       @relation(fields: [rolId], references: [id])
+  rolId            Int
+  sede             Sede?     @relation(fields: [sedeId], references: [id])
+  sedeId           Int? // null = todas las sedes (alcance global)
+  dobleFactor      Boolean   @default(false)
+  totpSecret       String? // cifrado a nivel de app (ver BIO-SEC-013)
+  intentosFallidos Int       @default(0)
+  bloqueadoHasta   DateTime?
+  ultimoAcceso     DateTime?
+  activo           Boolean   @default(true)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 
   sesiones        Sesion[]
   logs            LogAuditoria[]
@@ -215,17 +215,17 @@ model Usuario {
 }
 
 model Rol {
-  id        Int      @id @default(autoincrement())
-  nombre    String   @unique
-  sistema   Boolean  @default(false) // roles base no eliminables
+  id        Int          @id @default(autoincrement())
+  nombre    String       @unique
+  sistema   Boolean      @default(false) // roles base no eliminables
   usuarios  Usuario[]
   permisos  RolPermiso[]
-  createdAt DateTime @default(now())
+  createdAt DateTime     @default(now())
 }
 
 model Permiso {
-  id          Int      @id @default(autoincrement())
-  clave       String   @unique // p. ej. "recaudo.create"
+  id          Int          @id @default(autoincrement())
+  clave       String       @unique // p. ej. "recaudo.create"
   modulo      String
   descripcion String
   roles       RolPermiso[]
@@ -259,16 +259,16 @@ model Sesion {
 
 // Auditoría inmutable de operaciones sensibles (BIO-SEC-007)
 model LogAuditoria {
-  id             BigInt   @id @default(autoincrement())
-  usuario        Usuario? @relation(fields: [usuarioId], references: [id])
-  usuarioId      Int?
-  accion         String   // "recaudo.crear", "usuario.login", ...
-  entidad        String?
-  entidadId      String?
-  valorAnterior  Json?
-  valorNuevo     Json?
-  ip             String?
-  createdAt      DateTime @default(now())
+  id            BigInt   @id @default(autoincrement())
+  usuario       Usuario? @relation(fields: [usuarioId], references: [id])
+  usuarioId     Int?
+  accion        String // "recaudo.crear", "usuario.login", ...
+  entidad       String?
+  entidadId     String?
+  valorAnterior Json?
+  valorNuevo    Json?
+  ip            String?
+  createdAt     DateTime @default(now())
 
   @@index([usuarioId])
   @@index([entidad, entidadId])
@@ -278,16 +278,16 @@ model LogAuditoria {
 // =============== 3. TERCEROS ===============
 
 model Tercero {
-  id           Int      @id @default(autoincrement())
-  nit          String   @unique
-  nombre       String
-  tipoPersona  TipoPersona @default(juridica)
-  ciudad       String?
-  esCliente    Boolean  @default(false)
-  esProveedor  Boolean  @default(false)
-  esInterno    Boolean  @default(false) // parte relacionada: se ocultan sus anticipos
-  esGrupo      Boolean  @default(false) // IPS del grupo empresarial
-  createdAt    DateTime @default(now())
+  id          Int         @id @default(autoincrement())
+  nit         String      @unique
+  nombre      String
+  tipoPersona TipoPersona @default(juridica)
+  ciudad      String?
+  esCliente   Boolean     @default(false)
+  esProveedor Boolean     @default(false)
+  esInterno   Boolean     @default(false) // parte relacionada: se ocultan sus anticipos
+  esGrupo     Boolean     @default(false) // IPS del grupo empresarial
+  createdAt   DateTime    @default(now())
 
   clientePerfil   ClientePerfil?
   proveedorPerfil ProveedorPerfil?
@@ -302,35 +302,35 @@ model Tercero {
 }
 
 model ClientePerfil {
-  tercero      Tercero          @relation(fields: [terceroId], references: [id], onDelete: Cascade)
-  terceroId    Int              @id
-  categoria    CategoriaCliente
-  vendedor     Vendedor?        @relation(fields: [vendedorId], references: [id])
-  vendedorId   Int?
-  cupoCredito  Decimal          @default(0) @db.Decimal(18, 2)
-  diasCredito  Int              @default(30)
-  bloqueado    Boolean          @default(false)
+  tercero     Tercero          @relation(fields: [terceroId], references: [id], onDelete: Cascade)
+  terceroId   Int              @id
+  categoria   CategoriaCliente
+  vendedor    Vendedor?        @relation(fields: [vendedorId], references: [id])
+  vendedorId  Int?
+  cupoCredito Decimal          @default(0) @db.Decimal(18, 2)
+  diasCredito Int              @default(30)
+  bloqueado   Boolean          @default(false)
 
   @@index([vendedorId])
 }
 
 model ProveedorPerfil {
-  tercero        Tercero       @relation(fields: [terceroId], references: [id], onDelete: Cascade)
-  terceroId      Int           @id
-  tipo           TipoProveedor @default(nacional)
-  monedaDefault  String        @default("COP")
-  diasCredito    Int           @default(30)
+  tercero       Tercero       @relation(fields: [terceroId], references: [id], onDelete: Cascade)
+  terceroId     Int           @id
+  tipo          TipoProveedor @default(nacional)
+  monedaDefault String        @default("COP")
+  diasCredito   Int           @default(30)
 }
 
 model Vendedor {
-  id         Int      @id @default(autoincrement())
-  nombre     String
-  usuario    Usuario? @relation(fields: [usuarioId], references: [id])
-  usuarioId  Int?     @unique
-  activo     Boolean  @default(true)
+  id        Int      @id @default(autoincrement())
+  nombre    String
+  usuario   Usuario? @relation(fields: [usuarioId], references: [id])
+  usuarioId Int?     @unique
+  activo    Boolean  @default(true)
 
-  clientes   ClientePerfil[]
-  facturas   FacturaVenta[]
+  clientes ClientePerfil[]
+  facturas FacturaVenta[]
 }
 
 model Contacto {
@@ -364,8 +364,8 @@ model FacturaVenta {
   iva              Decimal       @default(0) @db.Decimal(18, 2)
   saldo            Decimal       @db.Decimal(18, 2) // derivado, ver lib de negocio
   estado           EstadoFactura @default(corriente)
-  concepto         String?       // "Notas" del reporte SIESA
-  plazo            Int?          // días de plazo pactado
+  concepto         String? // "Notas" del reporte SIESA
+  plazo            Int? // días de plazo pactado
   createdAt        DateTime      @default(now())
 
   aplicaciones RecaudoAplicacion[]
@@ -481,8 +481,8 @@ model DocumentoCxp {
   fechaVencimiento DateTime        @db.Date
   tipo             TipoProveedor   @default(nacional)
   estado           EstadoDocumento @default(vigente)
-  concepto         String?         // "Notas" del reporte SIESA
-  plazo            Int?            // días de plazo pactado
+  concepto         String? // "Notas" del reporte SIESA
+  plazo            Int? // días de plazo pactado
   createdAt        DateTime        @default(now())
 
   costos       CostoImportacion[]
@@ -505,19 +505,19 @@ model CostoImportacion {
 }
 
 model Pago {
-  id           Int             @id @default(autoincrement())
-  proveedor    Tercero         @relation(fields: [proveedorId], references: [id])
-  proveedorId  Int
-  cuenta       CuentaBancaria? @relation(fields: [cuentaId], references: [id])
-  cuentaId     Int?
-  moneda       String          @default("COP")
-  trmPago      Decimal         @default(1) @db.Decimal(18, 4)
-  valorOrigen  Decimal         @db.Decimal(18, 2)
-  valorCop     Decimal         @db.Decimal(18, 2)
-  fecha        DateTime        @default(now()) @db.Date
-  createdBy    Usuario         @relation(fields: [createdById], references: [id])
-  createdById  Int
-  createdAt    DateTime        @default(now())
+  id          Int             @id @default(autoincrement())
+  proveedor   Tercero         @relation(fields: [proveedorId], references: [id])
+  proveedorId Int
+  cuenta      CuentaBancaria? @relation(fields: [cuentaId], references: [id])
+  cuentaId    Int?
+  moneda      String          @default("COP")
+  trmPago     Decimal         @default(1) @db.Decimal(18, 4)
+  valorOrigen Decimal         @db.Decimal(18, 2)
+  valorCop    Decimal         @db.Decimal(18, 2)
+  fecha       DateTime        @default(now()) @db.Date
+  createdBy   Usuario         @relation(fields: [createdById], references: [id])
+  createdById Int
+  createdAt   DateTime        @default(now())
 
   aplicaciones     PagoAplicacion[]
   diferenciaCambio DiferenciaCambio?
@@ -550,14 +550,14 @@ model DiferenciaCambio {
 model ObligacionFinanciera {
   id               Int       @id @default(autoincrement())
   entidad          String
-  tipo             String    // credito | credito_fng | leasing | tarjeta
+  tipo             String // credito | credito_fng | leasing | tarjeta
   numero           String    @unique
   moneda           String    @default("COP")
   montoInicial     Decimal?  @db.Decimal(18, 2)
   saldoCapital     Decimal   @db.Decimal(18, 2)
   tasaEA           Decimal?  @db.Decimal(7, 4) // % efectiva anual
   cuotaMensual     Decimal?  @db.Decimal(18, 2)
-  diaPago          Int?      // día del mes de la cuota
+  diaPago          Int? // día del mes de la cuota
   periodicidad     String    @default("mensual")
   fechaDesembolso  DateTime? @db.Date
   fechaVencimiento DateTime? @db.Date
@@ -572,7 +572,7 @@ model ImpuestoMensual {
   id          Int       @id @default(autoincrement())
   entidad     String    @default("BioSteel")
   anio        Int
-  mes         Int       // 1–12
+  mes         Int // 1–12
   fecha       DateTime  @db.Date
   retencion   Decimal   @default(0) @db.Decimal(18, 2)
   iva         Decimal   @default(0) @db.Decimal(18, 2)
@@ -618,11 +618,11 @@ model ConfigNotificaciones {
 
 // Grupo/categoría de flujo (NOMINA, PROVEEDORES_OPERACIÓN, IMPUESTOS, ...)
 model CategoriaFlujo {
-  id           Int            @id @default(autoincrement())
-  nombre       String         @unique
-  tipo         TipoMovimiento @default(egreso)
-  orden        Int            @default(0)
-  activo       Boolean        @default(true)
+  id     Int            @id @default(autoincrement())
+  nombre String         @unique
+  tipo   TipoMovimiento @default(egreso)
+  orden  Int            @default(0)
+  activo Boolean        @default(true)
 
   movimientos  MovimientoFlujo[]
   presupuestos PresupuestoMensual[]
@@ -635,15 +635,15 @@ model MovimientoFlujo {
   documento     String?         @unique // Nº de comprobante SIESA (OCC-/NGC-/NBA-/PEL-/RDC-…) — idempotencia del importador
   fecha         DateTime        @db.Date
   anio          Int
-  mes           Int             // 1–12
+  mes           Int // 1–12
   tipo          TipoMovimiento
   categoria     CategoriaFlujo? @relation(fields: [categoriaId], references: [id])
   categoriaId   Int?
   terceroNombre String
   nit           String?
   beneficiario  String?
-  detalle       String?         // "DETALLE MOVIMIENTO" del ERP
-  observacion   String?         // "OBSERVACIÓN"
+  detalle       String? // "DETALLE MOVIMIENTO" del ERP
+  observacion   String? // "OBSERVACIÓN"
   valor         Decimal         @db.Decimal(18, 2)
   saldo         Decimal?        @db.Decimal(18, 2) // saldo corrido informativo del ERP
   createdAt     DateTime        @default(now())
@@ -657,7 +657,7 @@ model MovimientoFlujo {
 model PresupuestoMensual {
   id            Int            @id @default(autoincrement())
   anio          Int
-  mes           Int            // 1–12
+  mes           Int // 1–12
   categoria     CategoriaFlujo @relation(fields: [categoriaId], references: [id])
   categoriaId   Int
   terceroNombre String?
@@ -675,12 +675,12 @@ model PresupuestoMensual {
 // Venta neta por línea de producto y mes.
 // valor = Σ(Valor subtotal local) − Σ(NOTA_CREDITO) ; costo = Σ(Costo promedio total).
 model VentaLinea {
-  id     Int     @id @default(autoincrement())
-  anio   Int
-  mes    Int     // 1–12
-  linea  String  // p.ej. "2002 - TRAUMA/ORTOPEDIA"
-  valor  Decimal @db.Decimal(18, 2) // venta neta
-  costo  Decimal @default(0) @db.Decimal(18, 2)
+  id    Int     @id @default(autoincrement())
+  anio  Int
+  mes   Int // 1–12
+  linea String // p.ej. "2002 - TRAUMA/ORTOPEDIA"
+  valor Decimal @db.Decimal(18, 2) // venta neta
+  costo Decimal @default(0) @db.Decimal(18, 2)
 
   @@unique([anio, mes, linea])
   @@index([anio, mes])
@@ -690,7 +690,7 @@ model VentaLinea {
 model VentaCliente {
   id            Int     @id @default(autoincrement())
   anio          Int
-  mes           Int     // 1–12
+  mes           Int // 1–12
   clienteNombre String
   nit           String?
   valor         Decimal @db.Decimal(18, 2) // venta neta
@@ -703,12 +703,12 @@ model VentaCliente {
 // Venta neta y costo por MARCA (proveedor/casa del producto) y mes.
 // Alimenta el "Informe de Consumos" (% Utilidad por proveedor).
 model VentaMarca {
-  id     Int     @id @default(autoincrement())
-  anio   Int
-  mes    Int     // 1–12
-  marca  String  // p.ej. "1003 - SAMPEDRO"
-  valor  Decimal @db.Decimal(18, 2) // venta neta
-  costo  Decimal @default(0) @db.Decimal(18, 2)
+  id    Int     @id @default(autoincrement())
+  anio  Int
+  mes   Int // 1–12
+  marca String // p.ej. "1003 - SAMPEDRO"
+  valor Decimal @db.Decimal(18, 2) // venta neta
+  costo Decimal @default(0) @db.Decimal(18, 2)
 
   @@unique([anio, mes, marca])
   @@index([anio, mes])
@@ -717,13 +717,13 @@ model VentaMarca {
 // Venta neta y costo por MARCA (proveedor) × IPS (cliente de despacho) y mes.
 // Permite desplegar cada proveedor por IPS en el Informe de Consumos.
 model VentaMarcaIps {
-  id     Int     @id @default(autoincrement())
-  anio   Int
-  mes    Int     // 1–12
-  marca  String  // p.ej. "1003 - SAMPEDRO"
-  ips    String  // razón social del cliente de despacho (la IPS)
-  valor  Decimal @db.Decimal(18, 2) // venta neta
-  costo  Decimal @default(0) @db.Decimal(18, 2)
+  id    Int     @id @default(autoincrement())
+  anio  Int
+  mes   Int // 1–12
+  marca String // p.ej. "1003 - SAMPEDRO"
+  ips   String // razón social del cliente de despacho (la IPS)
+  valor Decimal @db.Decimal(18, 2) // venta neta
+  costo Decimal @default(0) @db.Decimal(18, 2)
 
   @@unique([anio, mes, marca, ips])
   @@index([anio, mes])
@@ -737,7 +737,7 @@ model ProveedorEstado {
   id        Int      @id @default(autoincrement())
   marca     String   @unique
   estado    String   @default("ACTIVO") // ACTIVO | INACTIVO | CON RESTRICCIÓN
-  motivo    String   @default("")        // EN OPERACIÓN | EMBARGO | SIN OPERACIÓN | COBRO PREJURIDICO | ACUERDO DE PAGO
+  motivo    String   @default("") // EN OPERACIÓN | EMBARGO | SIN OPERACIÓN | COBRO PREJURIDICO | ACUERDO DE PAGO
   updatedAt DateTime @updatedAt
   createdAt DateTime @default(now())
 
@@ -755,11 +755,11 @@ model MenuGrupoCfg {
 }
 
 model MenuItemCfg {
-  href        String  @id // ruta del ítem (clave estable)
-  label       String?
-  grupoClave  String? // grupo destino (mover entre grupos)
-  orden       Int?
-  visible     Boolean @default(true)
+  href       String  @id // ruta del ítem (clave estable)
+  label      String?
+  grupoClave String? // grupo destino (mover entre grupos)
+  orden      Int?
+  visible    Boolean @default(true)
 }
 
 // Ajuste manual de venta neta por período (para cuadrar con Power BI cuando las
@@ -768,7 +768,7 @@ model MenuItemCfg {
 model AjusteVenta {
   id        Int      @id @default(autoincrement())
   anio      Int
-  mes       Int      // 1–12
+  mes       Int // 1–12
   concepto  String   @default("AJUSTE")
   valor     Decimal  @db.Decimal(18, 2)
   createdAt DateTime @default(now())
@@ -780,20 +780,20 @@ model AjusteVenta {
 // Un registro por mes. Los totales principales quedan en columnas; el árbol
 // completo de cuentas (para la vista detallada) se guarda en `detalle` (JSON).
 model EstadoResultados {
-  id                   Int     @id @default(autoincrement())
-  anio                 Int
-  mes                  Int     // 1–12
-  ventasNetas          Decimal @db.Decimal(18, 2) // Ingresos operacionales netos
-  costoVenta           Decimal @db.Decimal(18, 2)
-  utilidadBruta        Decimal @db.Decimal(18, 2)
-  gastosOperacionales  Decimal @db.Decimal(18, 2)
-  utilidadOperacional  Decimal @db.Decimal(18, 2)
-  ingresosNoOp         Decimal @default(0) @db.Decimal(18, 2)
-  egresosNoOp          Decimal @default(0) @db.Decimal(18, 2)
-  utilidadNeta         Decimal @db.Decimal(18, 2) // Utilidad del ejercicio
-  detalle              Json?   // árbol de cuentas: [{ seccion, cuenta, valor, nivel }]
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @updatedAt
+  id                  Int      @id @default(autoincrement())
+  anio                Int
+  mes                 Int // 1–12
+  ventasNetas         Decimal  @db.Decimal(18, 2) // Ingresos operacionales netos
+  costoVenta          Decimal  @db.Decimal(18, 2)
+  utilidadBruta       Decimal  @db.Decimal(18, 2)
+  gastosOperacionales Decimal  @db.Decimal(18, 2)
+  utilidadOperacional Decimal  @db.Decimal(18, 2)
+  ingresosNoOp        Decimal  @default(0) @db.Decimal(18, 2)
+  egresosNoOp         Decimal  @default(0) @db.Decimal(18, 2)
+  utilidadNeta        Decimal  @db.Decimal(18, 2) // Utilidad del ejercicio
+  detalle             Json? // árbol de cuentas: [{ seccion, cuenta, valor, nivel }]
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
 
   @@unique([anio, mes])
   @@index([anio, mes])
@@ -805,15 +805,15 @@ model EstadoResultados {
 // porque un equipo puede estar activo con un accesorio en reparación.
 
 model EquipoInventario {
-  id            Int      @id @default(autoincrement())
-  codigo        String?  @unique // Código de inventario correlativo por categoría (MOT-001…)
-  sede          Sede     @relation(fields: [sedeId], references: [id])
+  id            Int     @id @default(autoincrement())
+  codigo        String? @unique // Código de inventario correlativo por categoría (MOT-001…)
+  sede          Sede    @relation(fields: [sedeId], references: [id])
   sedeId        Int
-  categoria     String   // MOTOR, MOTOR SISTEM 8, CRANEOTOMO, REGULADOR…
-  marca         String   // HALL, STRYKER, MEDTRONIC MIDAS, PUSM, TRS, SYNTHES…
-  nombre        String?  // Etiqueta opcional (ej. "Motor Hall #1")
+  categoria     String // MOTOR, MOTOR SISTEM 8, CRANEOTOMO, REGULADOR…
+  marca         String // HALL, STRYKER, MEDTRONIC MIDAS, PUSM, TRS, SYNTHES…
+  nombre        String? // Etiqueta opcional (ej. "Motor Hall #1")
   observaciones String?
-  activo        Boolean  @default(true) // false cuando el equipo se da de baja completo
+  activo        Boolean @default(true) // false cuando el equipo se da de baja completo
 
   items     ItemInventario[]
   novedades NovedadInventario[]
@@ -829,10 +829,10 @@ model ItemInventario {
   id            Int                @id @default(autoincrement())
   equipo        EquipoInventario   @relation(fields: [equipoId], references: [id], onDelete: Cascade)
   equipoId      Int
-  descripcion   String             // PIEZA DE MANO, MANGUERA NEGRA, ADAPTADOR HUDSON…
+  descripcion   String // PIEZA DE MANO, MANGUERA NEGRA, ADAPTADOR HUDSON…
   tipo          TipoItemInventario @default(accesorio)
   cantidad      Int                @default(1)
-  lote          String?            // Serial / lote (opcional)
+  lote          String? // Serial / lote (opcional)
   estado        EstadoInventario   @default(activo)
   observaciones String?
 
@@ -847,18 +847,18 @@ model ItemInventario {
 // Cada novedad puede afectar todo el equipo o un ítem puntual, y registra la
 // transición de estado y/o sede para dejar trazabilidad.
 model NovedadInventario {
-  id             Int         @id @default(autoincrement())
-  fecha          DateTime    @default(now())
+  id             Int               @id @default(autoincrement())
+  fecha          DateTime          @default(now())
   tipo           TipoNovedad
-  equipo         EquipoInventario @relation(fields: [equipoId], references: [id], onDelete: Cascade)
+  equipo         EquipoInventario  @relation(fields: [equipoId], references: [id], onDelete: Cascade)
   equipoId       Int
-  itemId         Int?        // Ítem afectado (opcional; null = todo el equipo)
-  sedeOrigenId   Int?        // Traslado: sede de origen
-  sedeDestinoId  Int?        // Traslado / compra: sede destino
+  itemId         Int? // Ítem afectado (opcional; null = todo el equipo)
+  sedeOrigenId   Int? // Traslado: sede de origen
+  sedeDestinoId  Int? // Traslado / compra: sede destino
   estadoAnterior EstadoInventario?
   estadoNuevo    EstadoInventario?
   descripcion    String?
-  usuario        Usuario?    @relation(fields: [usuarioId], references: [id])
+  usuario        Usuario?          @relation(fields: [usuarioId], references: [id])
   usuarioId      Int?
 
   createdAt DateTime @default(now())
@@ -876,9 +876,9 @@ model Nomina {
   anio            Int
   cedula          String
   nombre          String
-  proceso         String   // área: ADMINISTRATIVO, ALMACEN, ASISTENCIAL, ...
+  proceso         String // área: ADMINISTRATIVO, ALMACEN, ASISTENCIAL, ...
   cargo           String
-  empresa         String   // BIOSTEEL, SANITHELP, PROVEMEDICS, SELSALUD, COMERCIAL
+  empresa         String // BIOSTEEL, SANITHELP, PROVEMEDICS, SELSALUD, COMERCIAL
   ciudad          String
   baseSalarial    Decimal  @db.Decimal(18, 2)
   auxTransporte   Decimal  @default(0) @db.Decimal(18, 2)
@@ -902,8 +902,8 @@ model Nomina {
 // ventas para calcular el NOTA_CREDITO por renglón (ver lib/negocio/nota-credito).
 model ParametroNotaCredito {
   id          Int      @id @default(autoincrement())
-  ips         String   // CAMPBELL, BARU, MOVID, VALLE, AZALUD, CM BAHIA, OTRAS_IPS
-  concepto    String   // BRACE, ALTO_COSTO, MAXILO, APROVECHAMIENTO, MOS, ADRES
+  ips         String // CAMPBELL, BARU, MOVID, VALLE, AZALUD, CM BAHIA, OTRAS_IPS
+  concepto    String // BRACE, ALTO_COSTO, MAXILO, APROVECHAMIENTO, MOS, ADRES
   pct         Decimal  @db.Decimal(7, 4)
   fechaInicio DateTime @db.Date
   fechaFin    DateTime @db.Date
@@ -937,18 +937,18 @@ model FacturacionDoc {
   nroDocumento      String
   fecha             DateTime  @db.Date
   anio              Int
-  mes               Int       // 1–12
+  mes               Int // 1–12
   estado            String
-  clienteRazon      String    // Razón social cliente factura
+  clienteRazon      String // Razón social cliente factura
   costoPromedio     Decimal   @default(0) @db.Decimal(18, 2)
   subtotal          Decimal   @default(0) @db.Decimal(18, 2) // Valor subtotal local
   impuestos         Decimal   @default(0) @db.Decimal(18, 2) // Valor impuestos local
   neto              Decimal   @default(0) @db.Decimal(18, 2) // Valor neto local
   utilidadPromedio  Decimal   @default(0) @db.Decimal(18, 2)
-  sucursal          String?   // Desc. sucursal factura
-  notasCredito      String?   // Notas credito condicionadas
+  sucursal          String? // Desc. sucursal factura
+  notasCredito      String? // Notas credito condicionadas
   pedidos           String?
-  usuarioAprobacion String?   // Usuario aprobacion (indicador clave: # docs x usuario)
+  usuarioAprobacion String? // Usuario aprobacion (indicador clave: # docs x usuario)
   convenio          String?
   fechaCx           DateTime? @db.Date
 
@@ -963,8 +963,8 @@ model GastoDoc {
   nroDocumento      String
   fecha             DateTime  @db.Date
   anio              Int
-  mes               Int       // 1–12
-  estado            String    // Cumplido / Pendiente
+  mes               Int // 1–12
+  estado            String // Cumplido / Pendiente
   clienteRazon      String
   sucursal          String?
   subtotal          Decimal   @default(0) @db.Decimal(18, 2)
@@ -989,19 +989,19 @@ model FacturaAnulada {
   nroDocumento      String
   fecha             DateTime  @db.Date
   anio              Int
-  mes               Int       // 1–12
+  mes               Int // 1–12
   clienteRazon      String
   subtotal          Decimal   @default(0) @db.Decimal(18, 2)
   numeroCaso        String?
   paciente          String?
   sucursal          String?
-  doc               String?   // tipo doc (FET…)
-  nFactura          String?   // N° Factura
+  doc               String? // tipo doc (FET…)
+  nFactura          String? // N° Factura
   usuarioAprobacion String?
   fechaFacturaBase  DateTime? @db.Date
   motivo            String?
   descripcion       String?
-  responsable       String?   // indicador clave: valor x responsable
+  responsable       String? // indicador clave: valor x responsable
 
   @@index([anio, mes])
   @@index([motivo])
@@ -1014,9 +1014,9 @@ model PedidoPendiente {
   nroDocumento      String
   fecha             DateTime  @db.Date
   anio              Int
-  mes               Int       // 1–12
+  mes               Int // 1–12
   estado            String
-  clienteRazon      String    // IPS
+  clienteRazon      String // IPS
   sucursal          String?
   subtotal          Decimal   @default(0) @db.Decimal(18, 2)
   valorBruto        Decimal   @default(0) @db.Decimal(18, 2)
@@ -1027,7 +1027,7 @@ model PedidoPendiente {
   fechaCx           DateTime? @db.Date
   convenio          String?
   numeroCaso        String?
-  motivoPendiente   String?   // Q-códigos (Q2-LISTO PARA FACTURAR…) o texto libre
+  motivoPendiente   String? // Q-códigos (Q2-LISTO PARA FACTURAR…) o texto libre
   responsable       String?
 
   @@index([clienteRazon])
@@ -1038,29 +1038,29 @@ model PedidoPendiente {
 // la venta neta. Se cargan incrementales por fecha (formulario) o completas
 // (CLI db:ventas); de aquí se recalculan VentaLinea/Cliente/Marca/Dia.
 model VentaDoc {
-  id       Int      @id @default(autoincrement())
-  nro      String
-  tipo     String   // FET / NAN / NDC…
-  aprobada Boolean  @default(false)
-  fecha    DateTime @db.Date
-  anio     Int
-  mes      Int
-  dia      Int
-  ips      String?
-  suc      String   @default("")
-  bod      String   @default("")
-  notas    String   @default("")
-  conv     String   @default("")
-  proc     String   @default("")
-  linea    String   @default("")
-  subtotal Decimal  @default(0) @db.Decimal(18, 2)
-  fbd      String?
-  costo    Decimal  @default(0) @db.Decimal(18, 2)
-  cliente  String   @default("")
-  nit      String?
-  marca    String   @default("")
-  referencia String @default("") // código/referencia del ítem (SIESA "Referencia")
-  cantidad Decimal  @default(0) @db.Decimal(18, 2) // unidades del renglón (SIESA "Cantidad")
+  id         Int      @id @default(autoincrement())
+  nro        String
+  tipo       String // FET / NAN / NDC…
+  aprobada   Boolean  @default(false)
+  fecha      DateTime @db.Date
+  anio       Int
+  mes        Int
+  dia        Int
+  ips        String?
+  suc        String   @default("")
+  bod        String   @default("")
+  notas      String   @default("")
+  conv       String   @default("")
+  proc       String   @default("")
+  linea      String   @default("")
+  subtotal   Decimal  @default(0) @db.Decimal(18, 2)
+  fbd        String?
+  costo      Decimal  @default(0) @db.Decimal(18, 2)
+  cliente    String   @default("")
+  nit        String?
+  marca      String   @default("")
+  referencia String   @default("") // código/referencia del ítem (SIESA "Referencia")
+  cantidad   Decimal  @default(0) @db.Decimal(18, 2) // unidades del renglón (SIESA "Cantidad")
 
   @@index([anio, mes])
   @@index([fecha])
@@ -1072,10 +1072,10 @@ model VentaDoc {
 model VentaItem {
   id          Int     @id @default(autoincrement())
   anio        Int
-  mes         Int     // 1–12
-  marca       String  // p.ej. "1003 - SAMPEDRO"
-  referencia  String  // código del ítem (p.ej. "TC3550")
-  descripcion String  // descripción larga (p.ej. "TORNILLO CORTICAL…")
+  mes         Int // 1–12
+  marca       String // p.ej. "1003 - SAMPEDRO"
+  referencia  String // código del ítem (p.ej. "TC3550")
+  descripcion String // descripción larga (p.ej. "TORNILLO CORTICAL…")
   cantidad    Decimal @default(0) @db.Decimal(18, 2)
   valor       Decimal @db.Decimal(18, 2) // venta neta
   costo       Decimal @default(0) @db.Decimal(18, 2)
@@ -1103,9 +1103,117 @@ model CargaSiesa {
   id        Int      @id @default(autoincrement())
   cargadaEn DateTime @default(now())
   ok        Boolean  @default(true)
-  resumen   Json     // { dataset: { archivo, filas, ... }, errores: [...] }
+  resumen   Json // { dataset: { archivo, filas, ... }, errores: [...] }
   mensaje   String?
   origenIp  String?
 
   @@index([cargadaEn])
+}
+
+// ==========================================================
+// INVENTARIO DE MATERIAL DE OSTEOSÍNTESIS (SIESA)
+// Distinto del inventario de EQUIPOS (models Equipo/ItemInventario).
+// Tres fuentes que se cruzan entre sí:
+//   · InvBodega     — catálogo (hoja "CÓDIGOS DE BODEGA" de Tablas Auxiliares)
+//   · InvBalance    — saldo valorizado mensual, a nivel Ítem × Instalación
+//   · InvMovimiento — cada documento, a nivel Referencia × Bodega × Lote
+// La instalación es la llave para conciliar balance contra movimientos:
+//   101 = material propio · 102 = consignación · 106 = aprovechamiento.
+// ==========================================================
+
+// Catálogo de bodegas. `codigo` es TEXTO a propósito: casi todas son
+// numéricas pero "INS01" (Instrumentales) no lo es.
+// Ojo: la bodega "106" es Selsalud Yopal y NO tiene relación con la
+// instalación 106 (aprovechamiento); son numeraciones independientes.
+model InvBodega {
+  codigo       String  @id
+  descripcion  String
+  ciudad       String  @default("")
+  tipoCompra   String  @default("") // MATERIAL DE OSTEOSINTESIS, ALTO COSTO, INSUMOS…
+  modeloCompra String  @default("") // MAYORITARIO, PXP, CONSIGNACIÓN, APROVECHAMIENTO
+  instalacion  Int // 101 | 102 | 106
+  /**
+   * true = la asignación de instalación se dedujo, no vino en el catálogo.
+   */
+  inferida     Boolean @default(false)
+
+  movimientos InvMovimiento[]
+
+  @@index([instalacion])
+  @@index([ciudad])
+}
+
+// Saldo mensual valorizado. Una fila por Ítem × Instalación × mes.
+// Solo se guardan las filas con algún valor distinto de cero (el archivo
+// trae ~30.8k filas por mes, de las cuales ~7.3k tienen saldo o movimiento).
+// En la instalación 106 (aprovechamiento) el costo es SIEMPRE 0: hay
+// unidades pero nunca valor. No es un error de carga.
+model InvBalance {
+  id          Int    @id @default(autoincrement())
+  anio        Int
+  mes         Int // 1–12
+  instalacion Int // 101 | 102 | 106
+  item        String // código SIESA del ítem (p.ej. "0000456")
+  referencia  String // código corto (p.ej. "PR08")
+  descripcion String @default("")
+  tipoInv     String @default("") // "Tipo inventario" (INV143502…)
+  marca       String @default("")
+  linea       String @default("")
+  anatomia    String @default("")
+  sistema     String @default("")
+  categoria   String @default("")
+
+  cantEntradas  Decimal @default(0) @db.Decimal(18, 2)
+  cantSalidas   Decimal @default(0) @db.Decimal(18, 2)
+  cantFinal     Decimal @default(0) @db.Decimal(18, 2)
+  valorInicial  Decimal @default(0) @db.Decimal(18, 2)
+  valorEntradas Decimal @default(0) @db.Decimal(18, 2)
+  valorSalidas  Decimal @default(0) @db.Decimal(18, 2)
+  valorFinal    Decimal @default(0) @db.Decimal(18, 2)
+
+  @@unique([anio, mes, instalacion, item])
+  @@index([anio, mes])
+  @@index([referencia])
+  @@index([marca])
+}
+
+// Movimiento de inventario (una línea de documento).
+// `tipoDoc` son las 3 primeras letras de `documento`: EPC entrada por compra,
+// TIN/TIE/TIS transferencias, ESB ensamble, EDI entrada directa, AIN ajuste,
+// REM venta, DVE nota crédito, SII/SIV/SID/SDI salidas, DEC/AEC devoluciones
+// y ajustes en compra, ECG entrada en consignación.
+model InvMovimiento {
+  id           Int      @id @default(autoincrement())
+  fecha        DateTime @db.Date
+  anio         Int
+  mes          Int
+  bodegaCodigo String
+  referencia   String
+  descripcion  String   @default("")
+  lote         String   @default("")
+  documento    String
+  tipoDoc      String // 3 letras
+  descTipoDoc  String   @default("")
+  ordenInterno String   @default("")
+
+  cantEntradas  Decimal @default(0) @db.Decimal(18, 2)
+  cantSalidas   Decimal @default(0) @db.Decimal(18, 2)
+  costoEntradas Decimal @default(0) @db.Decimal(18, 2)
+  costoSalidas  Decimal @default(0) @db.Decimal(18, 2)
+  costoUnit     Decimal @default(0) @db.Decimal(18, 2)
+
+  marca    String @default("")
+  linea    String @default("")
+  anatomia String @default("")
+  usuario  String @default("") // usuario de creación
+  notas    String @default("")
+
+  bodega InvBodega @relation(fields: [bodegaCodigo], references: [codigo], onDelete: Cascade)
+
+  @@index([anio, mes])
+  @@index([fecha])
+  @@index([bodegaCodigo])
+  @@index([referencia])
+  @@index([tipoDoc])
+  @@index([documento])
 }

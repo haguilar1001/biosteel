@@ -16,8 +16,14 @@ import { procesarCarga, type ResultadoDataset, type DatasetKey } from "./carga-s
 import { parsePygExcel, persistirPyg } from "./importar-pyg-excel";
 import { sincronizarFlujoDesdeBuffer } from "./sync-flujo";
 import { parsePresupuesto, persistirPresupuesto } from "./importar-presupuesto";
+import {
+  parseTablasAuxiliares, persistirBodegas,
+  parseBalance, persistirBalance,
+  parseMovimientos, persistirMovimientos,
+} from "./importar-inventario";
 
-export type CargaClave = DatasetKey | "pyg" | "flujo" | "presupuesto";
+export type CargaClave = DatasetKey | "pyg" | "flujo" | "presupuesto"
+  | "inv-bodegas" | "inv-balance" | "inv-movimientos";
 
 export interface CargaDef {
   clave: CargaClave;
@@ -105,6 +111,57 @@ export const CARGAS: CargaDef[] = [
         titulo: "Presupuesto de Egresos", archivo: nombre, hoja: parse.hoja,
         filas: parse.filas.length, cargadas, omitidas: parse.omitidas,
         estrategia: `reemplaza ${anio} meses [${meses.join(", ")}]: ${nf.format(cargadas)} renglones de presupuesto`,
+      };
+    },
+  },
+  // --- Inventario de material de osteosíntesis ---
+  // El orden importa: los movimientos se rechazan si su bodega no está en el
+  // catálogo, así que las Tablas Auxiliares se cargan primero.
+  {
+    clave: "inv-bodegas", titulo: "Inventario · Tablas Auxiliares", permiso: "carga.inv.bodegas",
+    archivoSugerido: "TABLAS AUXILIARES.xlsx",
+    async procesar(buffer, nombre) {
+      const bodegas = parseTablasAuxiliares(buffer);
+      const cargadas = await persistirBodegas(bodegas);
+      const inferidas = bodegas.filter((b) => b.inferida).length;
+      const porInst = [101, 102, 106].map((i) => `${i}: ${bodegas.filter((b) => b.instalacion === i).length}`).join(" · ");
+      return {
+        titulo: "Inventario · Tablas Auxiliares", archivo: nombre, hoja: "CÓDIGOS DE BODEGA",
+        filas: bodegas.length, cargadas, omitidas: 0,
+        estrategia: `upsert de ${cargadas} bodega(s) [${porInst}]${inferidas ? ` · ${inferidas} con instalación inferida (no venían en el catálogo)` : ""}`,
+      };
+    },
+  },
+  {
+    clave: "inv-balance", titulo: "Inventario · Balance mensual", permiso: "carga.inv.balance",
+    archivoSugerido: "1. BALANCE ENERO.xlsx",
+    async procesar(buffer, nombre) {
+      const b = parseBalance(buffer, nombre);
+      if (!b.datos.length) throw new Error("El balance no trae ninguna fila con saldo o movimiento.");
+      const cargadas = await persistirBalance(b);
+      return {
+        titulo: "Inventario · Balance mensual", archivo: nombre, hoja: b.hoja,
+        filas: b.filas, cargadas, omitidas: b.filas - cargadas,
+        estrategia: `reemplaza ${b.mes}/${b.anio}: ${nf.format(cargadas)} ítem(s) con saldo o movimiento (se descartan las filas en cero)`,
+      };
+    },
+  },
+  {
+    clave: "inv-movimientos", titulo: "Inventario · Movimientos", permiso: "carga.inv.movimientos",
+    archivoSugerido: "MOVIMIENTOS DE INVENTARIO.xlsx",
+    async procesar(buffer, nombre) {
+      const conocidas = new Set((await prisma.invBodega.findMany({ select: { codigo: true } })).map((b) => b.codigo));
+      if (!conocidas.size) throw new Error("Primero cargue las Tablas Auxiliares: sin el catálogo de bodegas no se puede asignar la instalación.");
+      const m = parseMovimientos(buffer, conocidas);
+      if (!m.datos.length) throw new Error("El archivo no trae movimientos con bodega reconocida.");
+      const cargadas = await persistirMovimientos(m);
+      const sinBodega = m.bodegasDesconocidas.size
+        ? ` · OJO: ${m.bodegasDesconocidas.size} bodega(s) sin catalogar quedaron fuera [${[...m.bodegasDesconocidas.keys()].join(", ")}]`
+        : "";
+      return {
+        titulo: "Inventario · Movimientos", archivo: nombre, hoja: m.hoja,
+        filas: m.filas, cargadas, omitidas: m.filas - cargadas,
+        estrategia: `reemplaza ${m.periodos.length} periodo(s) [${m.periodos[0]} … ${m.periodos[m.periodos.length - 1]}]: ${nf.format(cargadas)} movimientos${sinBodega}`,
       };
     },
   },
