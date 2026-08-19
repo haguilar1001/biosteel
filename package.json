@@ -35,7 +35,8 @@
     "db:check": "tsx prisma/check-datos.ts",
     "db:studio": "prisma studio",
     "audit": "npm audit --audit-level=high",
-    "test": "node --import tsx --conditions=react-server --test \"src/**/*.test.ts\""
+    "test": "node --import tsx --conditions=react-server --test \"src/**/*.test.ts\"",
+    "db:inventario-osteo": "node --max-old-space-size=8192 --import tsx --conditions=react-server prisma/set-inventario-osteo.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

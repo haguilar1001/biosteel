@@ -8,7 +8,9 @@ const nextConfig = {
     // Server Actions con verificación de origen (mitiga CSRF — BIO-SEC-006)
     serverActions: {
       allowedOrigins: process.env.APP_URL ? [new URL(process.env.APP_URL).host] : undefined,
-      bodySizeLimit: "30mb", // importador de ventas SIESA (archivos por mes/año)
+      // Ventas SIESA por mes/año y balances de inventario. El archivo de
+      // movimientos de inventario es mayor: ese va por npm run db:inventario-osteo.
+      bodySizeLimit: "50mb",
     },
   },
 };
