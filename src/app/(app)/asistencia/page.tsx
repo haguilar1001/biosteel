@@ -191,7 +191,7 @@ export default async function AsistenciaPage({
             ))}
           </div>
           <div className="card-body" style={{ fontSize: 12, color: "var(--muted)", borderTop: "1px solid var(--line)" }}>
-            La línea vertical marca la meta de {nota(META)}. Los ítems 5 a 7 son sí/no: un &quot;no hubo&quot; vale 5 puntos.
+            La línea vertical marca la meta de {nota(META)}. Los ítems 5 a 7 son sí/no: un &quot;no hubo&quot; vale 5 puntos y un &quot;sí hubo&quot; vale 1.
           </div>
         </div>
 
@@ -328,7 +328,7 @@ export default async function AsistenciaPage({
         </div>
         <div className="card-body" style={{ fontSize: 12, color: "var(--muted)", borderTop: "1px solid var(--line)" }}>
           <b>Metodología.</b> Cada ítem = suma de calificaciones ÷ número de evaluaciones del periodo.
-          Los ítems 5, 6 y 7 (Novedades, Eventos e Incidentes adversos) toman un &quot;no hubo&quot; como 5 puntos.
+          Los ítems 5, 6 y 7 (Novedades, Eventos e Incidentes adversos) toman un &quot;no hubo&quot; como 5 puntos y un &quot;sí hubo&quot; como 1.
           La calificación final es el promedio de los 7 ítems en escala 1–5; la meta institucional es ≥ {nota(META)}.
         </div>
       </div>

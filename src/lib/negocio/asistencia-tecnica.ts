@@ -20,12 +20,12 @@ import { prisma } from "@/lib/db";
 
 export const META = 4.5;
 
-/** Puntaje de un ítem sí/no. Un "NO" (no hubo) vale 5. */
+/** Puntaje de un ítem sí/no cuando NO hubo novedad, evento ni incidente. */
 export const PUNTAJE_SIN_NOVEDAD = 5;
 /**
- * Puntaje cuando SÍ hubo novedad, evento o incidente adverso. El informe base
- * solo documenta el "NO"; se toma el mínimo de la escala. Hasta hoy no se ha
- * registrado ningún caso, así que no afecta ninguna cifra histórica.
+ * Puntaje cuando SÍ hubo novedad, evento o incidente adverso: el mínimo de la
+ * escala. Criterio confirmado por Héctor el 2026-08-19 (el informe base solo
+ * documentaba el "NO"). Hasta hoy no se ha registrado ningún caso.
  */
 export const PUNTAJE_CON_NOVEDAD = 1;
 
