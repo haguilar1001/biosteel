@@ -37,7 +37,8 @@
     "audit": "npm audit --audit-level=high",
     "test": "node --import tsx --conditions=react-server --test \"src/**/*.test.ts\"",
     "db:inventario-osteo": "node --max-old-space-size=8192 --import tsx --conditions=react-server prisma/set-inventario-osteo.ts",
-    "db:permisos": "tsx prisma/set-permisos.ts"
+    "db:permisos": "tsx prisma/set-permisos.ts",
+    "db:asistencia": "tsx prisma/set-asistencia.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

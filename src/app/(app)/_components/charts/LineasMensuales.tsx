@@ -36,11 +36,17 @@ export function LineasMensuales({
   height = 280,
   unidad = "millones COP",
   desdeCero = true,
+  formatoY,
+  formatoPunto,
 }: {
   categorias: string[];
   series: SerieLinea[];
   height?: number;
   unidad?: string;
+  /** Etiqueta del eje Y. Por defecto convierte pesos a millones. */
+  formatoY?: (v: number) => string;
+  /** Texto del tooltip de cada punto. Por defecto lo formatea como pesos. */
+  formatoPunto?: (v: number) => string;
   /**
    * false = el eje arranca cerca del dato más bajo en vez de en cero. Para
    * series de saldo (un stock que se mueve poco sobre una base grande) un eje
@@ -70,7 +76,8 @@ export function LineasMensuales({
 
   const x = (i: number) => padL + (n <= 1 ? 0 : (i / (n - 1)) * (width - padL - padR));
   const y = (v: number) => padT + (1 - (v - min) / (max - min)) * (height - padT - padB);
-  const millY = (v: number) => nf0.format(Math.round(v / 1e6));
+  const etiquetaY = formatoY ?? ((v: number) => nf0.format(Math.round(v / 1e6)));
+  const etiquetaPunto = formatoPunto ?? ((v: number) => `$ ${nf0.format(Math.round(v))}`);
 
   return (
     <div>
@@ -95,7 +102,7 @@ export function LineasMensuales({
           return (
             <g key={k}>
               <line x1={padL} y1={yy} x2={width - padR} y2={yy} stroke="var(--line)" strokeWidth={1} />
-              <text x={padL - 8} y={yy + 3} textAnchor="end" fontSize={10.5} fill="var(--muted)" style={{ fontVariantNumeric: "tabular-nums" }}>{millY(v)}</text>
+              <text x={padL - 8} y={yy + 3} textAnchor="end" fontSize={10.5} fill="var(--muted)" style={{ fontVariantNumeric: "tabular-nums" }}>{etiquetaY(v)}</text>
             </g>
           );
         })}
@@ -116,7 +123,7 @@ export function LineasMensuales({
                 <path d={curvaSuave(coords)} fill="none" stroke={s.color} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" strokeDasharray={s.dash ? "6 5" : undefined} />
               )}
               {s.data.map((v, i) =>
-                v == null ? null : <circle key={i} cx={x(i)} cy={y(v)} r={3} fill={s.color}><title>{`${categorias[i]}: $ ${nf0.format(Math.round(v))}`}</title></circle>,
+                v == null ? null : <circle key={i} cx={x(i)} cy={y(v)} r={3} fill={s.color}><title>{`${categorias[i]}: ${etiquetaPunto(v)}`}</title></circle>,
               )}
             </g>
           );

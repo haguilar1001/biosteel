@@ -49,6 +49,7 @@ export const MENU_BASE: MenuGrupoDef[] = [
   { id: "analisis", label: "Análisis", icon: "📊", items: [
     { href: "/indicadores", label: "📈 Indicadores", permiso: "cxp.view" },
     { href: "/pyg", label: "📄 PyG", permiso: "cxp.view" },
+    { href: "/asistencia", label: "🩺 Asistencia Técnica", permiso: "cxp.view" },
   ] },
   { id: "inventarios", label: "Inventarios", icon: "📦", items: [
     { href: "/inventario", label: "📦 Resumen", permiso: "inventario.view", seccion: "Equipos" },

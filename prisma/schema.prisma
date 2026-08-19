@@ -1256,3 +1256,15 @@ model EvaluacionAsesor {
   @@index([asesor])
   @@index([fecha])
 }
+
+// Quejas, reclamos y sugerencias del periodo. No sale de las evaluaciones:
+// es un dato que se lleva aparte y se digita o se carga por su cuenta.
+model PqrsMes {
+  id          Int    @id @default(autoincrement())
+  anio        Int
+  mes         Int
+  casos       Int    @default(0)
+  observacion String @default("")
+
+  @@unique([anio, mes])
+}
