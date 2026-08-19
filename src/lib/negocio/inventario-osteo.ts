@@ -228,3 +228,157 @@ export async function mesesConBalance(anio: number): Promise<number[]> {
   });
   return filas.map((f) => f.mes);
 }
+
+// ---------- Inventario valorizado ----------
+
+/** Dimensiones por las que se puede abrir el saldo (columnas del balance). */
+export const DIMENSIONES = {
+  marca: "Marca",
+  linea: "Línea",
+  anatomia: "Anatomía",
+  sistema: "Sistema",
+  categoria: "Categoría",
+} as const;
+export type Dimension = keyof typeof DIMENSIONES;
+
+export interface ResumenValorizado {
+  valor: number; unidades: number; items: number;
+  /** Saldo del mes anterior (0 si no hay). */
+  valorAnterior: number;
+  entradas: number; salidas: number;
+  /** Ítems con existencia pero valorizados en $0. */
+  itemsSinCosto: number; unidadesSinCosto: number;
+}
+
+/** KPIs del mes: saldo, movimiento y lo que no tiene costo. */
+export async function resumenValorizado(anio: number, mes: number): Promise<ResumenValorizado> {
+  const anterior = mes === 1 ? { anio: anio - 1, mes: 12 } : { anio, mes: mes - 1 };
+  const filas = await prisma.$queryRaw<Record<string, unknown>[]>`
+    SELECT
+      SUM("valorFinal") AS valor,
+      SUM("cantFinal") AS unidades,
+      COUNT(*) FILTER (WHERE "cantFinal" <> 0) AS items,
+      SUM("valorEntradas") AS entradas,
+      SUM("valorSalidas") AS salidas,
+      COUNT(*) FILTER (WHERE "cantFinal" > 0 AND "valorFinal" = 0) AS items_sc,
+      COALESCE(SUM("cantFinal") FILTER (WHERE "cantFinal" > 0 AND "valorFinal" = 0), 0) AS und_sc
+    FROM "InvBalance" WHERE anio = ${anio} AND mes = ${mes}`;
+  const prev = await prisma.$queryRaw<Record<string, unknown>[]>`
+    SELECT SUM("valorFinal") AS valor FROM "InvBalance"
+    WHERE anio = ${anterior.anio} AND mes = ${anterior.mes}`;
+  const f = filas[0] ?? {};
+  return {
+    valor: n(f.valor), unidades: n(f.unidades), items: n(f.items),
+    valorAnterior: n(prev[0]?.valor),
+    entradas: n(f.entradas), salidas: n(f.salidas),
+    itemsSinCosto: n(f.items_sc), unidadesSinCosto: n(f.und_sc),
+  };
+}
+
+export interface SaldoInstalacion { instalacion: number; valor: number; unidades: number; items: number }
+
+export async function saldoPorInstalacion(anio: number, mes: number): Promise<SaldoInstalacion[]> {
+  const filas = await prisma.$queryRaw<Record<string, unknown>[]>`
+    SELECT instalacion, SUM("valorFinal") AS valor, SUM("cantFinal") AS unidades,
+           COUNT(*) FILTER (WHERE "cantFinal" <> 0) AS items
+    FROM "InvBalance" WHERE anio = ${anio} AND mes = ${mes}
+    GROUP BY instalacion ORDER BY instalacion`;
+  return filas.map((f) => ({
+    instalacion: n(f.instalacion), valor: n(f.valor),
+    unidades: n(f.unidades), items: n(f.items),
+  }));
+}
+
+export interface SaldoDimension {
+  label: string; valor: number; unidades: number; items: number;
+  entradas: number; salidas: number;
+  /** Meses de inventario: saldo ÷ salida mensual promedio del año. null si no rota. */
+  mesesInventario: number | null;
+}
+
+/**
+ * Saldo del mes abierto por una dimensión, con la rotación calculada sobre las
+ * salidas del año corrido: un ítem con mucho saldo y poca salida es plata
+ * quieta, y eso es lo que hay que poder ver.
+ */
+export async function saldoPorDimension(anio: number, mes: number, dim: Dimension): Promise<SaldoDimension[]> {
+  // `dim` está acotado por el tipo Dimension; el nombre de columna nunca viene del usuario.
+  const col = `"${dim}"`;
+  const filas = await prisma.$queryRawUnsafe<Record<string, unknown>[]>(`
+    WITH saldo AS (
+      SELECT ${col} AS label, SUM("valorFinal") AS valor, SUM("cantFinal") AS unidades,
+             COUNT(*) FILTER (WHERE "cantFinal" <> 0) AS items,
+             SUM("valorEntradas") AS entradas, SUM("valorSalidas") AS salidas
+      FROM "InvBalance" WHERE anio = $1 AND mes = $2 GROUP BY 1
+    ), anual AS (
+      SELECT ${col} AS label, SUM("valorSalidas") AS salidas_anio, COUNT(DISTINCT mes) AS meses
+      FROM "InvBalance" WHERE anio = $1 AND mes <= $2 GROUP BY 1
+    )
+    SELECT s.label, s.valor, s.unidades, s.items, s.entradas, s.salidas,
+           a.salidas_anio, a.meses
+    FROM saldo s LEFT JOIN anual a ON a.label = s.label
+    ORDER BY s.valor DESC`, anio, mes);
+
+  return filas.map((f) => {
+    const valor = n(f.valor);
+    const salidaMensual = n(f.meses) > 0 ? n(f.salidas_anio) / n(f.meses) : 0;
+    return {
+      label: String(f.label || "(sin clasificar)"),
+      valor, unidades: n(f.unidades), items: n(f.items),
+      entradas: n(f.entradas), salidas: n(f.salidas),
+      mesesInventario: salidaMensual > 0 ? valor / salidaMensual : null,
+    };
+  });
+}
+
+export interface PuntoMes { anio: number; mes: number; valor: number; unidades: number }
+
+/** Serie del saldo final mes a mes, para ver la tendencia. */
+export async function evolucionSaldo(): Promise<PuntoMes[]> {
+  const filas = await prisma.$queryRaw<Record<string, unknown>[]>`
+    SELECT anio, mes, SUM("valorFinal") AS valor, SUM("cantFinal") AS unidades
+    FROM "InvBalance" GROUP BY anio, mes ORDER BY anio, mes`;
+  return filas.map((f) => ({
+    anio: n(f.anio), mes: n(f.mes), valor: n(f.valor), unidades: n(f.unidades),
+  }));
+}
+
+export interface ItemSaldo {
+  item: string; referencia: string; descripcion: string;
+  instalacion: number; marca: string;
+  unidades: number; valor: number; costoUnit: number;
+  /** Meses sin una sola salida (hasta el mes consultado, dentro del año). */
+  mesesSinSalida: number;
+}
+
+/**
+ * Ítems de mayor saldo, con cuántos meses llevan sin salir. Es la lista para
+ * atacar inventario quieto.
+ */
+export async function itemsConSaldo(anio: number, mes: number, limite = 100): Promise<ItemSaldo[]> {
+  const filas = await prisma.$queryRaw<Record<string, unknown>[]>`
+    WITH ult AS (
+      SELECT item, instalacion, MAX(mes) AS ultimo_mov
+      FROM "InvBalance"
+      WHERE anio = ${anio} AND mes <= ${mes} AND "cantSalidas" > 0
+      GROUP BY item, instalacion
+    )
+    SELECT b.item, b.referencia, b.descripcion, b.instalacion, b.marca,
+           b."cantFinal" AS unidades, b."valorFinal" AS valor,
+           ${mes} - COALESCE(u.ultimo_mov, 0) AS sin_salida
+    FROM "InvBalance" b LEFT JOIN ult u ON u.item = b.item AND u.instalacion = b.instalacion
+    WHERE b.anio = ${anio} AND b.mes = ${mes} AND b."cantFinal" > 0
+    ORDER BY b."valorFinal" DESC
+    LIMIT ${limite}`;
+
+  return filas.map((f) => {
+    const unidades = n(f.unidades), valor = n(f.valor);
+    return {
+      item: String(f.item), referencia: String(f.referencia ?? ""),
+      descripcion: String(f.descripcion ?? ""), instalacion: n(f.instalacion),
+      marca: String(f.marca ?? ""), unidades, valor,
+      costoUnit: unidades > 0 ? valor / unidades : 0,
+      mesesSinSalida: n(f.sin_salida),
+    };
+  });
+}
