@@ -18,6 +18,8 @@ export interface MenuItemDef {
   permiso: PermisoClave;
   /** Visible si tiene CUALQUIERA de estos permisos (OR). Si se omite, usa `permiso`. */
   permisosOr?: PermisoClave[];
+  /** Encabezado dentro del desplegable del grupo (agrupa ítems relacionados). */
+  seccion?: string;
 }
 export interface MenuGrupoDef { id: string; label: string; icon: string; items: MenuItemDef[]; }
 
@@ -49,10 +51,10 @@ export const MENU_BASE: MenuGrupoDef[] = [
     { href: "/pyg", label: "📄 PyG", permiso: "cxp.view" },
   ] },
   { id: "inventarios", label: "Inventarios", icon: "📦", items: [
-    { href: "/inventario", label: "📦 Inventario", permiso: "inventario.view" },
-    { href: "/inventario/ciudades", label: "📍 Por Ciudad", permiso: "inventario.view" },
-    { href: "/inventario/estados", label: "🔍 Por Estado", permiso: "inventario.view" },
-    { href: "/inventario/novedades", label: "🔔 Novedades", permiso: "inventario.view" },
+    { href: "/inventario", label: "📦 Resumen", permiso: "inventario.view", seccion: "Equipos" },
+    { href: "/inventario/ciudades", label: "📍 Por Ciudad", permiso: "inventario.view", seccion: "Equipos" },
+    { href: "/inventario/estados", label: "🔍 Por Estado", permiso: "inventario.view", seccion: "Equipos" },
+    { href: "/inventario/novedades", label: "🔔 Novedades", permiso: "inventario.view", seccion: "Equipos" },
   ] },
 ];
 
@@ -71,7 +73,7 @@ export async function construirMenu(usuario: UsuarioConRol): Promise<Grupo[]> {
   const iCfg = new Map(itemsCfg.map((i) => [i.href, i]));
 
   // Ítems efectivos con grupo y orden resueltos, filtrados por permiso y visible.
-  interface Eff { href: string; label: string; grupo: string; orden: number }
+  interface Eff { href: string; label: string; grupo: string; orden: number; seccion?: string }
   const eff: Eff[] = [];
   for (let gi = 0; gi < MENU_BASE.length; gi++) {
     const g = MENU_BASE[gi]!;
@@ -84,7 +86,7 @@ export async function construirMenu(usuario: UsuarioConRol): Promise<Grupo[]> {
       let visible = false;
       for (const clave of claves) { if (await puede(usuario, clave)) { visible = true; break; } }
       if (!visible) continue;
-      eff.push({ href: it.href, label: cfg?.label || it.label, grupo: cfg?.grupoClave || g.id, orden: cfg?.orden ?? gi * 100 + ii });
+      eff.push({ href: it.href, label: cfg?.label || it.label, grupo: cfg?.grupoClave || g.id, orden: cfg?.orden ?? gi * 100 + ii, seccion: it.seccion });
     }
   }
 
@@ -95,7 +97,7 @@ export async function construirMenu(usuario: UsuarioConRol): Promise<Grupo[]> {
     const g = MENU_BASE[gi]!;
     const gc = gCfg.get(g.id);
     if (gc && !gc.visible) continue;
-    const items = eff.filter((e) => e.grupo === g.id).sort((a, b) => a.orden - b.orden).map((e) => ({ href: e.href, label: e.label }));
+    const items = eff.filter((e) => e.grupo === g.id).sort((a, b) => a.orden - b.orden).map((e) => ({ href: e.href, label: e.label, seccion: e.seccion }));
     if (items.length) out.push({ id: g.id, label: gc?.label || g.label, icon: gc?.icon || g.icon, items, orden: gc?.orden ?? gi });
   }
 

@@ -7,7 +7,7 @@
 import { requireUsuario } from "@/server/auth-context";
 import { puede } from "@/lib/rbac/authorize";
 import { logoutAction } from "../login/actions";
-import { GruposBar, SubMenu } from "./_components/GroupNav";
+import { GruposBar } from "./_components/GroupNav";
 import { MontosToggle } from "./_components/MontosToggle";
 import { EnhanceTablas } from "./_components/EnhanceTablas";
 import { construirMenu } from "./_menu";
@@ -48,7 +48,6 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         </div>
       </header>
 
-      <SubMenu grupos={grupos} />
 
       <main className="wrap">{children}</main>
       <EnhanceTablas />
