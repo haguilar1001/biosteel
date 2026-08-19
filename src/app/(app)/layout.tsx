@@ -9,6 +9,7 @@ import { puede } from "@/lib/rbac/authorize";
 import { logoutAction } from "../login/actions";
 import { GruposBar } from "./_components/GroupNav";
 import { MontosToggle } from "./_components/MontosToggle";
+import { TemaToggle } from "./_components/TemaToggle";
 import { EnhanceTablas } from "./_components/EnhanceTablas";
 import { construirMenu } from "./_menu";
 
@@ -38,6 +39,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         <div className="ctx">
           <span className="chip-ctx" title={usuario.rol.nombre}>{usuario.rol.nombre}</span>
           <MontosToggle />
+          <TemaToggle />
           {(await puede(usuario, "cxp.view")) && (
             <a href="/notificaciones" className="bell" title="Notificaciones" aria-label="Notificaciones">🔔</a>
           )}

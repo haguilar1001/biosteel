@@ -395,3 +395,146 @@ export async function itemsConSaldo(anio: number, mes: number, limite = 100, ins
     };
   });
 }
+
+// ---------- Movimientos (única vista que sí tiene bodega) ----------
+
+export interface OpcionBodega {
+  codigo: string; descripcion: string; ciudad: string;
+  instalacion: number; modeloCompra: string;
+}
+
+/** Catálogo de bodegas para los selectores. */
+export async function bodegas(): Promise<OpcionBodega[]> {
+  const filas = await prisma.invBodega.findMany({
+    orderBy: [{ ciudad: "asc" }, { descripcion: "asc" }],
+    select: { codigo: true, descripcion: true, ciudad: true, instalacion: true, modeloCompra: true },
+  });
+  return filas;
+}
+
+export interface FiltroMovimientos {
+  anio: number; mes?: number;
+  bodega?: string; instalacion?: number; tipoDoc?: string;
+}
+
+/** Cláusula WHERE compartida por las consultas de movimientos. */
+function whereMov(f: FiltroMovimientos): string {
+  const p: string[] = [`m.anio = ${f.anio}`];
+  if (f.mes) p.push(`m.mes = ${f.mes}`);
+  if (f.bodega) p.push(`m."bodegaCodigo" = '${f.bodega.replace(/'/g, "''")}'`);
+  if (f.instalacion && NOMBRE_INSTALACION[f.instalacion]) {
+    p.push(`COALESCE(m.instalacion, b.instalacion) = ${f.instalacion}`);
+  }
+  if (f.tipoDoc && /^[A-Z]{3}$/.test(f.tipoDoc)) p.push(`m."tipoDoc" = '${f.tipoDoc}'`);
+  return p.join(" AND ");
+}
+
+export interface ResumenMovimientos {
+  movimientos: number; documentos: number; referencias: number;
+  cantEntradas: number; cantSalidas: number;
+  costoEntradas: number; costoSalidas: number;
+}
+
+export async function resumenMovimientos(f: FiltroMovimientos): Promise<ResumenMovimientos> {
+  const filas = await prisma.$queryRawUnsafe<Record<string, unknown>[]>(`
+    SELECT COUNT(*) AS movs, COUNT(DISTINCT m.documento) AS docs,
+           COUNT(DISTINCT m.referencia) AS refs,
+           COALESCE(SUM(m."cantEntradas"), 0) AS qe, COALESCE(SUM(m."cantSalidas"), 0) AS qs,
+           COALESCE(SUM(m."costoEntradas"), 0) AS ce, COALESCE(SUM(m."costoSalidas"), 0) AS cs
+    FROM "InvMovimiento" m JOIN "InvBodega" b ON b.codigo = m."bodegaCodigo"
+    WHERE ${whereMov(f)}`);
+  const r = filas[0] ?? {};
+  return {
+    movimientos: n(r.movs), documentos: n(r.docs), referencias: n(r.refs),
+    cantEntradas: n(r.qe), cantSalidas: n(r.qs),
+    costoEntradas: n(r.ce), costoSalidas: n(r.cs),
+  };
+}
+
+export interface FilaTipoDoc {
+  tipoDoc: string; descripcion: string; movimientos: number;
+  cantEntradas: number; cantSalidas: number;
+  costoEntradas: number; costoSalidas: number;
+}
+
+/** Movimientos agrupados por tipo de documento (EPC, TIN, REM, AIN…). */
+export async function movimientosPorTipo(f: FiltroMovimientos): Promise<FilaTipoDoc[]> {
+  const filas = await prisma.$queryRawUnsafe<Record<string, unknown>[]>(`
+    SELECT m."tipoDoc", MAX(m."descTipoDoc") AS descripcion, COUNT(*) AS movs,
+           SUM(m."cantEntradas") AS qe, SUM(m."cantSalidas") AS qs,
+           SUM(m."costoEntradas") AS ce, SUM(m."costoSalidas") AS cs
+    FROM "InvMovimiento" m JOIN "InvBodega" b ON b.codigo = m."bodegaCodigo"
+    WHERE ${whereMov(f)}
+    GROUP BY m."tipoDoc"
+    ORDER BY (SUM(m."costoEntradas") + SUM(m."costoSalidas")) DESC`);
+  return filas.map((r) => ({
+    tipoDoc: String(r.tipoDoc), descripcion: String(r.descripcion ?? ""),
+    movimientos: n(r.movs), cantEntradas: n(r.qe), cantSalidas: n(r.qs),
+    costoEntradas: n(r.ce), costoSalidas: n(r.cs),
+  }));
+}
+
+/** Movimientos agrupados por bodega, con su ciudad e instalación. */
+export async function movimientosPorBodegaFiltrado(f: FiltroMovimientos): Promise<FilaBodega[]> {
+  const filas = await prisma.$queryRawUnsafe<Record<string, unknown>[]>(`
+    SELECT m."bodegaCodigo" AS codigo, b.descripcion, b.ciudad,
+           COALESCE(m.instalacion, b.instalacion) AS instalacion,
+           b."modeloCompra", b.inferida, COUNT(*) AS movs,
+           SUM(m."costoEntradas") AS ent, SUM(m."costoSalidas") AS sal
+    FROM "InvMovimiento" m JOIN "InvBodega" b ON b.codigo = m."bodegaCodigo"
+    WHERE ${whereMov(f)}
+    GROUP BY 1, 2, 3, 4, 5, 6
+    ORDER BY (SUM(m."costoEntradas") + SUM(m."costoSalidas")) DESC`);
+  return filas.map((r) => ({
+    codigo: String(r.codigo), descripcion: String(r.descripcion ?? ""),
+    ciudad: String(r.ciudad ?? ""), instalacion: n(r.instalacion),
+    modeloCompra: String(r.modeloCompra ?? ""), inferida: Boolean(r.inferida),
+    movimientos: n(r.movs), entradas: n(r.ent), salidas: n(r.sal),
+  }));
+}
+
+export interface FilaMovimiento {
+  fecha: Date; documento: string; tipoDoc: string; descTipoDoc: string;
+  bodegaCodigo: string; bodegaDesc: string; instalacion: number;
+  referencia: string; descripcion: string; lote: string; marca: string;
+  cantEntradas: number; cantSalidas: number;
+  costoEntradas: number; costoSalidas: number; usuario: string; notas: string;
+}
+
+/** Detalle de movimientos, del más reciente al más viejo. */
+export async function detalleMovimientos(f: FiltroMovimientos, limite = 300): Promise<FilaMovimiento[]> {
+  const filas = await prisma.$queryRawUnsafe<Record<string, unknown>[]>(`
+    SELECT m.fecha, m.documento, m."tipoDoc", m."descTipoDoc",
+           m."bodegaCodigo", b.descripcion AS bodega_desc,
+           COALESCE(m.instalacion, b.instalacion) AS instalacion,
+           m.referencia, m.descripcion, m.lote, m.marca,
+           m."cantEntradas", m."cantSalidas", m."costoEntradas", m."costoSalidas",
+           m.usuario, m.notas
+    FROM "InvMovimiento" m JOIN "InvBodega" b ON b.codigo = m."bodegaCodigo"
+    WHERE ${whereMov(f)}
+    ORDER BY m.fecha DESC, m.documento DESC
+    LIMIT ${Math.max(1, Math.trunc(limite))}`);
+  return filas.map((r) => ({
+    fecha: r.fecha as Date, documento: String(r.documento),
+    tipoDoc: String(r.tipoDoc), descTipoDoc: String(r.descTipoDoc ?? ""),
+    bodegaCodigo: String(r.bodegaCodigo), bodegaDesc: String(r.bodega_desc ?? ""),
+    instalacion: n(r.instalacion), referencia: String(r.referencia ?? ""),
+    descripcion: String(r.descripcion ?? ""), lote: String(r.lote ?? ""),
+    marca: String(r.marca ?? ""),
+    cantEntradas: n(r.cantEntradas), cantSalidas: n(r.cantSalidas),
+    costoEntradas: n(r.costoEntradas), costoSalidas: n(r.costoSalidas),
+    usuario: String(r.usuario ?? ""), notas: String(r.notas ?? ""),
+  }));
+}
+
+/** Años y meses con movimientos cargados. */
+export async function aniosConMovimientos(): Promise<number[]> {
+  const filas = await prisma.invMovimiento.groupBy({ by: ["anio"], orderBy: { anio: "asc" } });
+  return filas.map((f) => f.anio);
+}
+export async function mesesConMovimientos(anio: number): Promise<number[]> {
+  const filas = await prisma.invMovimiento.groupBy({
+    by: ["mes"], where: { anio }, orderBy: { mes: "asc" },
+  });
+  return filas.map((f) => f.mes);
+}

@@ -77,6 +77,8 @@ export default async function ValorizadoPage({
             <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 3 }}>
               Saldo del balance mensual, a costo promedio
               {inst ? ` · solo ${inst} · ${NOMBRE_INSTALACION[inst]}` : " · todas las instalaciones"}.
+              {" "}El balance solo llega hasta instalación; para ver por bodega,{" "}
+              <a href={`/osteosintesis/movimientos?anio=${anio}&mes=${mes}`}>Movimientos</a>.
             </div>
           </div>
           <FiltroAuto className="toolbar">

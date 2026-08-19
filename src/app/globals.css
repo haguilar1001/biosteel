@@ -35,9 +35,16 @@
   --r-sm: 8px;
 }
 
-/* Tema oscuro (automático por preferencia del SO) */
+/* ==========================================================
+   Tema oscuro. Tres estados, controlados por data-tema en <html>:
+     · sin atributo (o "auto") → manda la preferencia del SO
+     · "claro"                 → siempre claro, aunque el SO esté oscuro
+     · "oscuro"                → siempre oscuro
+   Los tokens van dos veces a propósito: una regla no puede estar dentro
+   y fuera de un @media al mismo tiempo.
+   ========================================================== */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-tema="claro"]) {
     --brand: #3E6BC0; --brand-600: #3E6BC0; --brand-700: #2A4F98; --brand-2: #5B8AD0;
     --brand-soft: #294066; --brand-tint: #182338;
     --ink: #E8EDF5; --muted: #94A3BC; --line: #26324A; --surface: #141C2E; --canvas: #0E1524;
@@ -49,6 +56,18 @@
     --az-5: #8bbae7; --az-6: #aecff1; --az-7: #3f97ab; --az-8: #7d8cc4;
     --az-otros: #7d8aa2;
   }
+}
+:root[data-tema="oscuro"] {
+    --brand: #3E6BC0; --brand-600: #3E6BC0; --brand-700: #2A4F98; --brand-2: #5B8AD0;
+    --brand-soft: #294066; --brand-tint: #182338;
+    --ink: #E8EDF5; --muted: #94A3BC; --line: #26324A; --surface: #141C2E; --canvas: #0E1524;
+    --elev: 0 1px 2px rgba(0, 0, 0, .3), 0 10px 28px rgba(0, 0, 0, .35);
+    --ok-t: #12281E; --w1-t: #2A2410; --w2-t: #2A1D12; --bad-t: #2A1414;
+    --cat-1: #3987e5; --cat-2: #d95926; --cat-3: #199e70; --cat-4: #c98500;
+    --cat-5: #d55181; --cat-6: #008300; --cat-7: #9085e9; --cat-8: #e66767;
+    --az-1: #2c5da0; --az-2: #3a72bd; --az-3: #4d8cd4; --az-4: #6aa3dd;
+    --az-5: #8bbae7; --az-6: #aecff1; --az-7: #3f97ab; --az-8: #7d8cc4;
+    --az-otros: #7d8aa2;
 }
 
 * { box-sizing: border-box; }

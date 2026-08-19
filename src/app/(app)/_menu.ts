@@ -58,6 +58,7 @@ export const MENU_BASE: MenuGrupoDef[] = [
     { href: "/inventario/estados", label: "🔍 Por Estado", permiso: "inventario.view", seccion: "Equipos" },
     { href: "/inventario/novedades", label: "🔔 Novedades", permiso: "inventario.view", seccion: "Equipos" },
     { href: "/osteosintesis/valorizado", label: "💰 Valorizado", permiso: "osteo.view", seccion: "Material" },
+    { href: "/osteosintesis/movimientos", label: "🔁 Movimientos", permiso: "osteo.view", seccion: "Material" },
     { href: "/osteosintesis/conciliacion", label: "⚖️ Conciliación", permiso: "osteo.view", seccion: "Material" },
   ] },
 ];

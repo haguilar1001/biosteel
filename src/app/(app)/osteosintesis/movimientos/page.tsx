@@ -1,0 +1,236 @@
+// ==========================================================
+// Osteosíntesis · Movimientos — el detalle por documento, con filtros de
+// bodega, instalación y tipo de movimiento.
+//
+// Es la única vista del módulo que tiene BODEGA: el balance mensual solo
+// llega hasta instalación, así que el saldo valorizado no se puede abrir por
+// bodega, pero el movimiento sí.
+// ==========================================================
+import { requirePermiso } from "@/server/auth-context";
+import { formatNumero } from "@/lib/format";
+import { Monto } from "../../_components/Monto";
+import { FiltroAuto } from "../../_components/FiltroAuto";
+import {
+  aniosConMovimientos, mesesConMovimientos, bodegas,
+  resumenMovimientos, movimientosPorTipo, movimientosPorBodegaFiltrado, detalleMovimientos,
+  NOMBRE_INSTALACION, MES_CORTO, type FiltroMovimientos,
+} from "@/lib/negocio/inventario-osteo";
+
+const MES_LARGO = ["", "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+  "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+const LIMITE = 300;
+
+export default async function MovimientosPage({
+  searchParams,
+}: { searchParams: Promise<{ anio?: string; mes?: string; bodega?: string; inst?: string; tipo?: string }> }) {
+  await requirePermiso("osteo.view");
+  const sp = await searchParams;
+
+  const anios = await aniosConMovimientos();
+  if (!anios.length) {
+    return (
+      <div className="card"><div className="card-body">
+        <div className="empty">Sin movimientos cargados. Corre <code>npm run db:inventario-osteo</code>.</div>
+      </div></div>
+    );
+  }
+
+  const anio = sp.anio && anios.includes(Number(sp.anio)) ? Number(sp.anio) : anios[anios.length - 1]!;
+  const meses = await mesesConMovimientos(anio);
+  const mes = sp.mes && meses.includes(Number(sp.mes)) ? Number(sp.mes) : undefined;
+  const catalogo = await bodegas();
+  const bodega = sp.bodega && catalogo.some((b) => b.codigo === sp.bodega) ? sp.bodega : undefined;
+  const instalacion = sp.inst && NOMBRE_INSTALACION[Number(sp.inst)] ? Number(sp.inst) : undefined;
+  const tipoDoc = sp.tipo && /^[A-Z]{3}$/.test(sp.tipo) ? sp.tipo : undefined;
+
+  const filtro: FiltroMovimientos = { anio, mes, bodega, instalacion, tipoDoc };
+  const [kpi, tipos, porBodega, detalle] = await Promise.all([
+    resumenMovimientos(filtro),
+    movimientosPorTipo(filtro),
+    movimientosPorBodegaFiltrado(filtro),
+    detalleMovimientos(filtro, LIMITE),
+  ]);
+
+  const bodegaSel = bodega ? catalogo.find((b) => b.codigo === bodega) : undefined;
+  const etiqueta = mes ? `${MES_LARGO[mes]} ${anio}` : `${anio}`;
+  const neto = kpi.costoEntradas - kpi.costoSalidas;
+
+  // Bodegas agrupadas por ciudad, para que el selector sea navegable (80+).
+  const porCiudad = new Map<string, typeof catalogo>();
+  for (const b of catalogo) {
+    const c = b.ciudad || "Sin ciudad";
+    const g = porCiudad.get(c) ?? [];
+    g.push(b); porCiudad.set(c, g);
+  }
+
+  return (
+    <>
+      <div className="card" style={{ marginBottom: 12 }}>
+        <div className="card-body" style={{ paddingBottom: 12 }}>
+          <div style={{ marginBottom: 10 }}>
+            <div className="eyebrow" style={{ fontSize: 15 }}>Movimientos de Inventario · {etiqueta}</div>
+            <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 3 }}>
+              {bodegaSel
+                ? <>Bodega {bodegaSel.codigo} · {bodegaSel.descripcion} · {bodegaSel.ciudad || "sin ciudad"} · {bodegaSel.modeloCompra || "sin modelo"}</>
+                : "Todas las bodegas"}
+              {instalacion ? ` · instalación ${instalacion} · ${NOMBRE_INSTALACION[instalacion]}` : ""}
+              {tipoDoc ? ` · ${tipoDoc}` : ""}
+            </div>
+          </div>
+          <FiltroAuto className="toolbar">
+            <label className="flag" style={{ alignSelf: "center" }}>Año:</label>
+            <select name="anio" defaultValue={anio} className="select">
+              {anios.map((a) => <option key={a} value={a}>{a}</option>)}
+            </select>
+            <label className="flag" style={{ alignSelf: "center" }}>Mes:</label>
+            <select name="mes" defaultValue={mes ?? ""} className="select">
+              <option value="">Todo el año</option>
+              {meses.map((m) => <option key={m} value={m}>{MES_LARGO[m]}</option>)}
+            </select>
+            <label className="flag" style={{ alignSelf: "center" }}>Bodega:</label>
+            <select name="bodega" defaultValue={bodega ?? ""} className="select" style={{ maxWidth: 300 }}>
+              <option value="">Todas</option>
+              {[...porCiudad.entries()].sort().map(([ciudad, lista]) => (
+                <optgroup key={ciudad} label={ciudad}>
+                  {lista.map((b) => <option key={b.codigo} value={b.codigo}>{b.codigo} · {b.descripcion}</option>)}
+                </optgroup>
+              ))}
+            </select>
+            <label className="flag" style={{ alignSelf: "center" }}>Instalación:</label>
+            <select name="inst" defaultValue={instalacion ?? ""} className="select">
+              <option value="">Todas</option>
+              {[101, 102, 106].map((i) => <option key={i} value={i}>{i} · {NOMBRE_INSTALACION[i]}</option>)}
+            </select>
+            <label className="flag" style={{ alignSelf: "center" }}>Tipo:</label>
+            <select name="tipo" defaultValue={tipoDoc ?? ""} className="select" style={{ maxWidth: 260 }}>
+              <option value="">Todos</option>
+              {tipos.map((t) => <option key={t.tipoDoc} value={t.tipoDoc}>{t.tipoDoc} · {t.descripcion}</option>)}
+            </select>
+          </FiltroAuto>
+        </div>
+      </div>
+
+      <div className="kpis" style={{ marginBottom: 12 }}>
+        <div className="kpi kc">
+          <div className="klabel">Movimientos</div>
+          <div className="kval num">{formatNumero(kpi.movimientos)}</div>
+          <div className="ksub" style={{ color: "var(--muted)" }}>
+            {formatNumero(kpi.documentos)} documentos · {formatNumero(kpi.referencias)} referencias
+          </div>
+        </div>
+        <div className="kpi kc k-ingreso">
+          <div className="klabel">Entradas</div>
+          <div className="kval num"><Monto value={kpi.costoEntradas} /></div>
+          <div className="ksub" style={{ color: "var(--muted)" }}>{formatNumero(kpi.cantEntradas)} unidades</div>
+        </div>
+        <div className="kpi kc k-egreso">
+          <div className="klabel">Salidas</div>
+          <div className="kval num"><Monto value={kpi.costoSalidas} /></div>
+          <div className="ksub" style={{ color: "var(--muted)" }}>{formatNumero(kpi.cantSalidas)} unidades</div>
+        </div>
+        <div className={`kpi kc ${neto < 0 ? "k-bad" : "k-ok"}`}>
+          <div className="klabel">Neto</div>
+          <div className="kval num">{neto >= 0 ? "▲ " : "▼ "}<Monto value={Math.abs(neto)} /></div>
+          <div className="ksub" style={{ color: "var(--muted)" }}>{neto >= 0 ? "entró más de lo que salió" : "salió más de lo que entró"}</div>
+        </div>
+      </div>
+
+      <div className="grid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(380px, 1fr))", marginBottom: 12, alignItems: "start" }}>
+        <div className="card">
+          <div className="chart-head">Por Tipo de Movimiento <span className="hact">{etiqueta}</span></div>
+          <div style={{ overflowX: "auto" }}>
+            <table>
+              <thead>
+                <tr><th>Tipo</th><th className="r">Movtos.</th><th className="r">Entradas</th><th className="r">Salidas</th></tr>
+              </thead>
+              <tbody>
+                {tipos.length === 0 && <tr><td colSpan={4}><div className="empty">Sin movimientos con estos filtros.</div></td></tr>}
+                {tipos.map((t) => (
+                  <tr key={t.tipoDoc}>
+                    <td style={{ whiteSpace: "normal" }}>
+                      <b>{t.tipoDoc}</b> · {t.descripcion}
+                    </td>
+                    <td className="r num">{formatNumero(t.movimientos)}</td>
+                    <td className="r num"><Monto value={t.costoEntradas} /></td>
+                    <td className="r num"><Monto value={t.costoSalidas} /></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div className="card">
+          <div className="chart-head">Por Bodega <span className="hact">{etiqueta} · {porBodega.length} bodega(s)</span></div>
+          <div style={{ overflowX: "auto", maxHeight: 420, overflowY: "auto" }}>
+            <table>
+              <thead>
+                <tr><th>Bodega</th><th>Ciudad</th><th className="r">Movtos.</th><th className="r">Entradas</th><th className="r">Salidas</th></tr>
+              </thead>
+              <tbody>
+                {porBodega.length === 0 && <tr><td colSpan={5}><div className="empty">Sin movimientos con estos filtros.</div></td></tr>}
+                {porBodega.map((b) => (
+                  <tr key={b.codigo}>
+                    <td style={{ whiteSpace: "normal" }}>
+                      <b>{b.codigo}</b> · {b.descripcion}
+                      {b.inferida && <span className="tag t-w1" style={{ marginLeft: 6 }} title="No venía en el catálogo">inferida</span>}
+                    </td>
+                    <td>{b.ciudad || "—"}</td>
+                    <td className="r num">{formatNumero(b.movimientos)}</td>
+                    <td className="r num"><Monto value={b.entradas} /></td>
+                    <td className="r num"><Monto value={b.salidas} /></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div className="card">
+        <div className="chart-head">
+          Detalle
+          <span className="hact">
+            {kpi.movimientos > LIMITE
+              ? `los ${LIMITE} más recientes de ${formatNumero(kpi.movimientos)} · afine los filtros para ver el resto`
+              : `${formatNumero(detalle.length)} movimiento(s)`}
+          </span>
+        </div>
+        <div style={{ overflowX: "auto", maxHeight: 600, overflowY: "auto" }}>
+          <table>
+            <thead>
+              <tr>
+                <th>Fecha</th><th>Documento</th><th>Bodega</th><th>Inst.</th>
+                <th>Referencia</th><th>Descripción</th><th>Lote</th>
+                <th className="r">Ent.</th><th className="r">Sal.</th>
+                <th className="r">$ Entrada</th><th className="r">$ Salida</th>
+              </tr>
+            </thead>
+            <tbody>
+              {detalle.length === 0 && <tr><td colSpan={11}><div className="empty">Sin movimientos con estos filtros.</div></td></tr>}
+              {detalle.map((m, i) => (
+                <tr key={`${m.documento}-${m.referencia}-${i}`}>
+                  <td>{m.fecha.toISOString().slice(0, 10)}</td>
+                  <td title={m.descTipoDoc}><b>{m.tipoDoc}</b> {m.documento.slice(4)}</td>
+                  <td style={{ whiteSpace: "normal" }}>{m.bodegaCodigo} · {m.bodegaDesc}</td>
+                  <td>{m.instalacion}</td>
+                  <td style={{ fontWeight: 600 }}>{m.referencia}</td>
+                  <td style={{ whiteSpace: "normal" }}>{m.descripcion}</td>
+                  <td>{m.lote || "—"}</td>
+                  <td className="r num">{m.cantEntradas || ""}</td>
+                  <td className="r num">{m.cantSalidas || ""}</td>
+                  <td className="r num">{m.costoEntradas ? <Monto value={m.costoEntradas} /> : ""}</td>
+                  <td className="r num">{m.costoSalidas ? <Monto value={m.costoSalidas} /> : ""}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div className="card-body" style={{ fontSize: 12, color: "var(--muted)", borderTop: "1px solid var(--line)" }}>
+          Esta es la única vista del módulo con bodega: el balance mensual solo llega hasta instalación,
+          así que el <a href="/osteosintesis/valorizado">saldo valorizado</a> no se puede abrir por bodega, pero el movimiento sí.
+        </div>
+      </div>
+    </>
+  );
+}

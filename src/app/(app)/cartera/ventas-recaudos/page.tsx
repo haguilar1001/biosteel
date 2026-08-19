@@ -55,16 +55,27 @@ export default async function VentasRecaudosPage({
 
   // Cruce por nombre normalizado.
   const mapa = new Map<string, { label: string; ventas: number; recaudos: number }>();
+  // Lo que se deja por fuera se guarda para poder mostrarlo: si no, esta
+  // pantalla y /ventas dan cifras distintas y parece un error de datos.
+  const excluidos = new Map<string, { label: string; ventas: number; recaudos: number }>();
   for (const v of ventas) {
     const k = norm(v.clienteNombre);
-    if (setInterno.has(k)) continue;
+    if (setInterno.has(k)) {
+      const e = excluidos.get(k) ?? { label: v.clienteNombre, ventas: 0, recaudos: 0 };
+      e.ventas += v.valor; excluidos.set(k, e);
+      continue;
+    }
     const e = mapa.get(k) ?? { label: v.clienteNombre, ventas: 0, recaudos: 0 };
     e.ventas += v.valor;
     mapa.set(k, e);
   }
   for (const r of recaudos) {
     const k = norm(r.terceroNombre);
-    if (setInterno.has(k)) continue;
+    if (setInterno.has(k)) {
+      const e = excluidos.get(k) ?? { label: r.terceroNombre, ventas: 0, recaudos: 0 };
+      e.recaudos += r.total; excluidos.set(k, e);
+      continue;
+    }
     const e = mapa.get(k) ?? { label: r.terceroNombre, ventas: 0, recaudos: 0 };
     e.recaudos += r.total;
     // Prefiere un nombre "con letras" legible si el de ventas venía vacío.
@@ -75,6 +86,10 @@ export default async function VentasRecaudosPage({
   const filas = [...mapa.values()].sort((a, b) => Math.max(b.ventas, b.recaudos) - Math.max(a.ventas, a.recaudos));
   const totVentas = filas.reduce((s, f) => s + f.ventas, 0);
   const totRecaudos = filas.reduce((s, f) => s + f.recaudos, 0);
+  const fuera = [...excluidos.values()].filter((e) => e.ventas > 0 || e.recaudos > 0)
+    .sort((a, b) => b.ventas - a.ventas);
+  const fueraVentas = fuera.reduce((s, f) => s + f.ventas, 0);
+  const fueraRecaudos = fuera.reduce((s, f) => s + f.recaudos, 0);
 
   const items: BarraItem[] = filas
     .filter((f) => f.ventas > 0 || f.recaudos > 0)
@@ -129,6 +144,22 @@ export default async function VentasRecaudosPage({
           <div className="ksub"><span className="flag">{totRecaudos >= totVentas ? "se recaudó más de lo vendido" : "se vendió más de lo recaudado"}</span></div>
         </div>
       </div>
+
+      {fuera.length > 0 && (
+        <div className="card" style={{ marginBottom: 12 }}>
+          <div className="card-body" style={{ fontSize: 12.5, color: "var(--muted)" }}>
+            Esta pantalla <b>excluye {fuera.length} parte(s) relacionada(s)</b>, por eso su total de ventas no
+            coincide con el de <a href={`/ventas?anio=${anio}${mes ? `&mes=${mes}` : ""}`}>Ventas</a>, que las incluye.
+            Quedaron por fuera <b><Monto value={fueraVentas} /></b> en ventas
+            {fueraRecaudos > 0 && <> y <b><Monto value={fueraRecaudos} /></b> en recaudos</>}:{" "}
+            {fuera.map((f, i) => (
+              <span key={f.label}>
+                {i > 0 && " · "}{f.label} (<Monto value={f.ventas} />)
+              </span>
+            ))}.
+          </div>
+        </div>
+      )}
 
       <div style={{ marginBottom: 12 }}>
         <BarrasComparativas
