@@ -23,9 +23,17 @@ export interface FilaVenta extends VentaRow {
 export function limpiarMonto(v: unknown): number {
   if (v == null) return 0;
   if (typeof v === "number") return isFinite(v) ? v : 0;
-  const s = String(v).trim().replace(/\(/g, "-").replace(/\)/g, "").replace(/[^0-9.\-]/g, "");
+  const bruto = String(v).trim();
+  // El libro se lee con raw:false, o sea que llega el TEXTO ya formateado por
+  // Excel. Una celda con formato de porcentaje muestra "200%" cuando su valor
+  // real es 2: si solo se le quita el símbolo, la cifra queda multiplicada por
+  // cien. Pasó con la columna Cantidad del archivo de ventas 2026, donde los
+  // dos valores más frecuentes (1 y 2 unidades) llegaron como 100 y 200.
+  const esPorcentaje = bruto.includes("%");
+  const s = bruto.replace(/\(/g, "-").replace(/\)/g, "").replace(/[^0-9.\-]/g, "");
   const n = parseFloat(s);
-  return isFinite(n) ? n : 0;
+  if (!isFinite(n)) return 0;
+  return esPorcentaje ? n / 100 : n;
 }
 
 /** Fecha SIESA en formato M/D/AA (americano) → { ms, anio, mes }. */
