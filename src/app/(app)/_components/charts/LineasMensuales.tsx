@@ -35,24 +35,41 @@ export function LineasMensuales({
   series,
   height = 280,
   unidad = "millones COP",
+  desdeCero = true,
 }: {
   categorias: string[];
   series: SerieLinea[];
   height?: number;
   unidad?: string;
+  /**
+   * false = el eje arranca cerca del dato más bajo en vez de en cero. Para
+   * series de saldo (un stock que se mueve poco sobre una base grande) un eje
+   * desde cero aplasta la línea y no deja ver nada.
+   */
+  desdeCero?: boolean;
 }) {
   const width = 900;
   const padL = 58, padR = 16, padT = 14, padB = 30;
   const n = categorias.length;
   const vals = series.flatMap((s) => s.data.filter((v): v is number => v != null));
   const maxData = Math.max(1, ...vals);
-  // Máximo "redondo" para la escala (4 divisiones).
-  const paso = Math.pow(10, Math.floor(Math.log10(maxData / 4)));
-  const max = Math.ceil(maxData / paso) * paso;
+  const minData = Math.min(...vals, maxData);
   const divisiones = 4;
 
+  // Escala con extremos "redondos".
+  let min = 0, max: number;
+  if (desdeCero || minData <= 0) {
+    const paso = Math.pow(10, Math.floor(Math.log10(maxData / divisiones)));
+    max = Math.ceil(maxData / paso) * paso;
+  } else {
+    const rango = Math.max(maxData - minData, maxData * 0.02);
+    const paso = Math.pow(10, Math.floor(Math.log10(rango / divisiones)));
+    min = Math.floor((minData - rango * 0.25) / paso) * paso;
+    max = Math.ceil((maxData + rango * 0.25) / paso) * paso;
+  }
+
   const x = (i: number) => padL + (n <= 1 ? 0 : (i / (n - 1)) * (width - padL - padR));
-  const y = (v: number) => padT + (1 - v / max) * (height - padT - padB);
+  const y = (v: number) => padT + (1 - (v - min) / (max - min)) * (height - padT - padB);
   const millY = (v: number) => nf0.format(Math.round(v / 1e6));
 
   return (
@@ -73,7 +90,7 @@ export function LineasMensuales({
       <svg viewBox={`0 0 ${width} ${height}`} width="100%" height={height} style={{ display: "block", overflow: "visible" }}>
         {/* Grilla horizontal + etiquetas Y */}
         {Array.from({ length: divisiones + 1 }, (_, k) => {
-          const v = (max / divisiones) * k;
+          const v = min + ((max - min) / divisiones) * k;
           const yy = y(v);
           return (
             <g key={k}>

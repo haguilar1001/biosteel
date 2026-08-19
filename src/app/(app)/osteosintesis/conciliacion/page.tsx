@@ -30,7 +30,7 @@ function Dif({ valor }: { valor: number }) {
 
 export default async function ConciliacionPage({
   searchParams,
-}: { searchParams: Promise<{ anio?: string; mes?: string }> }) {
+}: { searchParams: Promise<{ anio?: string; mes?: string; inst?: string }> }) {
   await requirePermiso("osteo.view");
   const sp = await searchParams;
 
@@ -47,8 +47,9 @@ export default async function ConciliacionPage({
   }
 
   const anio = sp.anio && anios.includes(Number(sp.anio)) ? Number(sp.anio) : anios[anios.length - 1]!;
+  const inst = sp.inst && NOMBRE_INSTALACION[Number(sp.inst)] ? Number(sp.inst) : undefined;
   const [filas, cadena, meses] = await Promise.all([
-    conciliacion(anio), cadenaDeSaldos(), mesesConBalance(anio),
+    conciliacion(anio), cadenaDeSaldos(inst), mesesConBalance(anio),
   ]);
 
   // Mes del detalle: el pedido, o el primero que no cuadre, o ninguno.
@@ -153,7 +154,23 @@ export default async function ConciliacionPage({
       {/* Cadena de saldos */}
       <div className="card" style={{ marginBottom: 12 }}>
         <div className="chart-head">
-          Cadena de Saldos <span className="hact">todo lo cargado · el final de un mes debe ser el inicial del siguiente</span>
+          Cadena de Saldos
+          <span className="hact">
+            {inst ? `${inst} · ${NOMBRE_INSTALACION[inst]}` : "todas las instalaciones"} · el final de un mes debe ser el inicial del siguiente
+          </span>
+        </div>
+        <div className="card-body" style={{ paddingBottom: 0 }}>
+          <FiltroAuto className="toolbar">
+            <input type="hidden" name="anio" value={anio} />
+            {mes && <input type="hidden" name="mes" value={mes} />}
+            <label className="flag" style={{ alignSelf: "center" }}>Instalación:</label>
+            <select name="inst" defaultValue={inst ?? ""} className="select">
+              <option value="">Todas</option>
+              {[101, 102, 106].map((i) => (
+                <option key={i} value={i}>{i} · {NOMBRE_INSTALACION[i]}</option>
+              ))}
+            </select>
+          </FiltroAuto>
         </div>
         <div style={{ overflowX: "auto" }}>
           <table data-noorden>
@@ -162,6 +179,7 @@ export default async function ConciliacionPage({
                 <th>Periodo</th>
                 <th className="r">Saldo inicial</th><th className="r">Entradas</th>
                 <th className="r">Salidas</th><th className="r">Saldo final</th>
+                <th className="r">Variación</th>
                 <th className="r">Cierra solo</th><th className="r">Enlaza</th>
               </tr>
             </thead>
@@ -173,6 +191,9 @@ export default async function ConciliacionPage({
                   <td className="r num"><Monto value={c.entradas} /></td>
                   <td className="r num"><Monto value={c.salidas} /></td>
                   <td className="r num" style={{ fontWeight: 700 }}><Monto value={c.final} /></td>
+                  <td className="r num" style={{ fontWeight: 600, color: c.variacion < 0 ? "var(--bad)" : "var(--ok)" }}>
+                    {c.variacion >= 0 ? "▲ " : "▼ "}<Monto value={Math.abs(c.variacion)} />
+                  </td>
                   <td className="r"><Dif valor={c.saltoInterno} /></td>
                   <td className="r">{c.saltoEnlace == null
                     ? <span style={{ color: "var(--muted)" }}>base</span>
@@ -182,6 +203,19 @@ export default async function ConciliacionPage({
             </tbody>
           </table>
         </div>
+        {cadena.length > 1 && (() => {
+          const primero = cadena[0]!, ultimo = cadena[cadena.length - 1]!;
+          const total = ultimo.final - primero.inicial;
+          const pct = primero.inicial > 0 ? (total / primero.inicial) * 100 : 0;
+          return (
+            <div className="card-body" style={{ fontSize: 12.5, borderTop: "1px solid var(--line)" }}>
+              De {MES_CORTO[primero.mes]} {primero.anio} a {MES_CORTO[ultimo.mes]} {ultimo.anio} el inventario
+              {total < 0 ? " bajó " : " subió "}
+              <b style={{ color: total < 0 ? "var(--bad)" : "var(--ok)" }}><Monto value={Math.abs(total)} /></b>
+              {" "}({Math.abs(pct).toFixed(1)}%), de <Monto value={primero.inicial} /> a <Monto value={ultimo.final} />.
+            </div>
+          );
+        })()}
       </div>
 
       {/* Detalle del mes elegido */}

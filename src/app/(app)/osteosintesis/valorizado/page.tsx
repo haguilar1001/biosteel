@@ -33,7 +33,7 @@ function Rotacion({ meses }: { meses: number | null }) {
 
 export default async function ValorizadoPage({
   searchParams,
-}: { searchParams: Promise<{ anio?: string; mes?: string; dim?: string }> }) {
+}: { searchParams: Promise<{ anio?: string; mes?: string; dim?: string; inst?: string }> }) {
   await requirePermiso("osteo.view");
   const sp = await searchParams;
 
@@ -52,16 +52,18 @@ export default async function ValorizadoPage({
   const meses = await mesesConBalance(anio);
   const mes = sp.mes && meses.includes(Number(sp.mes)) ? Number(sp.mes) : meses[meses.length - 1]!;
   const dim: Dimension = (sp.dim && sp.dim in DIMENSIONES ? sp.dim : "marca") as Dimension;
+  const inst = sp.inst && NOMBRE_INSTALACION[Number(sp.inst)] ? Number(sp.inst) : undefined;
 
   const [kpi, porInst, porDim, evolucion, items] = await Promise.all([
-    resumenValorizado(anio, mes),
+    resumenValorizado(anio, mes, inst),
     saldoPorInstalacion(anio, mes),
-    saldoPorDimension(anio, mes, dim),
-    evolucionSaldo(),
-    itemsConSaldo(anio, mes, 60),
+    saldoPorDimension(anio, mes, dim, inst),
+    evolucionSaldo(inst),
+    itemsConSaldo(anio, mes, 60, inst),
   ]);
 
-  const variacion = kpi.valorAnterior > 0 ? ((kpi.valor - kpi.valorAnterior) / kpi.valorAnterior) * 100 : 0;
+  const variacionValor = kpi.valor - kpi.valorAnterior;
+  const variacion = kpi.valorAnterior > 0 ? (variacionValor / kpi.valorAnterior) * 100 : 0;
   const serieAnio = evolucion.filter((p) => p.anio === anio);
   const quietos = porDim.filter((d) => d.mesesInventario == null || d.mesesInventario > 8);
   const valorQuieto = quietos.reduce((a, d) => a + d.valor, 0);
@@ -73,7 +75,8 @@ export default async function ValorizadoPage({
           <div>
             <div className="eyebrow" style={{ fontSize: 15 }}>Inventario Valorizado · {MES_LARGO[mes]} {anio}</div>
             <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 3 }}>
-              Saldo del balance mensual, a costo promedio.
+              Saldo del balance mensual, a costo promedio
+              {inst ? ` · solo ${inst} · ${NOMBRE_INSTALACION[inst]}` : " · todas las instalaciones"}.
             </div>
           </div>
           <FiltroAuto className="toolbar">
@@ -85,6 +88,11 @@ export default async function ValorizadoPage({
             <select name="mes" defaultValue={mes} className="select">
               {meses.map((m) => <option key={m} value={m}>{MES_LARGO[m]}</option>)}
             </select>
+            <label className="flag" style={{ alignSelf: "center" }}>Instalación:</label>
+            <select name="inst" defaultValue={inst ?? ""} className="select">
+              <option value="">Todas</option>
+              {[101, 102, 106].map((i) => <option key={i} value={i}>{i} · {NOMBRE_INSTALACION[i]}</option>)}
+            </select>
             <input type="hidden" name="dim" value={dim} />
           </FiltroAuto>
         </div>
@@ -94,8 +102,8 @@ export default async function ValorizadoPage({
         <div className="kpi kc">
           <div className="klabel">Saldo en inventario</div>
           <div className="kval num"><Monto value={kpi.valor} /></div>
-          <div className="ksub" style={{ color: variacion > 0 ? "var(--bad)" : "var(--ok)" }}>
-            {variacion >= 0 ? "▲" : "▼"} {Math.abs(variacion).toFixed(1)}% vs mes anterior
+          <div className="ksub" style={{ color: variacionValor < 0 ? "var(--bad)" : "var(--ok)" }}>
+            {variacionValor >= 0 ? "▲" : "▼"} <Monto value={Math.abs(variacionValor)} /> ({Math.abs(variacion).toFixed(1)}%) vs mes anterior
           </div>
         </div>
         <div className="kpi kc k-w">
@@ -116,19 +124,37 @@ export default async function ValorizadoPage({
       {/* Evolución + composición por instalación */}
       <div className="grid" style={{ gridTemplateColumns: "minmax(340px, 1.6fr) minmax(280px, 1fr)", marginBottom: 12, alignItems: "start" }}>
         <div className="card">
-          <div className="chart-head">Evolución del Saldo <span className="hact">{anio} · cierre de cada mes</span></div>
+          <div className="chart-head">
+            Evolución del Saldo
+            <span className="hact">{anio} · cierre de cada mes{inst ? ` · ${NOMBRE_INSTALACION[inst]}` : ""}</span>
+          </div>
           <div className="card-body">
             {serieAnio.length < 2 ? <div className="empty">Se necesitan al menos dos meses cargados.</div> : (
-              <LineasMensuales
-                categorias={serieAnio.map((p) => MES_CORTO[p.mes]!)}
-                series={[{ label: "Saldo final", color: "var(--brand)", data: serieAnio.map((p) => p.valor / 1e6) }]}
-              />
+              <>
+                <LineasMensuales
+                  desdeCero={false}
+                  categorias={serieAnio.map((p) => MES_CORTO[p.mes]!)}
+                  series={[{ label: "Saldo final", color: "var(--brand)", data: serieAnio.map((p) => p.valor) }]}
+                />
+                {(() => {
+                  const ini = serieAnio[0]!, fin = serieAnio[serieAnio.length - 1]!;
+                  const dif = fin.valor - ini.valor;
+                  const pct = ini.valor > 0 ? (dif / ini.valor) * 100 : 0;
+                  return (
+                    <div style={{ marginTop: 8, fontSize: 12.5 }}>
+                      De {MES_CORTO[ini.mes]} a {MES_CORTO[fin.mes]} el inventario{dif < 0 ? " bajó " : " subió "}
+                      <b style={{ color: dif < 0 ? "var(--bad)" : "var(--ok)" }}><Monto value={Math.abs(dif)} /></b>
+                      {" "}({Math.abs(pct).toFixed(1)}%).
+                    </div>
+                  );
+                })()}
+              </>
             )}
           </div>
         </div>
 
         <div className="card">
-          <div className="chart-head">Por Instalación <span className="hact">{MES_CORTO[mes]} {anio}</span></div>
+          <div className="chart-head">Por Instalación <span className="hact">{MES_CORTO[mes]} {anio} · siempre el total</span></div>
           <div className="card-body" style={{ display: "grid", placeItems: "center" }}>
             <Donut
               azul
@@ -137,7 +163,7 @@ export default async function ValorizadoPage({
                 label: `${i.instalacion} · ${NOMBRE_INSTALACION[i.instalacion] ?? "?"}`,
                 valor: i.valor,
               }))}
-              centro={{ valor: mill(kpi.valor), etiqueta: "en inventario" }}
+              centro={{ valor: mill(porInst.reduce((a, i) => a + i.valor, 0)), etiqueta: "en inventario" }}
             />
             <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 10, textAlign: "center" }}>
               La instalación 106 (aprovechamiento) no aparece: tiene{" "}

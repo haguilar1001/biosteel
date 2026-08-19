@@ -1221,3 +1221,38 @@ model InvMovimiento {
   @@index([documento])
   @@index([instalacion])
 }
+
+// ==========================================================
+// ASISTENCIA TÉCNICA — evaluaciones de seguimiento a los asesores
+// quirúrgicos dentro del procedimiento. Indicador de calidad.
+//
+// Se guarda la evaluación cruda (una fila por cirugía evaluada) y todo lo
+// demás se calcula: los promedios por mes, por asesor y por ítem, y la
+// calificación final. Así el histórico no depende de cómo se agregó.
+// ==========================================================
+model EvaluacionAsesor {
+  id            Int      @id @default(autoincrement())
+  fecha         DateTime @db.Date
+  anio          Int
+  mes           Int
+  paciente      String   @default("")
+  procedimiento String   @default("")
+  ips           String   @default("")
+  especialista  String   @default("")
+  asesor        String
+
+  // Ítems 1–4, en escala 1–5.
+  conocimiento Decimal @db.Decimal(4, 2)
+  desempeno    Decimal @db.Decimal(4, 2)
+  capacidad    Decimal @db.Decimal(4, 2)
+  habilidad    Decimal @db.Decimal(4, 2)
+
+  // Ítems 5–7: true = SÍ hubo. Un "NO" vale 5 puntos (ver METODOLOGIA).
+  novedades  Boolean @default(false)
+  eventos    Boolean @default(false)
+  incidentes Boolean @default(false)
+
+  @@index([anio, mes])
+  @@index([asesor])
+  @@index([fecha])
+}

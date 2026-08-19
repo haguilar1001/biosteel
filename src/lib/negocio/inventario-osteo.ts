@@ -30,6 +30,14 @@ export const MES_CORTO = ["", "Ene", "Feb", "Mar", "Abr", "May", "Jun",
 
 const n = (v: unknown): number => (v == null ? 0 : Number(v));
 
+/** Instalación por la que se filtra una vista; undefined = todas. */
+export type FiltroInstalacion = number | undefined;
+
+/** Fragmento SQL para acotar por instalación (se interpola un número validado). */
+function soloInst(inst: FiltroInstalacion, col = "instalacion"): string {
+  return inst && NOMBRE_INSTALACION[inst] ? ` AND ${col} = ${inst}` : "";
+}
+
 export interface FilaConciliacion {
   mes: number;
   instalacion: number;
@@ -96,18 +104,21 @@ export interface FilaCadena {
   saltoEnlace: number | null;
   /** (inicial + entradas − salidas) − final: si no da 0, el mes no es consistente. */
   saltoInterno: number;
+  /** final − inicial: cuánto subió (+) o bajó (−) el inventario en el mes. */
+  variacion: number;
 }
 
 /**
  * Cadena de saldos de todo lo cargado. Dos validaciones distintas:
  * que cada mes cierre solo, y que enlace con el mes anterior.
  */
-export async function cadenaDeSaldos(): Promise<FilaCadena[]> {
-  const filas = await prisma.$queryRaw<Record<string, unknown>[]>`
+export async function cadenaDeSaldos(inst?: FiltroInstalacion): Promise<FilaCadena[]> {
+  const filas = await prisma.$queryRawUnsafe<Record<string, unknown>[]>(`
     SELECT anio, mes,
            SUM("valorInicial") AS ini, SUM("valorEntradas") AS ent,
            SUM("valorSalidas") AS sal, SUM("valorFinal") AS fin
-    FROM "InvBalance" GROUP BY anio, mes ORDER BY anio, mes`;
+    FROM "InvBalance" WHERE TRUE${soloInst(inst)}
+    GROUP BY anio, mes ORDER BY anio, mes`);
 
   let anterior: number | null = null;
   return filas.map((f) => {
@@ -117,6 +128,7 @@ export async function cadenaDeSaldos(): Promise<FilaCadena[]> {
       finalAnterior: anterior,
       saltoEnlace: anterior == null ? null : inicial - anterior,
       saltoInterno: inicial + entradas - salidas - final,
+      variacion: final - inicial,
     };
     anterior = final;
     return fila;
@@ -251,9 +263,9 @@ export interface ResumenValorizado {
 }
 
 /** KPIs del mes: saldo, movimiento y lo que no tiene costo. */
-export async function resumenValorizado(anio: number, mes: number): Promise<ResumenValorizado> {
+export async function resumenValorizado(anio: number, mes: number, inst?: FiltroInstalacion): Promise<ResumenValorizado> {
   const anterior = mes === 1 ? { anio: anio - 1, mes: 12 } : { anio, mes: mes - 1 };
-  const filas = await prisma.$queryRaw<Record<string, unknown>[]>`
+  const filas = await prisma.$queryRawUnsafe<Record<string, unknown>[]>(`
     SELECT
       SUM("valorFinal") AS valor,
       SUM("cantFinal") AS unidades,
@@ -262,10 +274,10 @@ export async function resumenValorizado(anio: number, mes: number): Promise<Resu
       SUM("valorSalidas") AS salidas,
       COUNT(*) FILTER (WHERE "cantFinal" > 0 AND "valorFinal" = 0) AS items_sc,
       COALESCE(SUM("cantFinal") FILTER (WHERE "cantFinal" > 0 AND "valorFinal" = 0), 0) AS und_sc
-    FROM "InvBalance" WHERE anio = ${anio} AND mes = ${mes}`;
-  const prev = await prisma.$queryRaw<Record<string, unknown>[]>`
+    FROM "InvBalance" WHERE anio = ${anio} AND mes = ${mes}${soloInst(inst)}`);
+  const prev = await prisma.$queryRawUnsafe<Record<string, unknown>[]>(`
     SELECT SUM("valorFinal") AS valor FROM "InvBalance"
-    WHERE anio = ${anterior.anio} AND mes = ${anterior.mes}`;
+    WHERE anio = ${anterior.anio} AND mes = ${anterior.mes}${soloInst(inst)}`);
   const f = filas[0] ?? {};
   return {
     valor: n(f.valor), unidades: n(f.unidades), items: n(f.items),
@@ -301,7 +313,7 @@ export interface SaldoDimension {
  * salidas del año corrido: un ítem con mucho saldo y poca salida es plata
  * quieta, y eso es lo que hay que poder ver.
  */
-export async function saldoPorDimension(anio: number, mes: number, dim: Dimension): Promise<SaldoDimension[]> {
+export async function saldoPorDimension(anio: number, mes: number, dim: Dimension, inst?: FiltroInstalacion): Promise<SaldoDimension[]> {
   // `dim` está acotado por el tipo Dimension; el nombre de columna nunca viene del usuario.
   const col = `"${dim}"`;
   const filas = await prisma.$queryRawUnsafe<Record<string, unknown>[]>(`
@@ -309,10 +321,10 @@ export async function saldoPorDimension(anio: number, mes: number, dim: Dimensio
       SELECT ${col} AS label, SUM("valorFinal") AS valor, SUM("cantFinal") AS unidades,
              COUNT(*) FILTER (WHERE "cantFinal" <> 0) AS items,
              SUM("valorEntradas") AS entradas, SUM("valorSalidas") AS salidas
-      FROM "InvBalance" WHERE anio = $1 AND mes = $2 GROUP BY 1
+      FROM "InvBalance" WHERE anio = $1 AND mes = $2${soloInst(inst)} GROUP BY 1
     ), anual AS (
       SELECT ${col} AS label, SUM("valorSalidas") AS salidas_anio, COUNT(DISTINCT mes) AS meses
-      FROM "InvBalance" WHERE anio = $1 AND mes <= $2 GROUP BY 1
+      FROM "InvBalance" WHERE anio = $1 AND mes <= $2${soloInst(inst)} GROUP BY 1
     )
     SELECT s.label, s.valor, s.unidades, s.items, s.entradas, s.salidas,
            a.salidas_anio, a.meses
@@ -334,10 +346,11 @@ export async function saldoPorDimension(anio: number, mes: number, dim: Dimensio
 export interface PuntoMes { anio: number; mes: number; valor: number; unidades: number }
 
 /** Serie del saldo final mes a mes, para ver la tendencia. */
-export async function evolucionSaldo(): Promise<PuntoMes[]> {
-  const filas = await prisma.$queryRaw<Record<string, unknown>[]>`
+export async function evolucionSaldo(inst?: FiltroInstalacion): Promise<PuntoMes[]> {
+  const filas = await prisma.$queryRawUnsafe<Record<string, unknown>[]>(`
     SELECT anio, mes, SUM("valorFinal") AS valor, SUM("cantFinal") AS unidades
-    FROM "InvBalance" GROUP BY anio, mes ORDER BY anio, mes`;
+    FROM "InvBalance" WHERE TRUE${soloInst(inst)}
+    GROUP BY anio, mes ORDER BY anio, mes`);
   return filas.map((f) => ({
     anio: n(f.anio), mes: n(f.mes), valor: n(f.valor), unidades: n(f.unidades),
   }));
@@ -355,21 +368,21 @@ export interface ItemSaldo {
  * Ítems de mayor saldo, con cuántos meses llevan sin salir. Es la lista para
  * atacar inventario quieto.
  */
-export async function itemsConSaldo(anio: number, mes: number, limite = 100): Promise<ItemSaldo[]> {
-  const filas = await prisma.$queryRaw<Record<string, unknown>[]>`
+export async function itemsConSaldo(anio: number, mes: number, limite = 100, inst?: FiltroInstalacion): Promise<ItemSaldo[]> {
+  const filas = await prisma.$queryRawUnsafe<Record<string, unknown>[]>(`
     WITH ult AS (
       SELECT item, instalacion, MAX(mes) AS ultimo_mov
       FROM "InvBalance"
-      WHERE anio = ${anio} AND mes <= ${mes} AND "cantSalidas" > 0
+      WHERE anio = ${anio} AND mes <= ${mes} AND "cantSalidas" > 0${soloInst(inst)}
       GROUP BY item, instalacion
     )
     SELECT b.item, b.referencia, b.descripcion, b.instalacion, b.marca,
            b."cantFinal" AS unidades, b."valorFinal" AS valor,
            ${mes} - COALESCE(u.ultimo_mov, 0) AS sin_salida
     FROM "InvBalance" b LEFT JOIN ult u ON u.item = b.item AND u.instalacion = b.instalacion
-    WHERE b.anio = ${anio} AND b.mes = ${mes} AND b."cantFinal" > 0
+    WHERE b.anio = ${anio} AND b.mes = ${mes} AND b."cantFinal" > 0${soloInst(inst, 'b.instalacion')}
     ORDER BY b."valorFinal" DESC
-    LIMIT ${limite}`;
+    LIMIT ${limite}`);
 
   return filas.map((f) => {
     const unidades = n(f.unidades), valor = n(f.valor);
