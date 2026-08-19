@@ -1188,6 +1188,9 @@ model InvMovimiento {
   anio         Int
   mes          Int
   bodegaCodigo String
+  /// Instalación que declara el propio export (columna "Instalación").
+  /// Los export viejos no la traen: en ese caso se cae a InvBodega.instalacion.
+  instalacion  Int?
   referencia   String
   descripcion  String   @default("")
   lote         String   @default("")
@@ -1216,4 +1219,5 @@ model InvMovimiento {
   @@index([referencia])
   @@index([tipoDoc])
   @@index([documento])
+  @@index([instalacion])
 }

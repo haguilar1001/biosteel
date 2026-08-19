@@ -150,18 +150,19 @@ export const CARGAS: CargaDef[] = [
     clave: "inv-movimientos", titulo: "Inventario · Movimientos", permiso: "carga.inv.movimientos",
     archivoSugerido: "MOVIMIENTOS DE INVENTARIO.xlsx",
     async procesar(buffer, nombre) {
-      const conocidas = new Set((await prisma.invBodega.findMany({ select: { codigo: true } })).map((b) => b.codigo));
-      if (!conocidas.size) throw new Error("Primero cargue las Tablas Auxiliares: sin el catálogo de bodegas no se puede asignar la instalación.");
-      const m = parseMovimientos(buffer, conocidas);
-      if (!m.datos.length) throw new Error("El archivo no trae movimientos con bodega reconocida.");
+      const catalogo = new Map((await prisma.invBodega.findMany({ select: { codigo: true, instalacion: true } })).map((b) => [b.codigo, b.instalacion]));
+      const m = parseMovimientos(buffer, catalogo);
+      if (!m.datos.length) throw new Error("El archivo no trae movimientos con instalación identificable.");
       const cargadas = await persistirMovimientos(m);
+      const nuevas = m.bodegasNuevas.size ? ` · ${m.bodegasNuevas.size} bodega(s) dadas de alta desde el archivo [${[...m.bodegasNuevas.keys()].join(", ")}]` : "";
+      const choque = m.choques.size ? ` · ${m.choques.size} bodega(s) donde el catálogo dice otra instalación (manda el archivo): ${[...m.choques].map(([k, v]) => `${k} ${v.catalogo}→${v.archivo}`).join(", ")}` : "";
       const sinBodega = m.bodegasDesconocidas.size
-        ? ` · OJO: ${m.bodegasDesconocidas.size} bodega(s) sin catalogar quedaron fuera [${[...m.bodegasDesconocidas.keys()].join(", ")}]`
+        ? ` · OJO: ${m.bodegasDesconocidas.size} bodega(s) sin instalación quedaron fuera [${[...m.bodegasDesconocidas.keys()].join(", ")}]`
         : "";
       return {
         titulo: "Inventario · Movimientos", archivo: nombre, hoja: m.hoja,
         filas: m.filas, cargadas, omitidas: m.filas - cargadas,
-        estrategia: `reemplaza ${m.periodos.length} periodo(s) [${m.periodos[0]} … ${m.periodos[m.periodos.length - 1]}]: ${nf.format(cargadas)} movimientos${sinBodega}`,
+        estrategia: `reemplaza ${m.periodos.length} periodo(s) [${m.periodos[0]} … ${m.periodos[m.periodos.length - 1]}]: ${nf.format(cargadas)} movimientos${nuevas}${choque}${sinBodega}`,
       };
     },
   },

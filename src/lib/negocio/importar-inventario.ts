@@ -198,7 +198,12 @@ export async function persistirBalance(b: BalanceParsed): Promise<number> {
 
 export interface MovimientosParsed {
   hoja: string; filas: number; periodos: string[];
+  /** Bodegas ausentes del catálogo que el propio archivo ubica (se dan de alta). */
+  bodegasNuevas: Map<string, { descripcion: string; instalacion: number }>;
+  /** Bodegas ausentes y sin instalación en el archivo: no se pueden cargar. */
   bodegasDesconocidas: Map<string, string>;
+  /** Bodegas donde el catálogo y el archivo no coinciden (manda el archivo). */
+  choques: Map<string, { catalogo: number; archivo: number; movs: number }>;
   datos: Record<string, unknown>[];
 }
 
@@ -214,7 +219,7 @@ function fecha(v: unknown): Date | null {
   return Number.isNaN(d.getTime()) ? null : new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
 }
 
-export function parseMovimientos(buffer: Buffer, codigosConocidos: Set<string>): MovimientosParsed {
+export function parseMovimientos(buffer: Buffer, catalogo: Map<string, number>): MovimientosParsed {
   const wb = XLSX.read(buffer, { type: "buffer", cellDates: true });
   const hoja = wb.SheetNames[0]!;
   const rows = XLSX.utils.sheet_to_json<unknown[]>(wb.Sheets[hoja]!, { header: 1, defval: null });
@@ -228,10 +233,14 @@ export function parseMovimientos(buffer: Buffer, codigosConocidos: Set<string>):
   const iVE = exigir(h, "Costo entradas (prom.)"), iVS = exigir(h, "Costo salidas (prom.)");
   const iVU = h.get("Costo unitario (prom.)");
   const iMar = h.get("MARCA"), iLin = h.get("LÍNEA"), iAna = h.get("ANATOMIA");
+  // Los export por mes traen la instalación; el consolidado viejo no.
+  const iInst = h.get("Instalación") ?? h.get("Instalacion");
 
   const datos: Record<string, unknown>[] = [];
   const periodos = new Set<string>();
+  const bodegasNuevas = new Map<string, { descripcion: string; instalacion: number }>();
   const bodegasDesconocidas = new Map<string, string>();
+  const choques = new Map<string, { catalogo: number; archivo: number; movs: number }>();
   let leidas = 0;
 
   for (let i = 1; i < rows.length; i++) {
@@ -241,15 +250,25 @@ export function parseMovimientos(buffer: Buffer, codigosConocidos: Set<string>):
     const f = fecha(r[iFec]);
     if (!f) continue;
     const bodegaCodigo = txt(r[iBod]);
+    const bodegaDesc = iBodDesc != null ? txt(r[iBodDesc]) : "";
+    const delCatalogo = catalogo.get(bodegaCodigo);
+    const delArchivo = iInst != null && r[iInst] != null ? Math.trunc(num(r[iInst])) : undefined;
+    const instalacion = delArchivo ?? delCatalogo;
     // Sin instalación no se puede conciliar: se reporta en vez de cargarse a ciegas.
-    if (!codigosConocidos.has(bodegaCodigo)) {
-      bodegasDesconocidas.set(bodegaCodigo, iBodDesc != null ? txt(r[iBodDesc]) : "");
+    if (instalacion == null || !INSTALACIONES[instalacion]) {
+      bodegasDesconocidas.set(bodegaCodigo, bodegaDesc);
       continue;
+    }
+    if (delCatalogo == null) {
+      bodegasNuevas.set(bodegaCodigo, { descripcion: bodegaDesc, instalacion });
+    } else if (delArchivo != null && delArchivo !== delCatalogo) {
+      const c = choques.get(bodegaCodigo) ?? { catalogo: delCatalogo, archivo: delArchivo, movs: 0 };
+      c.movs++; choques.set(bodegaCodigo, c);
     }
     const anio = f.getUTCFullYear(), mes = f.getUTCMonth() + 1;
     periodos.add(`${anio}-${String(mes).padStart(2, "0")}`);
     datos.push({
-      fecha: f, anio, mes, bodegaCodigo,
+      fecha: f, anio, mes, bodegaCodigo, instalacion: delArchivo ?? null,
       referencia: txt(r[iRef]), descripcion: iDesc != null ? txt(r[iDesc]) : "",
       lote: iLote != null ? txt(r[iLote]) : "",
       documento, tipoDoc: documento.slice(0, 3).toUpperCase(),
@@ -263,7 +282,7 @@ export function parseMovimientos(buffer: Buffer, codigosConocidos: Set<string>):
       usuario: iUsr != null ? txt(r[iUsr]) : "", notas: iNot != null ? txt(r[iNot]) : "",
     });
   }
-  return { hoja, filas: leidas, periodos: [...periodos].sort(), bodegasDesconocidas, datos };
+  return { hoja, filas: leidas, periodos: [...periodos].sort(), bodegasNuevas, bodegasDesconocidas, choques, datos };
 }
 
 /**
@@ -272,6 +291,15 @@ export function parseMovimientos(buffer: Buffer, codigosConocidos: Set<string>):
  * que reemplazarlo entero, no acumular.
  */
 export async function persistirMovimientos(m: MovimientosParsed): Promise<number> {
+  // Las bodegas que el archivo ubica pero el catálogo no tiene se dan de alta
+  // (marcadas como inferidas), para no perder sus movimientos.
+  for (const [codigo, def] of m.bodegasNuevas) {
+    await prisma.invBodega.upsert({
+      where: { codigo },
+      update: {},
+      create: { codigo, descripcion: def.descripcion, instalacion: def.instalacion, inferida: true },
+    });
+  }
   for (const p of m.periodos) {
     const [anio, mes] = p.split("-").map(Number);
     await prisma.invMovimiento.deleteMany({ where: { anio, mes } });

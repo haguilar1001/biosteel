@@ -55,6 +55,7 @@ export const MENU_BASE: MenuGrupoDef[] = [
     { href: "/inventario/ciudades", label: "📍 Por Ciudad", permiso: "inventario.view", seccion: "Equipos" },
     { href: "/inventario/estados", label: "🔍 Por Estado", permiso: "inventario.view", seccion: "Equipos" },
     { href: "/inventario/novedades", label: "🔔 Novedades", permiso: "inventario.view", seccion: "Equipos" },
+    { href: "/osteosintesis/conciliacion", label: "⚖️ Conciliación", permiso: "osteo.view", seccion: "Material" },
   ] },
 ];
 

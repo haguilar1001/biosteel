@@ -16,7 +16,7 @@ import path from "node:path";
 import {
   parseTablasAuxiliares, persistirBodegas,
   parseBalance, persistirBalance,
-  parseMovimientos, persistirMovimientos,
+  parseMovimientos, persistirMovimientos, type MovimientosParsed,
 } from "../src/lib/negocio/importar-inventario";
 import { prisma } from "../src/lib/db";
 
@@ -69,23 +69,84 @@ async function main() {
   }
 
   // --- 3) Movimientos ---
+  // SIESA los entrega consolidados o partidos por mes, y los archivos se
+  // solapan (el de marzo trae febrero repetido; el consolidado los trae todos).
+  //
+  // NO se pueden deduplicar fila a fila: el "Orden interno" NO es estable entre
+  // exportaciones. Junio traía 15.372 filas en su archivo y 15.371 en el
+  // consolidado sin una sola clave repetida, y el mes quedó al doble.
+  //
+  // Regla: cada periodo lo aporta UN SOLO archivo, el más específico (el de
+  // mes le gana al consolidado; entre dos del mismo tipo, el último en orden).
   if (hacer("movimientos")) {
-    const [ruta] = buscar((n) => n.includes("MOVIMIENTOS"));
-    if (!ruta) {
-      console.log("   · sin archivo de MOVIMIENTOS en el directorio");
+    const rutas = buscar((n) => n.includes("MOVIMIENTOS") || /\bMOV\b/.test(n));
+    if (!rutas.length) {
+      console.log("   · sin archivos de movimientos en el directorio");
     } else {
-      const conocidas = new Set((await prisma.invBodega.findMany({ select: { codigo: true } })).map((b) => b.codigo));
-      if (!conocidas.size) {
+      const catalogo = new Map(
+        (await prisma.invBodega.findMany({ select: { codigo: true, instalacion: true } }))
+          .map((b) => [b.codigo, b.instalacion] as const),
+      );
+      if (!catalogo.size) {
         console.error("❌ No hay bodegas cargadas. Corra primero el paso de bodegas.");
         process.exit(1);
       }
-      const m = parseMovimientos(fs.readFileSync(ruta), conocidas);
-      const cargadas = await persistirMovimientos(m);
-      console.log(`   ✓ ${path.basename(ruta)} → ${fmt(cargadas)} movimientos de ${fmt(m.filas)}`);
-      console.log(`     periodos: ${m.periodos.length} [${m.periodos[0]} … ${m.periodos.at(-1)}]`);
-      if (m.bodegasDesconocidas.size) {
-        console.log(`     ⚠️  ${m.bodegasDesconocidas.size} bodega(s) sin catalogar quedaron fuera:`);
-        for (const [cod, desc] of m.bodegasDesconocidas) console.log(`        ${cod} — ${desc}`);
+      const total: MovimientosParsed = {
+        hoja: "", filas: 0, periodos: [], datos: [],
+        bodegasNuevas: new Map(), bodegasDesconocidas: new Map(), choques: new Map(),
+      };
+      // periodo -> filas del archivo que lo aporta, con su rango para desempatar
+      const elegido = new Map<string, { archivo: string; rango: number; filas: Record<string, unknown>[] }>();
+
+      for (const [orden, ruta] of rutas.entries()) {
+        const nombre = path.basename(ruta);
+        // Un archivo por mes es más específico que el consolidado.
+        const rango = nombre.toUpperCase().includes("MOVIMIENTOS") ? orden : 1000 + orden;
+        const m = parseMovimientos(fs.readFileSync(ruta), catalogo);
+        total.filas += m.filas;
+        for (const [k, v] of m.bodegasNuevas) total.bodegasNuevas.set(k, v);
+        for (const [k, v] of m.bodegasDesconocidas) total.bodegasDesconocidas.set(k, v);
+
+        const porPeriodo = new Map<string, Record<string, unknown>[]>();
+        for (const d of m.datos) {
+          const p = `${d.anio}-${String(d.mes).padStart(2, "0")}`;
+          const lista = porPeriodo.get(p) ?? [];
+          lista.push(d); porPeriodo.set(p, lista);
+        }
+        const gana: string[] = [], pierde: string[] = [];
+        for (const [p, filas] of porPeriodo) {
+          const actual = elegido.get(p);
+          if (actual && actual.rango >= rango) { pierde.push(p); continue; }
+          elegido.set(p, { archivo: nombre, rango, filas });
+          gana.push(p);
+        }
+        console.log(`   · ${nombre} → ${fmt(m.filas)} filas · aporta [${gana.sort().join(", ") || "—"}]${pierde.length ? ` · descartado en [${pierde.sort().join(", ")}]` : ""}`);
+      }
+
+      for (const [, v] of elegido) total.datos.push(...v.filas);
+      // Los choques de instalación se cuentan solo sobre lo que quedó.
+      for (const d of total.datos) {
+        const cod = String(d.bodegaCodigo);
+        const arch = d.instalacion as number | null;
+        const cat = catalogo.get(cod);
+        if (arch == null || cat == null || arch === cat) continue;
+        const c = total.choques.get(cod) ?? { catalogo: cat, archivo: arch, movs: 0 };
+        c.movs++; total.choques.set(cod, c);
+      }
+      total.periodos = [...elegido.keys()].sort();
+      const cargadas = await persistirMovimientos(total);
+      console.log(`   ✓ ${fmt(cargadas)} movimientos en ${total.periodos.length} periodo(s) [${total.periodos[0]} … ${total.periodos.at(-1)}]`);
+      if (total.bodegasNuevas.size) {
+        console.log(`     + ${total.bodegasNuevas.size} bodega(s) dadas de alta desde el archivo:`);
+        for (const [cod, v] of total.bodegasNuevas) console.log(`        ${cod} — ${v.descripcion} → instalación ${v.instalacion}`);
+      }
+      if (total.choques.size) {
+        console.log("     ⚠️  el catálogo dice otra instalación (manda el archivo):");
+        for (const [cod, v] of total.choques) console.log(`        ${cod}: catálogo ${v.catalogo} → archivo ${v.archivo} (${fmt(v.movs)} movs)`);
+      }
+      if (total.bodegasDesconocidas.size) {
+        console.log(`     ⚠️  ${total.bodegasDesconocidas.size} bodega(s) sin instalación quedaron fuera:`);
+        for (const [cod, desc] of total.bodegasDesconocidas) console.log(`        ${cod} — ${desc}`);
       }
     }
   }

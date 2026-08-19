@@ -1,9 +1,10 @@
 "use client";
 // ==========================================================
-// Navegación por grupos con lista desplegable.
-// Cada grupo de la barra azul abre un menú con sus opciones; dentro del
-// menú los ítems pueden venir separados por sección (p. ej. Inventarios
-// se divide en Equipos y Osteosíntesis).
+// Navegación por grupos con lista desplegable de dos niveles.
+// Cada grupo de la barra azul abre su menú; dentro, los ítems que declaran
+// `seccion` se agrupan en subgrupos plegables (Inventarios → Equipos,
+// Material…). El subgrupo de la página actual se abre solo.
+// Los ítems sin sección quedan sueltos arriba, sin subgrupo.
 // El grupo activo se deduce de la ruta actual (el ítem más específico gana).
 // ==========================================================
 import Link from "next/link";
@@ -34,7 +35,7 @@ function grupoActivo(grupos: Grupo[], pathname: string): Grupo | undefined {
   return best?.g;
 }
 
-/** Parte los ítems en secciones conservando el orden de aparición. */
+/** Parte los ítems en subgrupos conservando el orden de aparición. */
 function porSeccion(items: ItemNav[]): { seccion?: string; items: ItemNav[] }[] {
   const out: { seccion?: string; items: ItemNav[] }[] = [];
   for (const it of items) {
@@ -43,6 +44,56 @@ function porSeccion(items: ItemNav[]): { seccion?: string; items: ItemNav[] }[] 
     else out.push({ seccion: it.seccion, items: [it] });
   }
   return out;
+}
+
+function Enlace({ it, pathname }: { it: ItemNav; pathname: string }) {
+  return (
+    <Link href={it.href} role="menuitem" className={itemActivo(it, pathname) ? "active" : undefined}>
+      {it.label}
+    </Link>
+  );
+}
+
+/** Contenido del desplegable de un grupo: ítems sueltos + subgrupos plegables. */
+function MenuGrupo({ grupo, pathname }: { grupo: Grupo; pathname: string }) {
+  const secciones = porSeccion(grupo.items);
+  // Abre de entrada el subgrupo donde está la página actual; si no, el primero.
+  const conActivo = secciones.find((s) => s.seccion && s.items.some((it) => itemActivo(it, pathname)));
+  const primera = secciones.find((s) => s.seccion);
+  const [abierta, setAbierta] = useState<string | undefined>(conActivo?.seccion ?? primera?.seccion);
+
+  return (
+    <div className="nav-menu" role="menu" aria-label={grupo.label}>
+      {secciones.map((sec, i) => {
+        if (!sec.seccion) {
+          return (
+            <div key={`libre-${i}`} className="nav-menu-sec">
+              {sec.items.map((it) => <Enlace key={it.href} it={it} pathname={pathname} />)}
+            </div>
+          );
+        }
+        const on = abierta === sec.seccion;
+        return (
+          <div key={sec.seccion} className="nav-menu-sec">
+            <button
+              type="button"
+              className={`nav-sub${on ? " abierto" : ""}`}
+              aria-expanded={on}
+              onClick={() => setAbierta(on ? undefined : sec.seccion)}
+            >
+              <span>{sec.seccion}</span>
+              <span className="nav-sub-flecha" aria-hidden>›</span>
+            </button>
+            {on && (
+              <div className="nav-sub-items">
+                {sec.items.map((it) => <Enlace key={it.href} it={it} pathname={pathname} />)}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
 }
 
 export function GruposBar({ grupos }: { grupos: Grupo[] }) {
@@ -83,25 +134,7 @@ export function GruposBar({ grupos }: { grupos: Grupo[] }) {
               <span>{g.label}</span>
               <span className="nav-grupo-caret" aria-hidden>▾</span>
             </button>
-            {on && (
-              <div className="nav-menu" role="menu" aria-label={g.label}>
-                {porSeccion(g.items).map((sec, i) => (
-                  <div key={sec.seccion ?? i} className="nav-menu-sec">
-                    {sec.seccion && <div className="nav-menu-titulo">{sec.seccion}</div>}
-                    {sec.items.map((it) => (
-                      <Link
-                        key={it.href}
-                        href={it.href}
-                        role="menuitem"
-                        className={itemActivo(it, pathname) ? "active" : undefined}
-                      >
-                        {it.label}
-                      </Link>
-                    ))}
-                  </div>
-                ))}
-              </div>
-            )}
+            {on && <MenuGrupo grupo={g} pathname={pathname} />}
           </div>
         );
       })}
