@@ -1268,3 +1268,26 @@ model PqrsMes {
 
   @@unique([anio, mes])
 }
+
+// Venta neta, costo y cantidad por ÍTEM × IPS (cliente) × MARCA × mes.
+// VentaItem no lleva cliente, así que sin esta tabla el "Consumo por Ítem"
+// no se puede filtrar por IPS ni por ciudad.
+model VentaItemIps {
+  id          Int     @id @default(autoincrement())
+  anio        Int
+  mes         Int
+  marca       String
+  referencia  String
+  descripcion String
+  ips         String // nombre del cliente/IPS tal como viene en la venta
+  nit         String? // para cruzar la ciudad contra Tercero
+  cantidad    Decimal @default(0) @db.Decimal(18, 2)
+  valor       Decimal @db.Decimal(18, 2) // venta neta
+  costo       Decimal @default(0) @db.Decimal(18, 2)
+
+  @@unique([anio, mes, marca, referencia, ips])
+  @@index([anio, mes])
+  @@index([ips])
+  @@index([marca])
+  @@index([nit])
+}

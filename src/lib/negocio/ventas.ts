@@ -230,3 +230,113 @@ export async function ventaPorCiudad(anio: number, meses?: number[]): Promise<Fi
     }))
     .sort((a, b) => b.valor - a.valor);
 }
+
+// ---------- Consumos filtrables por IPS / ciudad ----------
+
+export interface OpcionIps { ips: string; nit: string | null; ciudad: string; valor: number }
+
+/**
+ * IPS con venta en el período, con su ciudad tomada de Terceros (cruce por
+ * NIT). Las que no cruzan quedan sin ciudad: el filtro por ciudad no las
+ * alcanza, y por eso la pantalla las nombra en vez de esconderlas.
+ */
+export async function ipsConVenta(anio: number, meses?: number[]): Promise<OpcionIps[]> {
+  const where: Prisma.VentaItemIpsWhereInput = { anio, ...(meses && meses.length ? { mes: { in: meses } } : {}) };
+  const grupos = await prisma.ventaItemIps.groupBy({ by: ["ips", "nit"], where, _sum: { valor: true } });
+  const nits = [...new Set(grupos.map((g) => g.nit).filter((n): n is string => !!n))];
+  const terceros = nits.length
+    ? await prisma.tercero.findMany({ where: { nit: { in: nits } }, select: { nit: true, ciudad: true } })
+    : [];
+  const ciudadPorNit = new Map(terceros.map((t) => [t.nit, (t.ciudad ?? "").trim()]));
+
+  const map = new Map<string, OpcionIps>();
+  for (const g of grupos) {
+    const e = map.get(g.ips) ?? { ips: g.ips, nit: g.nit, ciudad: "", valor: 0 };
+    e.valor += g._sum.valor?.toNumber() ?? 0;
+    if (!e.ciudad && g.nit) e.ciudad = ciudadPorNit.get(g.nit) ?? "";
+    if (!e.nit && g.nit) e.nit = g.nit;
+    map.set(g.ips, e);
+  }
+  return [...map.values()].sort((a, b) => b.valor - a.valor);
+}
+
+/** Ciudades con venta en el período (solo las que sí cruzaron contra Terceros). */
+export function ciudadesDeIps(ips: OpcionIps[]): { ciudad: string; ips: number; valor: number }[] {
+  const map = new Map<string, { ciudad: string; ips: number; valor: number }>();
+  for (const i of ips) {
+    if (!i.ciudad) continue;
+    const e = map.get(i.ciudad) ?? { ciudad: i.ciudad, ips: 0, valor: 0 };
+    e.ips++; e.valor += i.valor;
+    map.set(i.ciudad, e);
+  }
+  return [...map.values()].sort((a, b) => b.valor - a.valor);
+}
+
+export interface FiltroConsumo { anio: number; meses?: number[]; ips?: string; ciudad?: string }
+
+/** Nombres de IPS que caen dentro del filtro (una sola, una ciudad, o todas). */
+function ipsDelFiltro(opciones: OpcionIps[], f: FiltroConsumo): string[] | undefined {
+  if (f.ips) return [f.ips];
+  if (f.ciudad) return opciones.filter((o) => o.ciudad === f.ciudad).map((o) => o.ips);
+  return undefined;
+}
+
+/** Venta por MARCA del período, acotada al filtro de IPS/ciudad. */
+export async function marcasFiltradas(f: FiltroConsumo, opciones: OpcionIps[]): Promise<FilaMarcaVenta[]> {
+  const lista = ipsDelFiltro(opciones, f);
+  const where: Prisma.VentaItemIpsWhereInput = {
+    anio: f.anio,
+    ...(f.meses && f.meses.length ? { mes: { in: f.meses } } : {}),
+    ...(lista ? { ips: { in: lista } } : {}),
+  };
+  const grupos = await prisma.ventaItemIps.groupBy({ by: ["marca"], where, _sum: { valor: true, costo: true } });
+  return grupos
+    .map((g) => ({ marca: g.marca, valor: g._sum.valor?.toNumber() ?? 0, costo: g._sum.costo?.toNumber() ?? 0 }))
+    .sort((a, b) => b.valor - a.valor);
+}
+
+/** IPS por marca del período, acotada al filtro (para el desglose "Por IPS"). */
+export async function ipsPorMarcaFiltrado(f: FiltroConsumo, opciones: OpcionIps[]): Promise<Map<string, MarcaConIps["ips"]>> {
+  const lista = ipsDelFiltro(opciones, f);
+  const where: Prisma.VentaItemIpsWhereInput = {
+    anio: f.anio,
+    ...(f.meses && f.meses.length ? { mes: { in: f.meses } } : {}),
+    ...(lista ? { ips: { in: lista } } : {}),
+  };
+  const grupos = await prisma.ventaItemIps.groupBy({ by: ["marca", "ips"], where, _sum: { valor: true, costo: true } });
+  const map = new Map<string, MarcaConIps["ips"]>();
+  for (const g of grupos) {
+    const arr = map.get(g.marca) ?? [];
+    arr.push({ ips: g.ips, valor: g._sum.valor?.toNumber() ?? 0, costo: g._sum.costo?.toNumber() ?? 0 });
+    map.set(g.marca, arr);
+  }
+  for (const arr of map.values()) arr.sort((a, b) => b.valor - a.valor);
+  return map;
+}
+
+/** Ítems por marca del período, acotados al filtro de IPS/ciudad. */
+export async function itemsPorMarcaFiltrado(f: FiltroConsumo, opciones: OpcionIps[]): Promise<Map<string, ItemFila[]>> {
+  const lista = ipsDelFiltro(opciones, f);
+  const where: Prisma.VentaItemIpsWhereInput = {
+    anio: f.anio,
+    ...(f.meses && f.meses.length ? { mes: { in: f.meses } } : {}),
+    ...(lista ? { ips: { in: lista } } : {}),
+  };
+  const grupos = await prisma.ventaItemIps.groupBy({
+    by: ["marca", "referencia", "descripcion"], where,
+    _sum: { cantidad: true, valor: true, costo: true },
+  });
+  const map = new Map<string, ItemFila[]>();
+  for (const g of grupos) {
+    const arr = map.get(g.marca) ?? [];
+    arr.push({
+      referencia: g.referencia, descripcion: g.descripcion,
+      cantidad: g._sum.cantidad?.toNumber() ?? 0,
+      valor: g._sum.valor?.toNumber() ?? 0,
+      costo: g._sum.costo?.toNumber() ?? 0,
+    });
+    map.set(g.marca, arr);
+  }
+  for (const arr of map.values()) arr.sort((a, b) => b.valor - a.valor);
+  return map;
+}

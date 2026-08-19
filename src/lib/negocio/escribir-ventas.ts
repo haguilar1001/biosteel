@@ -39,6 +39,7 @@ export async function escribirAgregados(prisma: PrismaClient, filas: FilaVenta[]
   const marcas = [...agg.porMarca];
   const marcaIps = [...agg.porMarcaIps];
   const items = agg.porItem; // el detalle por ítem no recibe ajustes sintéticos
+  const itemsIps = agg.porItemIps; // ídem, abierto por IPS
   const anios = [...agg.anios];
   const aniosData = new Set(agg.anios);
   for (const aj of ajustes) {
@@ -58,18 +59,21 @@ export async function escribirAgregados(prisma: PrismaClient, filas: FilaVenta[]
     const M = marcas.filter((e) => e.anio === anio);
     const MI = marcaIps.filter((e) => e.anio === anio);
     const I = items.filter((e) => e.anio === anio);
+    const II = itemsIps.filter((e) => e.anio === anio);
     await prisma.$transaction([
       prisma.ventaLinea.deleteMany({ where: { anio } }),
       prisma.ventaCliente.deleteMany({ where: { anio } }),
       prisma.ventaMarca.deleteMany({ where: { anio } }),
       prisma.ventaMarcaIps.deleteMany({ where: { anio } }),
       prisma.ventaItem.deleteMany({ where: { anio } }),
+      prisma.ventaItemIps.deleteMany({ where: { anio } }),
     ]);
     await crearEnLotes(L, (c) => prisma.ventaLinea.createMany({ data: c.map((e) => ({ anio: e.anio, mes: e.mes, linea: e.linea, valor: r2(e.valor), costo: r2(e.costo) })) }));
     await crearEnLotes(C, (c) => prisma.ventaCliente.createMany({ data: c.map((e) => ({ anio: e.anio, mes: e.mes, clienteNombre: e.clienteNombre, nit: e.nit, valor: r2(e.valor), costo: r2(e.costo) })) }));
     await crearEnLotes(M, (c) => prisma.ventaMarca.createMany({ data: c.map((e) => ({ anio: e.anio, mes: e.mes, marca: e.marca, valor: r2(e.valor), costo: r2(e.costo) })) }));
     await crearEnLotes(MI, (c) => prisma.ventaMarcaIps.createMany({ data: c.map((e) => ({ anio: e.anio, mes: e.mes, marca: e.marca, ips: e.ips, valor: r2(e.valor), costo: r2(e.costo) })) }));
     await crearEnLotes(I, (c) => prisma.ventaItem.createMany({ data: c.map((e) => ({ anio: e.anio, mes: e.mes, marca: e.marca, referencia: e.referencia, descripcion: e.descripcion, cantidad: r2(e.cantidad), valor: r2(e.valor), costo: r2(e.costo) })) }));
+    await crearEnLotes(II, (c) => prisma.ventaItemIps.createMany({ data: c.map((e) => ({ anio: e.anio, mes: e.mes, marca: e.marca, referencia: e.referencia, descripcion: e.descripcion, ips: e.ips, nit: e.nit, cantidad: r2(e.cantidad), valor: r2(e.valor), costo: r2(e.costo) })) }));
   }
 
   // Venta neta por día: reemplazo total (sin ajustes mensuales).

@@ -6,7 +6,10 @@
 import { requirePermiso } from "@/server/auth-context";
 import { formatPorcentaje, formatNumero } from "@/lib/format";
 import { Monto } from "../../_components/Monto";
-import { aniosConVenta, mesesConVenta, ventaPorMarcaConIps, itemsPorMarca } from "@/lib/negocio/ventas";
+import {
+  aniosConVenta, mesesConVenta, ipsConVenta, ciudadesDeIps,
+  marcasFiltradas, ipsPorMarcaFiltrado, itemsPorMarcaFiltrado, type FiltroConsumo,
+} from "@/lib/negocio/ventas";
 import { FiltroAuto } from "../../_components/FiltroAuto";
 
 const MESES = ["", "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
@@ -14,7 +17,7 @@ const margen = (venta: number, costo: number) => (venta > 0 ? ((venta - costo) /
 
 type OrdenCol = "marca" | "venta" | "costo" | "utilidad" | "margen";
 
-export default async function ConsumosPage({ searchParams }: { searchParams: Promise<{ anio?: string; mes?: string; orden?: string; dir?: string; vista?: string }> }) {
+export default async function ConsumosPage({ searchParams }: { searchParams: Promise<{ anio?: string; mes?: string; orden?: string; dir?: string; vista?: string; ips?: string; ciudad?: string }> }) {
   await requirePermiso("cxp.view");
   const sp = await searchParams;
 
@@ -26,17 +29,29 @@ export default async function ConsumosPage({ searchParams }: { searchParams: Pro
   const mesesDisp = await mesesConVenta(anio);
   const mesSel = sp.mes && mesesDisp.includes(Number(sp.mes)) ? Number(sp.mes) : undefined;
 
-  const [marcas, itemsMap] = await Promise.all([
-    ventaPorMarcaConIps(anio, mesSel ? [mesSel] : undefined),
-    itemsPorMarca(anio, mesSel ? [mesSel] : undefined),
+  const meses = mesSel ? [mesSel] : undefined;
+  // Opciones del filtro: todas las IPS del período (sin filtrar), para que el
+  // selector no se vacíe a sí mismo al escoger una.
+  const opcionesIps = await ipsConVenta(anio, meses);
+  const ciudades = ciudadesDeIps(opcionesIps);
+  const ipsSel = sp.ips && opcionesIps.some((o) => o.ips === sp.ips) ? sp.ips : undefined;
+  const ciudadSel = !ipsSel && sp.ciudad && ciudades.some((c) => c.ciudad === sp.ciudad) ? sp.ciudad : undefined;
+  const filtro: FiltroConsumo = { anio, meses, ips: ipsSel, ciudad: ciudadSel };
+
+  const [marcasBase, ipsMap, itemsMap] = await Promise.all([
+    marcasFiltradas(filtro, opcionesIps),
+    ipsPorMarcaFiltrado(filtro, opcionesIps),
+    itemsPorMarcaFiltrado(filtro, opcionesIps),
   ]);
+  const marcas = marcasBase.map((m) => ({ ...m, ips: ipsMap.get(m.marca) ?? [] }));
   const venta = marcas.reduce((s, m) => s + m.valor, 0);
   const costo = marcas.reduce((s, m) => s + m.costo, 0);
+  const sinCiudad = opcionesIps.filter((o) => !o.ciudad);
   const utilidad = venta - costo;
   const maxVenta = marcas.length ? Math.max(...marcas.map((m) => m.valor)) : 1;
   const periodo = mesSel ? `${MESES[mesSel]} ${anio}` : `${anio}`;
   const GRID = "minmax(160px, 2fr) 150px 150px 150px 90px 90px";
-  const GRID_ITEM = "minmax(220px, 3fr) 90px 130px 140px";
+  const GRID_ITEM = "minmax(200px, 3fr) 80px 120px 130px 130px 130px 90px";
 
   // Orden de proveedores por columna (clic en el encabezado). Por defecto venta desc.
   const ORDENES: OrdenCol[] = ["marca", "venta", "costo", "utilidad", "margen"];
@@ -55,7 +70,8 @@ export default async function ConsumosPage({ searchParams }: { searchParams: Pro
   });
   // Vista: desglose por IPS o por Ítem (toggle al nivel de los filtros). Por defecto Ítem.
   const vista: "ips" | "item" = sp.vista === "ips" ? "ips" : "item";
-  const base = `/ventas/consumos?anio=${anio}${mesSel ? `&mes=${mesSel}` : ""}`;
+  const filtroQS = `${ipsSel ? `&ips=${encodeURIComponent(ipsSel)}` : ""}${ciudadSel ? `&ciudad=${encodeURIComponent(ciudadSel)}` : ""}`;
+  const base = `/ventas/consumos?anio=${anio}${mesSel ? `&mes=${mesSel}` : ""}${filtroQS}`;
   const ordenBase = `${base}&vista=${vista}`;
   const linkVista = (v: "ips" | "item") => `${base}&orden=${orden}&dir=${dir}&vista=${v}`;
   const thOrden = (key: OrdenCol, label: string, defDir: "asc" | "desc" = "desc") => {
@@ -72,7 +88,14 @@ export default async function ConsumosPage({ searchParams }: { searchParams: Pro
     <>
       <div className="card" style={{ marginBottom: 12 }}>
         <div className="card-body" style={{ paddingBottom: 12, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
-          <div className="eyebrow" style={{ fontSize: 15 }}>Informe de Consumos · {periodo} · {marcas.length} proveedores</div>
+          <div>
+            <div className="eyebrow" style={{ fontSize: 15 }}>Informe de Consumos · {periodo} · {marcas.length} proveedores</div>
+            <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 3 }}>
+              {ipsSel ? <>Solo <b>{ipsSel}</b></>
+                : ciudadSel ? <>Solo <b>{ciudadSel}</b> · {ciudades.find((c) => c.ciudad === ciudadSel)?.ips ?? 0} IPS</>
+                : <>Todas las IPS</>}
+            </div>
+          </div>
           <FiltroAuto className="toolbar">
             {/* Preserva vista/orden al cambiar año o mes. */}
             <input type="hidden" name="vista" value={vista} />
@@ -93,7 +116,28 @@ export default async function ConsumosPage({ searchParams }: { searchParams: Pro
                 <option key={m} value={m}>{MESES[m]}</option>
               ))}
             </select>
-            {mesSel ? <a href={`/ventas/consumos?anio=${anio}&orden=${orden}&dir=${dir}&vista=${vista}`} className="btn">Todos los meses</a> : null}
+            <label className="flag" style={{ alignSelf: "center" }}>Ciudad:</label>
+            <select name="ciudad" defaultValue={ciudadSel ?? ""} className="select">
+              <option value="">Todas</option>
+              {ciudades.map((c) => <option key={c.ciudad} value={c.ciudad}>{c.ciudad} ({c.ips} IPS)</option>)}
+            </select>
+            <label className="flag" style={{ alignSelf: "center" }}>IPS:</label>
+            <select name="ips" defaultValue={ipsSel ?? ""} className="select" style={{ maxWidth: 300 }}>
+              <option value="">Todas</option>
+              {ciudades.map((c) => (
+                <optgroup key={c.ciudad} label={c.ciudad}>
+                  {opcionesIps.filter((o) => o.ciudad === c.ciudad).map((o) => <option key={o.ips} value={o.ips}>{o.ips}</option>)}
+                </optgroup>
+              ))}
+              {sinCiudad.length > 0 && (
+                <optgroup label="Sin ciudad en Terceros">
+                  {sinCiudad.map((o) => <option key={o.ips} value={o.ips}>{o.ips}</option>)}
+                </optgroup>
+              )}
+            </select>
+            {(mesSel || ipsSel || ciudadSel)
+              ? <a href={`/ventas/consumos?anio=${anio}&orden=${orden}&dir=${dir}&vista=${vista}`} className="btn">Limpiar filtros</a>
+              : null}
           </FiltroAuto>
         </div>
       </div>
@@ -171,15 +215,26 @@ export default async function ConsumosPage({ searchParams }: { searchParams: Pro
                         <span style={{ textAlign: "right" }}>Cantidad</span>
                         <span style={{ textAlign: "right" }}>Costo unit.</span>
                         <span style={{ textAlign: "right" }}>Costo total</span>
+                        <span style={{ textAlign: "right" }}>Venta neta</span>
+                        <span style={{ textAlign: "right" }}>Utilidad</span>
+                        <span style={{ textAlign: "right" }}>% Utilidad</span>
                       </div>
-                      {itemsMap.get(m.marca)!.map((it, k) => (
-                        <div key={`${it.referencia}-${k}`} style={{ display: "grid", gridTemplateColumns: GRID_ITEM, gap: 8, alignItems: "start", padding: "5px 0", fontSize: 12, borderTop: "1px solid var(--line)" }}>
-                          <span style={{ lineHeight: 1.3 }}><span className="flag" style={{ fontWeight: 700 }}>{it.referencia}</span> {it.descripcion}</span>
-                          <span className="num" style={{ textAlign: "right" }}>{formatNumero(it.cantidad)}</span>
-                          <span className="num flag" style={{ textAlign: "right" }}><Monto value={it.cantidad > 0 ? it.costo / it.cantidad : 0} /></span>
-                          <span className="num" style={{ textAlign: "right", fontWeight: 600 }}><Monto value={it.costo} /></span>
-                        </div>
-                      ))}
+                      {itemsMap.get(m.marca)!.map((it, k) => {
+                        const pIt = margen(it.valor, it.costo);
+                        return (
+                          <div key={`${it.referencia}-${k}`} style={{ display: "grid", gridTemplateColumns: GRID_ITEM, gap: 8, alignItems: "start", padding: "5px 0", fontSize: 12, borderTop: "1px solid var(--line)" }}>
+                            <span style={{ lineHeight: 1.3 }}><span className="flag" style={{ fontWeight: 700 }}>{it.referencia}</span> {it.descripcion}</span>
+                            <span className="num" style={{ textAlign: "right" }}>{formatNumero(it.cantidad)}</span>
+                            <span className="num flag" style={{ textAlign: "right" }}><Monto value={it.cantidad > 0 ? it.costo / it.cantidad : 0} /></span>
+                            <span className="num" style={{ textAlign: "right" }}><Monto value={it.costo} /></span>
+                            <span className="num" style={{ textAlign: "right", fontWeight: 600 }}><Monto value={it.valor} /></span>
+                            <span className="num" style={{ textAlign: "right" }}><Monto value={it.valor - it.costo} /></span>
+                            <span className="num" style={{ textAlign: "right", fontWeight: 700, color: pIt < 0 ? "var(--bad)" : pIt >= 40 ? "var(--ok)" : undefined }}>
+                              {formatPorcentaje(pIt)}
+                            </span>
+                          </div>
+                        );
+                      })}
                     </div>
                   ) : (
                     <div className="flag" style={{ background: "var(--surface-2, #f6f8fc)", padding: "8px 12px 10px", fontSize: 12 }}>Sin ítems para este proveedor en el período.</div>
@@ -189,6 +244,14 @@ export default async function ConsumosPage({ searchParams }: { searchParams: Pro
             })
           )}
         </div>
+        {sinCiudad.length > 0 && (
+          <div className="card-body" style={{ fontSize: 12, color: "var(--muted)", borderTop: "1px solid var(--line)" }}>
+            El filtro de ciudad sale de la ciudad del tercero. Hay {sinCiudad.length} IPS con venta y sin ciudad
+            registrada, así que ninguna ciudad las incluye (sí se pueden escoger una por una):{" "}
+            {sinCiudad.map((o) => o.ips).join(" · ")}. Se completa en{" "}
+            <a href="/admin/terceros">Administración → Terceros</a>.
+          </div>
+        )}
       </div>
     </>
   );

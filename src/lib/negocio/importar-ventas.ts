@@ -100,6 +100,7 @@ export interface FilaClienteAgg { anio: number; mes: number; clienteNombre: stri
 export interface FilaMarcaAgg { anio: number; mes: number; marca: string; valor: number; costo: number }
 export interface FilaMarcaIpsAgg { anio: number; mes: number; marca: string; ips: string; valor: number; costo: number }
 export interface FilaItemAgg { anio: number; mes: number; marca: string; referencia: string; descripcion: string; cantidad: number; valor: number; costo: number }
+export interface FilaItemIpsAgg extends FilaItemAgg { ips: string; nit: string | null }
 export interface FilaDiaAgg { anio: number; mes: number; dia: number; valor: number; costo: number }
 
 export interface AgregadosVenta {
@@ -109,6 +110,7 @@ export interface AgregadosVenta {
   porMarca: FilaMarcaAgg[];
   porMarcaIps: FilaMarcaIpsAgg[];
   porItem: FilaItemAgg[];
+  porItemIps: FilaItemIpsAgg[];
   porDia: FilaDiaAgg[];
   /** Venta neta total por año. */
   netoPorAnio: Map<number, number>;
@@ -140,6 +142,7 @@ export function agregarVentas(filas: FilaVenta[], params: ParamNC[], excluidos: 
   const porMarca = new Map<string, FilaMarcaAgg>();
   const porMarcaIps = new Map<string, FilaMarcaIpsAgg>();
   const porItem = new Map<string, FilaItemAgg>();
+  const porItemIps = new Map<string, FilaItemIpsAgg>();
   const porDia = new Map<string, FilaDiaAgg>();
   const anios = new Set<number>();
   const netoPorAnio = new Map<number, number>();
@@ -184,6 +187,17 @@ export function agregarVentas(filas: FilaVenta[], params: ParamNC[], excluidos: 
     const eI = porItem.get(kI) ?? { anio: r.anio, mes: r.mes, marca: r.marca, referencia: ref, descripcion: (r.notas || "").trim() || ref, cantidad: 0, valor: 0, costo: 0 };
     eI.cantidad += r.cantidad; eI.valor += neto; eI.costo += r.costo;
     porItem.set(kI, eI);
+
+    // Mismo detalle, abierto por IPS: es lo que permite filtrar el consumo
+    // por cliente o por ciudad sin volver a recorrer VentaDoc.
+    const kII = `${kI}|${r.cliente}`;
+    const eII = porItemIps.get(kII) ?? {
+      anio: r.anio, mes: r.mes, marca: r.marca, referencia: ref,
+      descripcion: (r.notas || "").trim() || ref, ips: r.cliente, nit: r.nit,
+      cantidad: 0, valor: 0, costo: 0,
+    };
+    eII.cantidad += r.cantidad; eII.valor += neto; eII.costo += r.costo;
+    porItemIps.set(kII, eII);
   }
 
   return {
@@ -193,6 +207,7 @@ export function agregarVentas(filas: FilaVenta[], params: ParamNC[], excluidos: 
     porMarca: [...porMarca.values()],
     porMarcaIps: [...porMarcaIps.values()],
     porItem: [...porItem.values()],
+    porItemIps: [...porItemIps.values()],
     porDia: [...porDia.values()],
     netoPorAnio, totalNC, renglones: filas.length,
   };
