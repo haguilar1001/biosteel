@@ -26,6 +26,7 @@ export const PERMISOS = [
   { clave: "inventario.view", modulo: "Inventarios", descripcion: "Consultar el inventario de equipos" },
   { clave: "inventario.manage", modulo: "Inventarios", descripcion: "Gestionar equipos, ítems y novedades" },
   { clave: "osteo.view", modulo: "Inventarios", descripcion: "Consultar el inventario de material de osteosíntesis" },
+  { clave: "asistencia.manage", modulo: "Análisis", descripcion: "Registrar PQRS de Asistencia Técnica" },
   { clave: "tercero.manage", modulo: "Administración", descripcion: "Crear y editar terceros" },
   { clave: "usuario.manage", modulo: "Administración", descripcion: "Gestionar usuarios" },
   { clave: "rol.manage", modulo: "Administración", descripcion: "Gestionar roles y permisos" },
@@ -74,11 +75,13 @@ export const MATRIZ_ROLES: Record<RolNombre, Partial<Record<PermisoClave, Alcanc
     "carga.pendientes": T, "carga.ventas": T, "carga.facturacion": T, "carga.gastos": T,
     "carga.anuladas": T, "carga.pyg": T, "carga.flujo": T, "carga.presupuesto": T,
     "carga.inv.bodegas": T, "carga.inv.balance": T, "carga.inv.movimientos": T,
+    "asistencia.manage": T,
   },
   Gerente: {
     "dashboard.view": T, "cartera.view": T, "recaudo.create": N, "cxp.view": T,
     "pago.create": N, "nota.manage": N, "reporte.view": T, "tercero.manage": N,
     "inventario.view": T, "inventario.manage": N, "osteo.view": T, "ventas.manage": T,
+    "asistencia.manage": T,
     "usuario.manage": N, "rol.manage": N, "parametro.manage": N, "auditoria.view": T,
   },
   "Tesorería / Cartera": {

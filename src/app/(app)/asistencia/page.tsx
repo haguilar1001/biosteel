@@ -264,6 +264,7 @@ export default async function AsistenciaPage({
             <div>
               <div style={{ fontSize: 11.5, letterSpacing: ".06em", textTransform: "uppercase", fontWeight: 700, color: totalPqrs ? "var(--bad)" : "var(--ok)" }}>
                 Atención a quejas, reclamos y/o sugerencias
+                <a href={`/asistencia/pqrs?anio=${anio}`} style={{ marginLeft: 8, textTransform: "none", letterSpacing: 0, fontWeight: 600 }}>registrar →</a>
               </div>
               <div style={{ fontSize: 24, fontWeight: 700, marginTop: 2, color: totalPqrs ? "var(--bad)" : "var(--ok)" }}>
                 {formatNumero(totalPqrs)} <span style={{ fontSize: 12.5, fontWeight: 600 }}>caso(s) registrado(s)</span>
