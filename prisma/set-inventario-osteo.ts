@@ -61,10 +61,16 @@ async function main() {
     if (!rutas.length) console.log("   · sin archivos de BALANCE en el directorio");
     for (const ruta of rutas) {
       const nombre = path.basename(ruta);
-      const b = parseBalance(fs.readFileSync(ruta), nombre);
+      const b = await parseBalance(fs.readFileSync(ruta), nombre);
       const cargadas = await persistirBalance(b);
       const saldo = b.datos.reduce((a, d) => a + Number(d.valorFinal), 0);
-      console.log(`   ✓ ${nombre} → ${b.mes}/${b.anio}: ${fmt(cargadas)} ítems de ${fmt(b.filas)} · saldo final $${fmt(saldo)}`);
+      const bods = new Set(b.datos.map((d) => d.bodegaCodigo)).size;
+      console.log(`   ✓ ${nombre} → ${b.mes}/${b.anio}: ${fmt(cargadas)} filas de ${fmt(b.filas)} · ${b.porBodega ? `${bods} bodegas` : "sin detalle por bodega"} · saldo final $${fmt(saldo)}`);
+      if (b.descRellenadas || b.descFaltantes) {
+        console.log(`     · el archivo no trae "Desc. item": ${fmt(b.descRellenadas)} descripciones rellenadas, ${fmt(b.descFaltantes)} sin fuente`);
+      }
+      if (b.bodegasNuevas.size) console.log(`     + ${b.bodegasNuevas.size} bodega(s) dadas de alta: ${[...b.bodegasNuevas.keys()].join(", ")}`);
+      if (b.choques.size) console.log(`     ! manda el balance sobre el catálogo: ${[...b.choques].map(([c, x]) => `${c} (${x.catalogo}→${x.archivo})`).join(", ")}`);
     }
   }
 

@@ -67,7 +67,7 @@ export default async function MovimientosPage({
         : `${MES_CORTO[saldo.mesInicial]}–${MES_CORTO[saldo.mesFinal]}`)
     : "";
   const notaSaldo = saldo.motivo === "bodega"
-    ? "el balance no llega a bodega"
+    ? "mes sin detalle por bodega"
     : saldo.motivo === "sin-balance" ? "balance no cargado" : "";
 
   // El balance suele ir un mes atrás del movimiento: si el saldo no alcanza
@@ -177,7 +177,7 @@ export default async function MovimientosPage({
       {(saldo.motivo || saldoRezagado || (saldo.disponible && tipoDoc)) && (
         <div className="card" style={{ marginBottom: 12 }}>
           <div className="card-body" style={{ fontSize: 12, color: "var(--muted)", padding: "10px 14px", display: "grid", gap: 4 }}>
-            {saldo.motivo === "bodega" && <div>El <b>saldo inicial y final</b> viene del balance mensual, que solo llega hasta instalación: al elegir una bodega no hay saldo que mostrar. Quita el filtro de bodega para verlo.</div>}
+            {saldo.motivo === "bodega" && <div>Este periodo se cargó con el export viejo del balance, que solo llegaba hasta instalación: por eso no hay <b>saldo por bodega</b>. Vuelve a cargar el balance del mes con la columna Bodega y aparece.</div>}
             {saldo.motivo === "sin-balance" && <div>No hay <b>balance</b> cargado para este periodo, así que no hay saldo inicial ni final. Carga el balance del mes para verlos.</div>}
             {saldoRezagado && <div>El balance va hasta <b>{MES_LARGO[saldo.mesFinal]}</b> y los movimientos llegan a <b>{MES_LARGO[ultimoMov]}</b>: por eso inicial + entradas − salidas no da exactamente el saldo final.</div>}
             {!saldo.motivo && tipoDoc && <div>El <b>saldo</b> es la existencia completa: no se filtra por tipo de documento. Entradas y salidas sí muestran solo <b>{tipoDoc}</b>.</div>}

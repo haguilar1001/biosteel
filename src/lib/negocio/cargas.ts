@@ -136,13 +136,21 @@ export const CARGAS: CargaDef[] = [
     clave: "inv-balance", titulo: "Inventario · Balance mensual", permiso: "carga.inv.balance",
     archivoSugerido: "1. BALANCE ENERO.xlsx",
     async procesar(buffer, nombre) {
-      const b = parseBalance(buffer, nombre);
+      const b = await parseBalance(buffer, nombre);
       if (!b.datos.length) throw new Error("El balance no trae ninguna fila con saldo o movimiento.");
       const cargadas = await persistirBalance(b);
+      const detalle = b.porBodega ? "por bodega" : "solo por instalación (export viejo, sin columna Bodega)";
+      const desc = b.descRellenadas || b.descFaltantes
+        ? ` · el archivo no trae "Desc. item": ${nf.format(b.descRellenadas)} descripciones rellenadas desde lo ya cargado${b.descFaltantes ? `, ${nf.format(b.descFaltantes)} sin fuente` : ""}`
+        : "";
+      const nuevas = b.bodegasNuevas.size ? ` · ${b.bodegasNuevas.size} bodega(s) dadas de alta: ${[...b.bodegasNuevas.keys()].join(", ")}` : "";
+      const choques = b.choques.size
+        ? ` · ${b.choques.size} bodega(s) donde manda el balance sobre el catálogo: ${[...b.choques].map(([c, x]) => `${c} (${x.catalogo}→${x.archivo})`).join(", ")}`
+        : "";
       return {
         titulo: "Inventario · Balance mensual", archivo: nombre, hoja: b.hoja,
         filas: b.filas, cargadas, omitidas: b.filas - cargadas,
-        estrategia: `reemplaza ${b.mes}/${b.anio}: ${nf.format(cargadas)} ítem(s) con saldo o movimiento (se descartan las filas en cero)`,
+        estrategia: `reemplaza ${b.mes}/${b.anio} ${detalle}: ${nf.format(cargadas)} fila(s) con saldo o movimiento (se descartan las que están en cero)${desc}${nuevas}${choques}`,
       };
     },
   },

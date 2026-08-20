@@ -2,9 +2,13 @@
 // Osteosíntesis · Inventario Valorizado — cuánta plata hay quieta en
 // inventario, dónde está y qué tan rápido rota.
 //
-// El saldo sale del balance mensual, que es la cifra oficial. Se puede abrir
-// por marca, línea, anatomía, sistema o categoría; el balance no trae bodega
-// ni ciudad, solo instalación (propio / consignación / aprovechamiento).
+// El saldo sale del balance mensual, que es la cifra oficial. Se abre por
+// bodega, marca, línea, anatomía, sistema o categoría.
+//
+// La bodega llegó con el export nuevo de SIESA: los meses cargados antes solo
+// tienen instalación (propio / consignación / aprovechamiento) y en ellos el
+// filtro de bodega no aplica. `mesesConBodega` es lo que distingue unos de
+// otros, y la pantalla lo dice en vez de mostrar ceros.
 // ==========================================================
 import { requirePermiso } from "@/server/auth-context";
 import { formatNumero } from "@/lib/format";
@@ -14,9 +18,11 @@ import { Donut } from "../../_components/charts/Donut";
 import { LineasMensuales } from "../../_components/charts/LineasMensuales";
 import { TopRanking } from "../../_components/charts/TopRanking";
 import {
-  aniosConBalance, mesesConBalance, resumenValorizado, saldoPorInstalacion,
+  aniosConBalance, mesesConBalance, mesesConBodega, bodegasConSaldo,
+  resumenValorizado, saldoPorInstalacion,
   saldoPorDimension, evolucionSaldo, itemsConSaldo,
-  DIMENSIONES, NOMBRE_INSTALACION, MES_CORTO, type Dimension,
+  DIMENSIONES, NOMBRE_INSTALACION, INSTALACIONES_CON_MATERIAL, MES_CORTO,
+  type Dimension, type FiltroSaldo,
 } from "@/lib/negocio/inventario-osteo";
 
 const MES_LARGO = ["", "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
@@ -33,7 +39,7 @@ function Rotacion({ meses }: { meses: number | null }) {
 
 export default async function ValorizadoPage({
   searchParams,
-}: { searchParams: Promise<{ anio?: string; mes?: string; dim?: string; inst?: string }> }) {
+}: { searchParams: Promise<{ anio?: string; mes?: string; dim?: string; inst?: string; bodega?: string }> }) {
   await requirePermiso("osteo.view");
   const sp = await searchParams;
 
@@ -54,12 +60,21 @@ export default async function ValorizadoPage({
   const dim: Dimension = (sp.dim && sp.dim in DIMENSIONES ? sp.dim : "marca") as Dimension;
   const inst = sp.inst && NOMBRE_INSTALACION[Number(sp.inst)] ? Number(sp.inst) : undefined;
 
+  // El detalle por bodega solo existe en los meses cargados con el export
+  // nuevo; en los demás el selector no se muestra.
+  const conBodega = await mesesConBodega(anio);
+  const detalleBodega = conBodega.includes(mes);
+  const catalogo = detalleBodega ? await bodegasConSaldo(anio, mes) : [];
+  const bodega = sp.bodega && catalogo.some((b) => b.codigo === sp.bodega) ? sp.bodega : undefined;
+  const bodegaSel = bodega ? catalogo.find((b) => b.codigo === bodega) : undefined;
+  const filtro: FiltroSaldo = { inst, bodega };
+
   const [kpi, porInst, porDim, evolucion, items] = await Promise.all([
-    resumenValorizado(anio, mes, inst),
-    saldoPorInstalacion(anio, mes),
-    saldoPorDimension(anio, mes, dim, inst),
-    evolucionSaldo(inst),
-    itemsConSaldo(anio, mes, 60, inst),
+    resumenValorizado(anio, mes, filtro),
+    saldoPorInstalacion(anio, mes, filtro),
+    saldoPorDimension(anio, mes, dim, filtro),
+    evolucionSaldo(filtro),
+    itemsConSaldo(anio, mes, 60, filtro),
   ]);
 
   const variacionValor = kpi.valor - kpi.valorAnterior;
@@ -76,9 +91,10 @@ export default async function ValorizadoPage({
             <div className="eyebrow" style={{ fontSize: 15 }}>Inventario Valorizado · {MES_LARGO[mes]} {anio}</div>
             <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 3 }}>
               Saldo del balance mensual, a costo promedio
-              {inst ? ` · solo ${inst} · ${NOMBRE_INSTALACION[inst]}` : " · todas las instalaciones"}.
-              {" "}El balance solo llega hasta instalación; para ver por bodega,{" "}
-              <a href={`/osteosintesis/movimientos?anio=${anio}&mes=${mes}`}>Movimientos</a>.
+              {inst ? ` · solo ${inst} · ${NOMBRE_INSTALACION[inst]}` : " · todas las instalaciones"}
+              {bodegaSel ? ` · bodega ${bodegaSel.codigo} · ${bodegaSel.descripcion}${bodegaSel.ciudad ? ` · ${bodegaSel.ciudad}` : ""}` : ""}.
+              {" "}Para ver el detalle documento a documento,{" "}
+              <a href={`/osteosintesis/movimientos?anio=${anio}&mes=${mes}${bodega ? `&bodega=${bodega}` : ""}`}>Movimientos</a>.
             </div>
           </div>
           <FiltroAuto className="toolbar">
@@ -93,12 +109,36 @@ export default async function ValorizadoPage({
             <label className="flag" style={{ alignSelf: "center" }}>Instalación:</label>
             <select name="inst" defaultValue={inst ?? ""} className="select">
               <option value="">Todas</option>
-              {[101, 102, 106].map((i) => <option key={i} value={i}>{i} · {NOMBRE_INSTALACION[i]}</option>)}
+              {INSTALACIONES_CON_MATERIAL.map((i) => <option key={i} value={i}>{i} · {NOMBRE_INSTALACION[i]}</option>)}
             </select>
+            {detalleBodega && (
+              <>
+                <label className="flag" style={{ alignSelf: "center" }}>Bodega:</label>
+                <select name="bodega" defaultValue={bodega ?? ""} className="select" style={{ maxWidth: 320 }}>
+                  <option value="">Todas ({catalogo.length})</option>
+                  {catalogo.map((b) => (
+                    <option key={b.codigo} value={b.codigo}>
+                      {b.codigo} · {b.descripcion}{b.ciudad ? ` · ${b.ciudad}` : ""}
+                    </option>
+                  ))}
+                </select>
+              </>
+            )}
             <input type="hidden" name="dim" value={dim} />
           </FiltroAuto>
         </div>
       </div>
+
+      {!detalleBodega && (
+        <div className="card" style={{ marginBottom: 12 }}>
+          <div className="card-body" style={{ fontSize: 12, color: "var(--muted)", padding: "10px 14px" }}>
+            {MES_LARGO[mes]} {anio} se cargó con el export viejo del balance, que solo llegaba hasta instalación:
+            por eso no hay filtro de bodega. {conBodega.length > 0
+              ? <>Sí lo hay en {conBodega.map((m) => MES_LARGO[m]).join(", ")}.</>
+              : <>Vuelve a cargar el balance con la columna Bodega para tenerlo.</>}
+          </div>
+        </div>
+      )}
 
       <div className="kpis" style={{ marginBottom: 12 }}>
         <div className="kpi kc">
@@ -128,10 +168,19 @@ export default async function ValorizadoPage({
         <div className="card">
           <div className="chart-head">
             Evolución del Saldo
-            <span className="hact">{anio} · cierre de cada mes{inst ? ` · ${NOMBRE_INSTALACION[inst]}` : ""}</span>
+            <span className="hact">
+              {anio} · cierre de cada mes{inst ? ` · ${NOMBRE_INSTALACION[inst]}` : ""}
+              {bodegaSel ? ` · bodega ${bodegaSel.codigo}` : ""}
+            </span>
           </div>
           <div className="card-body">
-            {serieAnio.length < 2 ? <div className="empty">Se necesitan al menos dos meses cargados.</div> : (
+            {serieAnio.length < 2 ? (
+              <div className="empty">
+                {bodega
+                  ? `Solo hay ${serieAnio.length} mes con detalle por bodega; se necesitan dos para dibujar la evolución.`
+                  : "Se necesitan al menos dos meses cargados."}
+              </div>
+            ) : (
               <>
                 <LineasMensuales
                   desdeCero={false}
@@ -156,7 +205,10 @@ export default async function ValorizadoPage({
         </div>
 
         <div className="card">
-          <div className="chart-head">Por Instalación <span className="hact">{MES_CORTO[mes]} {anio} · siempre el total</span></div>
+          <div className="chart-head">
+            Por Instalación
+            <span className="hact">{MES_CORTO[mes]} {anio}{bodegaSel ? ` · bodega ${bodegaSel.codigo}` : ""}</span>
+          </div>
           <div className="card-body" style={{ display: "grid", placeItems: "center" }}>
             <Donut
               azul
@@ -167,10 +219,12 @@ export default async function ValorizadoPage({
               }))}
               centro={{ valor: mill(porInst.reduce((a, i) => a + i.valor, 0)), etiqueta: "en inventario" }}
             />
-            <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 10, textAlign: "center" }}>
-              La instalación 106 (aprovechamiento) no aparece: tiene{" "}
-              {formatNumero(porInst.find((i) => i.instalacion === 106)?.unidades ?? 0)} unidades a costo $0.
-            </div>
+            {(porInst.find((i) => i.instalacion === 106)?.unidades ?? 0) > 0 && (
+              <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 10, textAlign: "center" }}>
+                La instalación 106 (aprovechamiento) no aparece: tiene{" "}
+                {formatNumero(porInst.find((i) => i.instalacion === 106)?.unidades ?? 0)} unidades a costo $0.
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -182,9 +236,14 @@ export default async function ValorizadoPage({
           <FiltroAuto className="toolbar">
             <input type="hidden" name="anio" value={anio} />
             <input type="hidden" name="mes" value={mes} />
+            {/* Sin estos ocultos, cambiar la apertura borraba los filtros de arriba. */}
+            {inst != null && <input type="hidden" name="inst" value={inst} />}
+            {bodega && <input type="hidden" name="bodega" value={bodega} />}
             <label className="flag" style={{ alignSelf: "center" }}>Abrir por:</label>
             <select name="dim" defaultValue={dim} className="select">
-              {Object.entries(DIMENSIONES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+              {Object.entries(DIMENSIONES)
+                .filter(([k]) => k !== "bodegaCodigo" || detalleBodega)
+                .map(([k, v]) => <option key={k} value={k}>{v}</option>)}
             </select>
           </FiltroAuto>
         </div>
@@ -261,6 +320,7 @@ export default async function ValorizadoPage({
             <thead>
               <tr>
                 <th>Referencia</th><th>Descripción</th><th>Marca</th><th>Inst.</th>
+                {detalleBodega && !bodega && <th className="r">Bodegas</th>}
                 <th className="r">Unidades</th><th className="r">Costo unit.</th>
                 <th className="r">Saldo</th><th className="r">Sin salir</th>
               </tr>
@@ -272,6 +332,7 @@ export default async function ValorizadoPage({
                   <td style={{ whiteSpace: "normal" }}>{it.descripcion}</td>
                   <td style={{ whiteSpace: "normal" }}>{it.marca || "—"}</td>
                   <td>{it.instalacion}</td>
+                  {detalleBodega && !bodega && <td className="r num">{it.bodegas || "—"}</td>}
                   <td className="r num">{formatNumero(it.unidades)}</td>
                   <td className="r num"><Monto value={it.costoUnit} /></td>
                   <td className="r num" style={{ fontWeight: 600 }}><Monto value={it.valor} /></td>

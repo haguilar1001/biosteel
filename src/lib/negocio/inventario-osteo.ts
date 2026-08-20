@@ -22,8 +22,16 @@ export const UMBRAL = 1;
 export const NOMBRE_INSTALACION: Record<number, string> = {
   101: "Propio",
   102: "Consignación",
+  // 103 y 104 aparecieron con el balance por bodega (bodegas 203 "PRUEBA" y
+  // 204 "PRÉSTAMO PXP CAMPBELL"). Nunca tienen saldo, así que no van en los
+  // selectores; están aquí para que la etiqueta exista si algún día lo tienen.
+  103: "Prueba",
+  104: "Préstamo PXP",
   106: "Aprovechamiento",
 };
+
+/** Instalaciones que sí mueven material: las que van en los selectores. */
+export const INSTALACIONES_CON_MATERIAL = [101, 102, 106] as const;
 
 export const MES_CORTO = ["", "Ene", "Feb", "Mar", "Abr", "May", "Jun",
   "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
@@ -36,6 +44,24 @@ export type FiltroInstalacion = number | undefined;
 /** Fragmento SQL para acotar por instalación (se interpola un número validado). */
 function soloInst(inst: FiltroInstalacion, col = "instalacion"): string {
   return inst && NOMBRE_INSTALACION[inst] ? ` AND ${col} = ${inst}` : "";
+}
+
+/**
+ * Recorte del saldo valorizado. `bodega` solo aplica a los meses cargados con
+ * el export nuevo; los viejos tienen bodegaCodigo = "" (ver `mesesConBodega`).
+ */
+export interface FiltroSaldo {
+  inst?: number;
+  bodega?: string;
+}
+
+/** Fragmento SQL para acotar el balance por instalación y bodega. */
+function soloSaldo(f: FiltroSaldo | undefined, pre = ""): string {
+  if (!f) return "";
+  const p = pre ? `${pre}.` : "";
+  let s = soloInst(f.inst, `${p}instalacion`);
+  if (f.bodega) s += ` AND ${p}"bodegaCodigo" = '${f.bodega.replace(/'/g, "''")}'`;
+  return s;
 }
 
 export interface FilaConciliacion {
@@ -241,10 +267,52 @@ export async function mesesConBalance(anio: number): Promise<number[]> {
   return filas.map((f) => f.mes);
 }
 
+/**
+ * Meses de un año cuyo balance sí viene abierto por bodega. Los cargados con
+ * el export viejo tienen bodegaCodigo = "" y no se pueden filtrar por bodega.
+ */
+export async function mesesConBodega(anio: number): Promise<number[]> {
+  const filas = await prisma.$queryRaw<Record<string, unknown>[]>`
+    SELECT DISTINCT mes FROM "InvBalance"
+    WHERE anio = ${anio} AND "bodegaCodigo" <> '' ORDER BY mes`;
+  return filas.map((f) => n(f.mes));
+}
+
+export interface OpcionBodegaSaldo {
+  codigo: string; descripcion: string; ciudad: string; instalacion: number;
+  valor: number;
+}
+
+/**
+ * Bodegas con saldo en el mes, de mayor a menor plata. Es el selector y a la
+ * vez la respuesta a "cuánto material tengo en cada bodega".
+ */
+export async function bodegasConSaldo(anio: number, mes: number): Promise<OpcionBodegaSaldo[]> {
+  const filas = await prisma.$queryRaw<Record<string, unknown>[]>`
+    SELECT b."bodegaCodigo" AS codigo, MAX(b.instalacion) AS instalacion,
+           SUM(b."valorFinal") AS valor
+    FROM "InvBalance" b
+    WHERE b.anio = ${anio} AND b.mes = ${mes} AND b."bodegaCodigo" <> ''
+    GROUP BY b."bodegaCodigo"
+    ORDER BY SUM(b."valorFinal") DESC, b."bodegaCodigo"`;
+  const cat = new Map((await prisma.invBodega.findMany({
+    select: { codigo: true, descripcion: true, ciudad: true },
+  })).map((b) => [b.codigo, b] as const));
+  return filas.map((f) => {
+    const codigo = String(f.codigo);
+    const c = cat.get(codigo);
+    return {
+      codigo, descripcion: c?.descripcion ?? "sin nombre", ciudad: c?.ciudad ?? "",
+      instalacion: n(f.instalacion), valor: n(f.valor),
+    };
+  });
+}
+
 // ---------- Inventario valorizado ----------
 
 /** Dimensiones por las que se puede abrir el saldo (columnas del balance). */
 export const DIMENSIONES = {
+  bodegaCodigo: "Bodega",
   marca: "Marca",
   linea: "Línea",
   anatomia: "Anatomía",
@@ -263,7 +331,7 @@ export interface ResumenValorizado {
 }
 
 /** KPIs del mes: saldo, movimiento y lo que no tiene costo. */
-export async function resumenValorizado(anio: number, mes: number, inst?: FiltroInstalacion): Promise<ResumenValorizado> {
+export async function resumenValorizado(anio: number, mes: number, filtro?: FiltroSaldo): Promise<ResumenValorizado> {
   const anterior = mes === 1 ? { anio: anio - 1, mes: 12 } : { anio, mes: mes - 1 };
   const filas = await prisma.$queryRawUnsafe<Record<string, unknown>[]>(`
     SELECT
@@ -274,10 +342,10 @@ export async function resumenValorizado(anio: number, mes: number, inst?: Filtro
       SUM("valorSalidas") AS salidas,
       COUNT(*) FILTER (WHERE "cantFinal" > 0 AND "valorFinal" = 0) AS items_sc,
       COALESCE(SUM("cantFinal") FILTER (WHERE "cantFinal" > 0 AND "valorFinal" = 0), 0) AS und_sc
-    FROM "InvBalance" WHERE anio = ${anio} AND mes = ${mes}${soloInst(inst)}`);
+    FROM "InvBalance" WHERE anio = ${anio} AND mes = ${mes}${soloSaldo(filtro)}`);
   const prev = await prisma.$queryRawUnsafe<Record<string, unknown>[]>(`
     SELECT SUM("valorFinal") AS valor FROM "InvBalance"
-    WHERE anio = ${anterior.anio} AND mes = ${anterior.mes}${soloInst(inst)}`);
+    WHERE anio = ${anterior.anio} AND mes = ${anterior.mes}${soloSaldo(filtro)}`);
   const f = filas[0] ?? {};
   return {
     valor: n(f.valor), unidades: n(f.unidades), items: n(f.items),
@@ -289,12 +357,12 @@ export async function resumenValorizado(anio: number, mes: number, inst?: Filtro
 
 export interface SaldoInstalacion { instalacion: number; valor: number; unidades: number; items: number }
 
-export async function saldoPorInstalacion(anio: number, mes: number): Promise<SaldoInstalacion[]> {
-  const filas = await prisma.$queryRaw<Record<string, unknown>[]>`
+export async function saldoPorInstalacion(anio: number, mes: number, f?: FiltroSaldo): Promise<SaldoInstalacion[]> {
+  const filas = await prisma.$queryRawUnsafe<Record<string, unknown>[]>(`
     SELECT instalacion, SUM("valorFinal") AS valor, SUM("cantFinal") AS unidades,
            COUNT(*) FILTER (WHERE "cantFinal" <> 0) AS items
-    FROM "InvBalance" WHERE anio = ${anio} AND mes = ${mes}
-    GROUP BY instalacion ORDER BY instalacion`;
+    FROM "InvBalance" WHERE anio = ${anio} AND mes = ${mes}${soloSaldo(f)}
+    GROUP BY instalacion ORDER BY instalacion`);
   return filas.map((f) => ({
     instalacion: n(f.instalacion), valor: n(f.valor),
     unidades: n(f.unidades), items: n(f.items),
@@ -313,7 +381,7 @@ export interface SaldoDimension {
  * salidas del año corrido: un ítem con mucho saldo y poca salida es plata
  * quieta, y eso es lo que hay que poder ver.
  */
-export async function saldoPorDimension(anio: number, mes: number, dim: Dimension, inst?: FiltroInstalacion): Promise<SaldoDimension[]> {
+export async function saldoPorDimension(anio: number, mes: number, dim: Dimension, f?: FiltroSaldo): Promise<SaldoDimension[]> {
   // `dim` está acotado por el tipo Dimension; el nombre de columna nunca viene del usuario.
   const col = `"${dim}"`;
   const filas = await prisma.$queryRawUnsafe<Record<string, unknown>[]>(`
@@ -321,23 +389,33 @@ export async function saldoPorDimension(anio: number, mes: number, dim: Dimensio
       SELECT ${col} AS label, SUM("valorFinal") AS valor, SUM("cantFinal") AS unidades,
              COUNT(*) FILTER (WHERE "cantFinal" <> 0) AS items,
              SUM("valorEntradas") AS entradas, SUM("valorSalidas") AS salidas
-      FROM "InvBalance" WHERE anio = $1 AND mes = $2${soloInst(inst)} GROUP BY 1
+      FROM "InvBalance" WHERE anio = $1 AND mes = $2${soloSaldo(f)} GROUP BY 1
     ), anual AS (
       SELECT ${col} AS label, SUM("valorSalidas") AS salidas_anio, COUNT(DISTINCT mes) AS meses
-      FROM "InvBalance" WHERE anio = $1 AND mes <= $2${soloInst(inst)} GROUP BY 1
+      FROM "InvBalance" WHERE anio = $1 AND mes <= $2${soloSaldo(f)} GROUP BY 1
     )
     SELECT s.label, s.valor, s.unidades, s.items, s.entradas, s.salidas,
            a.salidas_anio, a.meses
     FROM saldo s LEFT JOIN anual a ON a.label = s.label
     ORDER BY s.valor DESC`, anio, mes);
 
-  return filas.map((f) => {
-    const valor = n(f.valor);
-    const salidaMensual = n(f.meses) > 0 ? n(f.salidas_anio) / n(f.meses) : 0;
+  // La bodega es un código: sin el nombre la tabla no se lee.
+  const nombres = dim === "bodegaCodigo"
+    ? new Map((await prisma.invBodega.findMany({ select: { codigo: true, descripcion: true, ciudad: true } }))
+        .map((b) => [b.codigo, b.ciudad ? `${b.descripcion} · ${b.ciudad}` : b.descripcion] as const))
+    : null;
+
+  return filas.map((r) => {
+    const valor = n(r.valor);
+    const salidaMensual = n(r.meses) > 0 ? n(r.salidas_anio) / n(r.meses) : 0;
+    const cod = String(r.label ?? "");
+    const label = dim === "bodegaCodigo"
+      ? (cod ? `${cod} · ${nombres?.get(cod) ?? "sin nombre"}` : "(mes sin detalle por bodega)")
+      : String(r.label || "(sin clasificar)");
     return {
-      label: String(f.label || "(sin clasificar)"),
-      valor, unidades: n(f.unidades), items: n(f.items),
-      entradas: n(f.entradas), salidas: n(f.salidas),
+      label,
+      valor, unidades: n(r.unidades), items: n(r.items),
+      entradas: n(r.entradas), salidas: n(r.salidas),
       mesesInventario: salidaMensual > 0 ? valor / salidaMensual : null,
     };
   });
@@ -346,10 +424,10 @@ export async function saldoPorDimension(anio: number, mes: number, dim: Dimensio
 export interface PuntoMes { anio: number; mes: number; valor: number; unidades: number }
 
 /** Serie del saldo final mes a mes, para ver la tendencia. */
-export async function evolucionSaldo(inst?: FiltroInstalacion): Promise<PuntoMes[]> {
+export async function evolucionSaldo(f?: FiltroSaldo): Promise<PuntoMes[]> {
   const filas = await prisma.$queryRawUnsafe<Record<string, unknown>[]>(`
     SELECT anio, mes, SUM("valorFinal") AS valor, SUM("cantFinal") AS unidades
-    FROM "InvBalance" WHERE TRUE${soloInst(inst)}
+    FROM "InvBalance" WHERE TRUE${soloSaldo(f)}
     GROUP BY anio, mes ORDER BY anio, mes`);
   return filas.map((f) => ({
     anio: n(f.anio), mes: n(f.mes), valor: n(f.valor), unidades: n(f.unidades),
@@ -362,36 +440,46 @@ export interface ItemSaldo {
   unidades: number; valor: number; costoUnit: number;
   /** Meses sin una sola salida (hasta el mes consultado, dentro del año). */
   mesesSinSalida: number;
+  /** En cuántas bodegas está repartido; 0 si el mes no tiene detalle. */
+  bodegas: number;
 }
 
 /**
  * Ítems de mayor saldo, con cuántos meses llevan sin salir. Es la lista para
  * atacar inventario quieto.
  */
-export async function itemsConSaldo(anio: number, mes: number, limite = 100, inst?: FiltroInstalacion): Promise<ItemSaldo[]> {
+export async function itemsConSaldo(anio: number, mes: number, limite = 100, f?: FiltroSaldo): Promise<ItemSaldo[]> {
+  // Con el balance por bodega el mismo ítem aparece en varias bodegas; se
+  // agrupa para que la lista sea de ítems y no de ubicaciones.
   const filas = await prisma.$queryRawUnsafe<Record<string, unknown>[]>(`
     WITH ult AS (
       SELECT item, instalacion, MAX(mes) AS ultimo_mov
       FROM "InvBalance"
-      WHERE anio = ${anio} AND mes <= ${mes} AND "cantSalidas" > 0${soloInst(inst)}
+      WHERE anio = ${anio} AND mes <= ${mes} AND "cantSalidas" > 0${soloSaldo(f)}
       GROUP BY item, instalacion
+    ), saldo AS (
+      SELECT b.item, b.instalacion, MAX(b.referencia) AS referencia,
+             MAX(b.descripcion) AS descripcion, MAX(b.marca) AS marca,
+             SUM(b."cantFinal") AS unidades, SUM(b."valorFinal") AS valor,
+             COUNT(DISTINCT NULLIF(b."bodegaCodigo", '')) FILTER (WHERE b."cantFinal" <> 0) AS bodegas
+      FROM "InvBalance" b
+      WHERE b.anio = ${anio} AND b.mes = ${mes} AND b."cantFinal" > 0${soloSaldo(f, 'b')}
+      GROUP BY b.item, b.instalacion
     )
-    SELECT b.item, b.referencia, b.descripcion, b.instalacion, b.marca,
-           b."cantFinal" AS unidades, b."valorFinal" AS valor,
-           ${mes} - COALESCE(u.ultimo_mov, 0) AS sin_salida
-    FROM "InvBalance" b LEFT JOIN ult u ON u.item = b.item AND u.instalacion = b.instalacion
-    WHERE b.anio = ${anio} AND b.mes = ${mes} AND b."cantFinal" > 0${soloInst(inst, 'b.instalacion')}
-    ORDER BY b."valorFinal" DESC
+    SELECT s.*, ${mes} - COALESCE(u.ultimo_mov, 0) AS sin_salida
+    FROM saldo s LEFT JOIN ult u ON u.item = s.item AND u.instalacion = s.instalacion
+    ORDER BY s.valor DESC
     LIMIT ${limite}`);
 
-  return filas.map((f) => {
-    const unidades = n(f.unidades), valor = n(f.valor);
+  return filas.map((r) => {
+    const unidades = n(r.unidades), valor = n(r.valor);
     return {
-      item: String(f.item), referencia: String(f.referencia ?? ""),
-      descripcion: String(f.descripcion ?? ""), instalacion: n(f.instalacion),
-      marca: String(f.marca ?? ""), unidades, valor,
+      item: String(r.item), referencia: String(r.referencia ?? ""),
+      descripcion: String(r.descripcion ?? ""), instalacion: n(r.instalacion),
+      marca: String(r.marca ?? ""), unidades, valor,
       costoUnit: unidades > 0 ? valor / unidades : 0,
-      mesesSinSalida: n(f.sin_salida),
+      mesesSinSalida: n(r.sin_salida),
+      bodegas: n(r.bodegas),
     };
   });
 }
@@ -442,7 +530,7 @@ function whereMov(f: FiltroMovimientos): string {
 export interface SaldoPeriodo {
   /** Hay saldo que mostrar; si no, `motivo` dice por qué. */
   disponible: boolean;
-  /** "bodega" = el balance no llega a bodega · "sin-balance" = mes no cargado. */
+  /** "bodega" = el mes se cargó sin detalle por bodega · "sin-balance" = mes no cargado. */
   motivo?: "bodega" | "sin-balance";
   inicial: number; final: number;
   /** Meses del año que el balance alcanza a cubrir dentro del filtro. */
@@ -454,18 +542,19 @@ export interface SaldoPeriodo {
  * movimientos: los movimientos cargados arrancan en 2024-12 y no traen saldo
  * de apertura, así que acumularlos daría una cifra que no es el saldo.
  *
- * El balance solo llega hasta instalación, así que con una bodega elegida no
- * hay saldo posible. El tipo de documento tampoco aplica: el saldo es
- * existencia, no flujo.
+ * Con el export nuevo el balance ya trae bodega, así que el filtro de bodega
+ * también da saldo — salvo en los meses cargados con el export viejo, que
+ * quedaron a nivel instalación. El tipo de documento no aplica nunca: el
+ * saldo es existencia, no flujo.
  */
 export async function saldoDelPeriodo(f: FiltroMovimientos): Promise<SaldoPeriodo> {
   const vacio = { disponible: false, inicial: 0, final: 0, mesInicial: 0, mesFinal: 0 };
-  if (f.bodega) return { ...vacio, motivo: "bodega" };
 
   const cond: string[] = [`anio = ${f.anio}`];
   if (f.mes) cond.push(`mes = ${f.mes}`);
   if (f.instalacion && NOMBRE_INSTALACION[f.instalacion]) cond.push(`instalacion = ${f.instalacion}`);
   if (f.marca) cond.push(`marca = ${lit(f.marca)}`);
+  if (f.bodega) cond.push(`"bodegaCodigo" = ${lit(f.bodega)}`);
   const w = cond.join(" AND ");
 
   // El rango es el que alcanza el balance dentro del filtro: si se pide "todo
@@ -478,7 +567,9 @@ export async function saldoDelPeriodo(f: FiltroMovimientos): Promise<SaldoPeriod
     FROM rango r`);
 
   const r = filas[0];
-  if (!r || r.ini == null) return { ...vacio, motivo: "sin-balance" };
+  // Sin filas con bodega el mes puede existir igual, cargado con el export
+  // viejo: hay que distinguirlo de "no hay balance del todo".
+  if (!r || r.ini == null) return { ...vacio, motivo: f.bodega ? "bodega" : "sin-balance" };
   return {
     disponible: true, inicial: n(r.v_ini), final: n(r.v_fin),
     mesInicial: n(r.ini), mesFinal: n(r.fin),

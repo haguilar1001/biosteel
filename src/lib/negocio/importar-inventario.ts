@@ -2,12 +2,17 @@
 // Importadores del INVENTARIO DE MATERIAL DE OSTEOSÍNTESIS (SIESA).
 // Tres archivos independientes, cada uno con su parser y su persistidor:
 //   · Tablas Auxiliares → InvBodega     (catálogo con la instalación)
-//   · Balance mensual   → InvBalance    (saldo valorizado por instalación)
+//   · Balance mensual   → InvBalance    (saldo valorizado)
 //   · Movimientos       → InvMovimiento (cada línea de documento)
 //
 // La instalación es la llave de la conciliación: el balance viene por
 // instalación (101 propio · 102 consignación · 106 aprovechamiento) y los
 // movimientos por bodega, así que sin el catálogo completo no cuadran.
+//
+// Desde el export de agosto de 2026 el balance TAMBIÉN trae bodega, saldo
+// inicial en cantidad y consumo promedio diario — pero dejó de traer
+// "Desc. item", que hay que rellenar con lo ya cargado. Los dos formatos
+// conviven: sin columna Bodega el mes queda con bodegaCodigo = "".
 // ==========================================================
 import "server-only";
 import * as XLSX from "xlsx";
@@ -66,8 +71,18 @@ function exigir(h: Map<string, number>, ...nombres: string[]): number {
   throw new Error(`No se encontró la columna "${nombres[0]}" en el archivo.`);
 }
 
-async function porLotes<T>(rows: T[], escribir: (lote: T[]) => Promise<unknown>): Promise<void> {
-  for (let i = 0; i < rows.length; i += BATCH) await escribir(rows.slice(i, i + BATCH));
+async function porLotes<T>(rows: T[], escribir: (lote: T[]) => Promise<unknown>, tam = BATCH): Promise<void> {
+  for (let i = 0; i < rows.length; i += tam) {
+    const lote = rows.slice(i, i + tam);
+    // El proxy de Railway corta la conexión con lotes grandes; reintentar el
+    // lote en trozos más chicos evita rehacer el archivo entero.
+    try {
+      await escribir(lote);
+    } catch (e) {
+      if (tam <= 250) throw e;
+      await porLotes(lote, escribir, Math.floor(tam / 4));
+    }
+  }
 }
 
 // ---------- 1) Tablas Auxiliares → InvBodega ----------
@@ -124,6 +139,16 @@ export async function persistirBodegas(bodegas: BodegaParsed[]): Promise<number>
 
 export interface BalanceParsed {
   anio: number; mes: number; hoja: string; filas: number; datos: Record<string, unknown>[];
+  /** El export trae la columna "Bodega" (los viejos solo llegan a instalación). */
+  porBodega: boolean;
+  /** Bodegas del balance que el catálogo no tiene; se dan de alta al persistir. */
+  bodegasNuevas: Map<string, { descripcion: string; instalacion: number }>;
+  /** Bodegas donde el catálogo y el balance discrepan (manda el balance). */
+  choques: Map<string, { catalogo: number; archivo: number }>;
+  /** Filas cuya descripción hubo que rellenar (el export nuevo no la trae). */
+  descRellenadas: number;
+  /** Filas que quedaron sin descripción ni siquiera tras rellenar. */
+  descFaltantes: number;
 }
 
 /**
@@ -140,7 +165,7 @@ export function periodoDeNombre(nombre: string, anioPorDefecto: number): { anio:
   return { anio: m2 ? 2000 + m2 : anioPorDefecto, mes };
 }
 
-export function parseBalance(buffer: Buffer, nombreArchivo: string, anioPorDefecto = new Date().getFullYear()): BalanceParsed {
+export async function parseBalance(buffer: Buffer, nombreArchivo: string, anioPorDefecto = new Date().getFullYear()): Promise<BalanceParsed> {
   const wb = XLSX.read(buffer, { type: "buffer" });
   const hoja = wb.SheetNames[0]!;
   const periodo = periodoDeNombre(hoja, anioPorDefecto) ?? periodoDeNombre(nombreArchivo, anioPorDefecto);
@@ -155,42 +180,104 @@ export function parseBalance(buffer: Buffer, nombreArchivo: string, anioPorDefec
   const iVS = exigir(h, "Salidas (prom.)"), iVF = exigir(h, "Saldo final (prom.)");
   const iMar = h.get("MARCA"), iLin = h.get("LÍNEA"), iAna = h.get("ANATOMIA");
   const iSis = h.get("SISTEMA"), iCat = h.get("CATEGORIA");
+  // Columnas del export nuevo. Sin "Bodega" el mes queda a nivel instalación,
+  // igual que antes, y se marca con bodegaCodigo = "".
+  const iBod = h.get("Bodega"), iBodDesc = h.get("Desc. bodega");
+  const iCI = h.get("Saldo inicial (cant.)"), iCPD = h.get("Consumo promedio diario");
+  const porBodega = iBod != null;
+
+  // El export nuevo (el que trae bodega) dejó de traer "Desc. item": sin esto
+  // los ítems saldrían sin nombre en toda la pantalla. Se rellena con lo que
+  // ya está cargado — primero por ítem desde otros balances y, si no, por
+  // referencia desde los movimientos, que sí traen descripción.
+  const descPorItem = new Map<string, string>(), descPorRef = new Map<string, string>();
+  if (iDesc == null) {
+    const [items, refs] = await Promise.all([
+      prisma.$queryRaw<Record<string, unknown>[]>`
+        SELECT item, MAX(descripcion) AS d FROM "InvBalance" WHERE descripcion <> '' GROUP BY item`,
+      prisma.$queryRaw<Record<string, unknown>[]>`
+        SELECT referencia, MAX(descripcion) AS d FROM "InvMovimiento" WHERE descripcion <> '' GROUP BY referencia`,
+    ]);
+    for (const r of items) descPorItem.set(String(r.item), String(r.d ?? ""));
+    for (const r of refs) descPorRef.set(String(r.referencia), String(r.d ?? ""));
+  }
 
   const datos: Record<string, unknown>[] = [];
   const vistas = new Set<string>();
-  let leidas = 0;
+  const bodegasNuevas = new Map<string, { descripcion: string; instalacion: number }>();
+  const bodegasVistas = new Map<string, { descripcion: string; instalacion: number }>();
+  let leidas = 0, descRellenadas = 0, descFaltantes = 0;
   for (let i = 1; i < rows.length; i++) {
     const r = rows[i]; if (!r) continue;
     const item = txt(r[iItem]);
     // "Gran total" es la fila de totales del reporte, no un ítem.
     if (!item || item.toUpperCase().startsWith("GRAN TOTAL")) continue;
     leidas++;
+    const cantInicial = iCI != null ? num(r[iCI]) : 0;
     const cantEntradas = num(r[iCE]), cantSalidas = num(r[iCS]), cantFinal = num(r[iCF]);
     const valorInicial = num(r[iVI]), valorEntradas = num(r[iVE]);
     const valorSalidas = num(r[iVS]), valorFinal = num(r[iVF]);
-    // El archivo trae ~30.8k filas por mes y la mayoría está toda en cero.
-    if (!cantEntradas && !cantSalidas && !cantFinal && !valorInicial && !valorEntradas && !valorSalidas && !valorFinal) continue;
+    // El archivo trae ~89.7k filas por mes y la mayoría está toda en cero.
+    if (!cantInicial && !cantEntradas && !cantSalidas && !cantFinal
+      && !valorInicial && !valorEntradas && !valorSalidas && !valorFinal) continue;
     const instalacion = Math.trunc(num(r[iInst]));
-    const llave = `${instalacion}|${item}`;
-    if (vistas.has(llave)) continue; // el reporte no debería repetir Ítem × Instalación
+    const bodegaCodigo = porBodega ? txt(r[iBod]) : "";
+    if (bodegaCodigo) {
+      bodegasVistas.set(bodegaCodigo, {
+        descripcion: iBodDesc != null ? txt(r[iBodDesc]) : "", instalacion,
+      });
+    }
+    const llave = `${instalacion}|${bodegaCodigo}|${item}`;
+    if (vistas.has(llave)) continue; // el reporte no debería repetir Ítem × Bodega × Instalación
     vistas.add(llave);
+    const referencia = txt(r[iRef]);
+    let descripcion = iDesc != null ? txt(r[iDesc]) : "";
+    if (iDesc == null) {
+      descripcion = descPorItem.get(item) ?? descPorRef.get(referencia) ?? "";
+      if (descripcion) descRellenadas++; else descFaltantes++;
+    }
     datos.push({
-      anio: periodo.anio, mes: periodo.mes, instalacion,
-      item, referencia: txt(r[iRef]),
-      descripcion: iDesc != null ? txt(r[iDesc]) : "", tipoInv: iTipo != null ? txt(r[iTipo]) : "",
+      anio: periodo.anio, mes: periodo.mes, instalacion, bodegaCodigo,
+      item, referencia, descripcion,
+      tipoInv: iTipo != null ? txt(r[iTipo]) : "",
       marca: iMar != null ? txt(r[iMar]) : "", linea: iLin != null ? txt(r[iLin]) : "",
       anatomia: iAna != null ? txt(r[iAna]) : "", sistema: iSis != null ? txt(r[iSis]) : "",
       categoria: iCat != null ? txt(r[iCat]) : "",
-      cantEntradas, cantSalidas, cantFinal, valorInicial, valorEntradas, valorSalidas, valorFinal,
+      cantInicial, cantEntradas, cantSalidas, cantFinal,
+      valorInicial, valorEntradas, valorSalidas, valorFinal,
+      consumoDiario: iCPD != null ? num(r[iCPD]) : 0,
     });
   }
-  return { ...periodo, hoja, filas: leidas, datos };
+
+  // El balance es la fuente más confiable de la instalación de una bodega:
+  // es el mismo reporte del que sale el saldo. Manda sobre el catálogo.
+  const catalogo = new Map(
+    (await prisma.invBodega.findMany({ select: { codigo: true, instalacion: true } }))
+      .map((b) => [b.codigo, b.instalacion] as const),
+  );
+  const choques = new Map<string, { catalogo: number; archivo: number }>();
+  for (const [codigo, def] of bodegasVistas) {
+    const enCatalogo = catalogo.get(codigo);
+    if (enCatalogo == null) bodegasNuevas.set(codigo, def);
+    else if (enCatalogo !== def.instalacion) choques.set(codigo, { catalogo: enCatalogo, archivo: def.instalacion });
+  }
+  return { ...periodo, hoja, filas: leidas, datos, porBodega, bodegasNuevas, choques, descRellenadas, descFaltantes };
 }
 
 /** Reemplaza el balance del mes (idempotente: se puede recargar el archivo). */
 export async function persistirBalance(b: BalanceParsed): Promise<number> {
+  // Las bodegas que el balance ubica y el catálogo no tiene se dan de alta
+  // (marcadas como inferidas), para que la pantalla les sepa el nombre.
+  for (const [codigo, def] of b.bodegasNuevas) {
+    await prisma.invBodega.upsert({
+      where: { codigo },
+      update: {},
+      create: { codigo, descripcion: def.descripcion, instalacion: def.instalacion, inferida: true },
+    });
+  }
   await prisma.invBalance.deleteMany({ where: { anio: b.anio, mes: b.mes } });
-  await porLotes(b.datos, (lote) => prisma.invBalance.createMany({ data: lote as never, skipDuplicates: true }));
+  // El balance trae ~20 columnas por fila: lotes de 5.000 tumban la conexión.
+  await porLotes(b.datos, (lote) => prisma.invBalance.createMany({ data: lote as never, skipDuplicates: true }), 1500);
   return b.datos.length;
 }
 

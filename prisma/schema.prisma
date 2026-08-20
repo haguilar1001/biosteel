@@ -1143,16 +1143,20 @@ model InvBodega {
   @@index([ciudad])
 }
 
-// Saldo mensual valorizado. Una fila por Ítem × Instalación × mes.
+// Saldo mensual valorizado. Una fila por Ítem × Bodega × Instalación × mes.
 // Solo se guardan las filas con algún valor distinto de cero (el archivo
-// trae ~30.8k filas por mes, de las cuales ~7.3k tienen saldo o movimiento).
+// trae ~89.7k filas por mes, de las cuales ~32k tienen saldo o movimiento).
 // En la instalación 106 (aprovechamiento) el costo es SIEMPRE 0: hay
 // unidades pero nunca valor. No es un error de carga.
 model InvBalance {
   id          Int    @id @default(autoincrement())
   anio        Int
   mes         Int // 1–12
-  instalacion Int // 101 | 102 | 106
+  instalacion Int // 101 | 102 | 103 | 104 | 106
+  /// Bodega del saldo. **"" en los meses cargados con el export viejo**, que
+  /// solo llegaba hasta instalación. No es FK: el balance trae bodegas que el
+  /// catálogo no tiene y la cadena vacía no apuntaría a ninguna.
+  bodegaCodigo String @default("")
   item        String // código SIESA del ítem (p.ej. "0000456")
   referencia  String // código corto (p.ej. "PR08")
   descripcion String @default("")
@@ -1163,6 +1167,7 @@ model InvBalance {
   sistema     String @default("")
   categoria   String @default("")
 
+  cantInicial   Decimal @default(0) @db.Decimal(18, 2)
   cantEntradas  Decimal @default(0) @db.Decimal(18, 2)
   cantSalidas   Decimal @default(0) @db.Decimal(18, 2)
   cantFinal     Decimal @default(0) @db.Decimal(18, 2)
@@ -1170,9 +1175,13 @@ model InvBalance {
   valorEntradas Decimal @default(0) @db.Decimal(18, 2)
   valorSalidas  Decimal @default(0) @db.Decimal(18, 2)
   valorFinal    Decimal @default(0) @db.Decimal(18, 2)
+  /// "Consumo promedio diario" del reporte. SIESA lo entrega casi todo en
+  /// cero (16 filas de 89.655 en marzo), así que hoy no es utilizable.
+  consumoDiario Decimal @default(0) @db.Decimal(18, 2)
 
-  @@unique([anio, mes, instalacion, item])
+  @@unique([anio, mes, instalacion, bodegaCodigo, item])
   @@index([anio, mes])
+  @@index([bodegaCodigo])
   @@index([referencia])
   @@index([marca])
 }
