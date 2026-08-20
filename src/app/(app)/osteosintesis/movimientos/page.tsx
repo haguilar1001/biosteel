@@ -1,19 +1,20 @@
 // ==========================================================
 // Osteosíntesis · Movimientos — el detalle por documento, con filtros de
-// bodega, instalación y tipo de movimiento.
+// bodega, instalación, tipo de movimiento y proveedor (columna MARCA).
 //
 // Es la única vista del módulo que tiene BODEGA: el balance mensual solo
 // llega hasta instalación, así que el saldo valorizado no se puede abrir por
-// bodega, pero el movimiento sí.
+// bodega, pero el movimiento sí. Por eso el saldo inicial/final de la primera
+// fila desaparece en cuanto se elige una bodega: no existe ese dato.
 // ==========================================================
 import { requirePermiso } from "@/server/auth-context";
 import { formatNumero } from "@/lib/format";
 import { Monto } from "../../_components/Monto";
 import { FiltroAuto } from "../../_components/FiltroAuto";
 import {
-  aniosConMovimientos, mesesConMovimientos, bodegas,
+  aniosConMovimientos, mesesConMovimientos, bodegas, marcasConMovimientos,
   resumenMovimientos, movimientosPorTipo, movimientosPorBodegaFiltrado, detalleMovimientos,
-  NOMBRE_INSTALACION, MES_CORTO, type FiltroMovimientos,
+  saldoDelPeriodo, NOMBRE_INSTALACION, MES_CORTO, type FiltroMovimientos,
 } from "@/lib/negocio/inventario-osteo";
 
 const MES_LARGO = ["", "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
@@ -22,7 +23,7 @@ const LIMITE = 300;
 
 export default async function MovimientosPage({
   searchParams,
-}: { searchParams: Promise<{ anio?: string; mes?: string; bodega?: string; inst?: string; tipo?: string }> }) {
+}: { searchParams: Promise<{ anio?: string; mes?: string; bodega?: string; inst?: string; tipo?: string; marca?: string }> }) {
   await requirePermiso("osteo.view");
   const sp = await searchParams;
 
@@ -42,18 +43,37 @@ export default async function MovimientosPage({
   const bodega = sp.bodega && catalogo.some((b) => b.codigo === sp.bodega) ? sp.bodega : undefined;
   const instalacion = sp.inst && NOMBRE_INSTALACION[Number(sp.inst)] ? Number(sp.inst) : undefined;
   const tipoDoc = sp.tipo && /^[A-Z]{3}$/.test(sp.tipo) ? sp.tipo : undefined;
+  const marcas = await marcasConMovimientos(anio);
+  const marca = sp.marca && marcas.includes(sp.marca) ? sp.marca : undefined;
 
-  const filtro: FiltroMovimientos = { anio, mes, bodega, instalacion, tipoDoc };
-  const [kpi, tipos, porBodega, detalle] = await Promise.all([
+  const filtro: FiltroMovimientos = { anio, mes, bodega, instalacion, tipoDoc, marca };
+  const [kpi, tipos, porBodega, detalle, saldo] = await Promise.all([
     resumenMovimientos(filtro),
     movimientosPorTipo(filtro),
     movimientosPorBodegaFiltrado(filtro),
     detalleMovimientos(filtro, LIMITE),
+    saldoDelPeriodo(filtro),
   ]);
 
   const bodegaSel = bodega ? catalogo.find((b) => b.codigo === bodega) : undefined;
   const etiqueta = mes ? `${MES_LARGO[mes]} ${anio}` : `${anio}`;
   const neto = kpi.costoEntradas - kpi.costoSalidas;
+
+  // El saldo sale del balance, que va por su propio calendario: si el mes
+  // pedido aún no está cargado, se dice qué corte se está mostrando.
+  const rangoSaldo = saldo.disponible
+    ? (saldo.mesInicial === saldo.mesFinal
+        ? `corte ${MES_LARGO[saldo.mesFinal]}`
+        : `${MES_CORTO[saldo.mesInicial]}–${MES_CORTO[saldo.mesFinal]}`)
+    : "";
+  const notaSaldo = saldo.motivo === "bodega"
+    ? "el balance no llega a bodega"
+    : saldo.motivo === "sin-balance" ? "balance no cargado" : "";
+
+  // El balance suele ir un mes atrás del movimiento: si el saldo no alcanza
+  // el último mes con movimientos, inicial + entradas − salidas no da el final.
+  const ultimoMov = meses[meses.length - 1] ?? 0;
+  const saldoRezagado = saldo.disponible && saldo.mesFinal < ultimoMov;
 
   // Bodegas agrupadas por ciudad, para que el selector sea navegable (80+).
   const porCiudad = new Map<string, typeof catalogo>();
@@ -75,6 +95,7 @@ export default async function MovimientosPage({
                 : "Todas las bodegas"}
               {instalacion ? ` · instalación ${instalacion} · ${NOMBRE_INSTALACION[instalacion]}` : ""}
               {tipoDoc ? ` · ${tipoDoc}` : ""}
+              {marca ? ` · ${marca}` : ""}
             </div>
           </div>
           <FiltroAuto className="toolbar">
@@ -106,11 +127,23 @@ export default async function MovimientosPage({
               <option value="">Todos</option>
               {tipos.map((t) => <option key={t.tipoDoc} value={t.tipoDoc}>{t.tipoDoc} · {t.descripcion}</option>)}
             </select>
+            <label className="flag" style={{ alignSelf: "center" }}>Proveedor (marca):</label>
+            <select name="marca" defaultValue={marca ?? ""} className="select" style={{ maxWidth: 300 }}>
+              <option value="">Todos</option>
+              {marcas.map((m) => <option key={m} value={m}>{m}</option>)}
+            </select>
           </FiltroAuto>
         </div>
       </div>
 
-      <div className="kpis" style={{ marginBottom: 12 }}>
+      <div className="kpis k6" style={{ marginBottom: 12 }}>
+        <div className="kpi kc">
+          <div className="klabel">Saldo Inicial</div>
+          <div className="kval num">{saldo.disponible ? <Monto value={saldo.inicial} /> : "—"}</div>
+          <div className="ksub" style={{ color: "var(--muted)" }}>
+            {saldo.disponible ? rangoSaldo : notaSaldo}
+          </div>
+        </div>
         <div className="kpi kc">
           <div className="klabel">Movimientos</div>
           <div className="kval num">{formatNumero(kpi.movimientos)}</div>
@@ -133,7 +166,24 @@ export default async function MovimientosPage({
           <div className="kval num">{neto >= 0 ? "▲ " : "▼ "}<Monto value={Math.abs(neto)} /></div>
           <div className="ksub" style={{ color: "var(--muted)" }}>{neto >= 0 ? "entró más de lo que salió" : "salió más de lo que entró"}</div>
         </div>
+        <div className="kpi kc">
+          <div className="klabel">Saldo Final</div>
+          <div className="kval num">{saldo.disponible ? <Monto value={saldo.final} /> : "—"}</div>
+          <div className="ksub" style={{ color: "var(--muted)" }}>
+            {saldo.disponible ? rangoSaldo : notaSaldo}
+          </div>
+        </div>
       </div>
+      {(saldo.motivo || saldoRezagado || (saldo.disponible && tipoDoc)) && (
+        <div className="card" style={{ marginBottom: 12 }}>
+          <div className="card-body" style={{ fontSize: 12, color: "var(--muted)", padding: "10px 14px", display: "grid", gap: 4 }}>
+            {saldo.motivo === "bodega" && <div>El <b>saldo inicial y final</b> viene del balance mensual, que solo llega hasta instalación: al elegir una bodega no hay saldo que mostrar. Quita el filtro de bodega para verlo.</div>}
+            {saldo.motivo === "sin-balance" && <div>No hay <b>balance</b> cargado para este periodo, así que no hay saldo inicial ni final. Carga el balance del mes para verlos.</div>}
+            {saldoRezagado && <div>El balance va hasta <b>{MES_LARGO[saldo.mesFinal]}</b> y los movimientos llegan a <b>{MES_LARGO[ultimoMov]}</b>: por eso inicial + entradas − salidas no da exactamente el saldo final.</div>}
+            {!saldo.motivo && tipoDoc && <div>El <b>saldo</b> es la existencia completa: no se filtra por tipo de documento. Entradas y salidas sí muestran solo <b>{tipoDoc}</b>.</div>}
+          </div>
+        </div>
+      )}
 
       <div className="grid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(380px, 1fr))", marginBottom: 12, alignItems: "start" }}>
         <div className="card">

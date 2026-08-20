@@ -415,18 +415,82 @@ export async function bodegas(): Promise<OpcionBodega[]> {
 export interface FiltroMovimientos {
   anio: number; mes?: number;
   bodega?: string; instalacion?: number; tipoDoc?: string;
+  /**
+   * Columna MARCA del export ("1003 - SAMPEDRO"). En SIESA la marca ES la casa
+   * comercial que nos vende, así que este mismo campo es el proveedor: es el
+   * mismo string que usa el Informe de Consumos.
+   */
+  marca?: string;
 }
+
+/** Literal de texto escapado para interpolarlo en SQL. */
+const lit = (v: string): string => `'${v.replace(/'/g, "''")}'`;
 
 /** Cláusula WHERE compartida por las consultas de movimientos. */
 function whereMov(f: FiltroMovimientos): string {
   const p: string[] = [`m.anio = ${f.anio}`];
   if (f.mes) p.push(`m.mes = ${f.mes}`);
-  if (f.bodega) p.push(`m."bodegaCodigo" = '${f.bodega.replace(/'/g, "''")}'`);
+  if (f.bodega) p.push(`m."bodegaCodigo" = ${lit(f.bodega)}`);
   if (f.instalacion && NOMBRE_INSTALACION[f.instalacion]) {
     p.push(`COALESCE(m.instalacion, b.instalacion) = ${f.instalacion}`);
   }
   if (f.tipoDoc && /^[A-Z]{3}$/.test(f.tipoDoc)) p.push(`m."tipoDoc" = '${f.tipoDoc}'`);
+  if (f.marca) p.push(`m.marca = ${lit(f.marca)}`);
   return p.join(" AND ");
+}
+
+export interface SaldoPeriodo {
+  /** Hay saldo que mostrar; si no, `motivo` dice por qué. */
+  disponible: boolean;
+  /** "bodega" = el balance no llega a bodega · "sin-balance" = mes no cargado. */
+  motivo?: "bodega" | "sin-balance";
+  inicial: number; final: number;
+  /** Meses del año que el balance alcanza a cubrir dentro del filtro. */
+  mesInicial: number; mesFinal: number;
+}
+
+/**
+ * Saldo inicial y final del periodo filtrado, tomados del BALANCE y no de los
+ * movimientos: los movimientos cargados arrancan en 2024-12 y no traen saldo
+ * de apertura, así que acumularlos daría una cifra que no es el saldo.
+ *
+ * El balance solo llega hasta instalación, así que con una bodega elegida no
+ * hay saldo posible. El tipo de documento tampoco aplica: el saldo es
+ * existencia, no flujo.
+ */
+export async function saldoDelPeriodo(f: FiltroMovimientos): Promise<SaldoPeriodo> {
+  const vacio = { disponible: false, inicial: 0, final: 0, mesInicial: 0, mesFinal: 0 };
+  if (f.bodega) return { ...vacio, motivo: "bodega" };
+
+  const cond: string[] = [`anio = ${f.anio}`];
+  if (f.mes) cond.push(`mes = ${f.mes}`);
+  if (f.instalacion && NOMBRE_INSTALACION[f.instalacion]) cond.push(`instalacion = ${f.instalacion}`);
+  if (f.marca) cond.push(`marca = ${lit(f.marca)}`);
+  const w = cond.join(" AND ");
+
+  // El rango es el que alcanza el balance dentro del filtro: si se pide "todo
+  // el año" y solo hay balance hasta julio, el saldo final es el de julio.
+  const filas = await prisma.$queryRawUnsafe<Record<string, unknown>[]>(`
+    WITH rango AS (SELECT MIN(mes) AS ini, MAX(mes) AS fin FROM "InvBalance" WHERE ${w})
+    SELECT r.ini, r.fin,
+      (SELECT COALESCE(SUM("valorInicial"), 0) FROM "InvBalance" WHERE ${w} AND mes = r.ini) AS v_ini,
+      (SELECT COALESCE(SUM("valorFinal"), 0)   FROM "InvBalance" WHERE ${w} AND mes = r.fin) AS v_fin
+    FROM rango r`);
+
+  const r = filas[0];
+  if (!r || r.ini == null) return { ...vacio, motivo: "sin-balance" };
+  return {
+    disponible: true, inicial: n(r.v_ini), final: n(r.v_fin),
+    mesInicial: n(r.ini), mesFinal: n(r.fin),
+  };
+}
+
+/** Proveedores (columna MARCA) con movimiento en el año, para el selector. */
+export async function marcasConMovimientos(anio: number): Promise<string[]> {
+  const filas = await prisma.$queryRaw<Record<string, unknown>[]>`
+    SELECT DISTINCT marca FROM "InvMovimiento"
+    WHERE anio = ${anio} AND marca <> '' ORDER BY marca`;
+  return filas.map((f) => String(f.marca));
 }
 
 export interface ResumenMovimientos {
