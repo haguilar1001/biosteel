@@ -6,6 +6,8 @@
 import { requireUsuario } from "@/server/auth-context";
 import { puede } from "@/lib/rbac/authorize";
 import { CARGAS } from "@/lib/negocio/cargas";
+import { ultimaCargaPorDataset } from "@/lib/negocio/historial-cargas";
+import { formatFechaHora } from "@/lib/format";
 import { Uploader, type DatasetPermitido } from "./Uploader";
 
 export const metadata = { title: "Cargar archivos · BioSteel" };
@@ -13,10 +15,22 @@ export const metadata = { title: "Cargar archivos · BioSteel" };
 export default async function CargarPage() {
   const usuario = await requireUsuario();
 
-  const flags = await Promise.all(CARGAS.map((c) => puede(usuario, c.permiso)));
+  const [flags, ultimas] = await Promise.all([
+    Promise.all(CARGAS.map((c) => puede(usuario, c.permiso))),
+    ultimaCargaPorDataset(),
+  ]);
+
+  // La fecha se formatea aquí (servidor) para que no dependa de la
+  // configuración regional del navegador de cada usuario.
   const permitidos: DatasetPermitido[] = CARGAS
     .filter((_, i) => flags[i])
-    .map((c) => ({ clave: c.clave, titulo: c.titulo, grupo: c.grupo, archivoSugerido: c.archivoSugerido }));
+    .map((c) => {
+      const u = ultimas.get(c.clave);
+      return {
+        clave: c.clave, titulo: c.titulo, grupo: c.grupo, archivoSugerido: c.archivoSugerido,
+        ultima: u ? { fecha: formatFechaHora(u.fecha), usuario: u.usuario } : null,
+      };
+    });
 
   return (
     <>

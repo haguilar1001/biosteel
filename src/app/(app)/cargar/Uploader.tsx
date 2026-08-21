@@ -5,7 +5,16 @@
 // ==========================================================
 import { useState } from "react";
 
-export interface DatasetPermitido { clave: string; titulo: string; grupo: string; archivoSugerido: string; }
+export interface UltimaCargaVista { fecha: string; usuario: string | null }
+
+export interface DatasetPermitido {
+  clave: string;
+  titulo: string;
+  grupo: string;
+  archivoSugerido: string;
+  /** Última carga exitosa; null = nunca se ha cargado. */
+  ultima: UltimaCargaVista | null;
+}
 
 interface ResDataset { titulo: string; archivo: string; hoja: string; filas: number; cargadas: number; omitidas: number; estrategia: string; }
 interface Resultado { ok: boolean; datasets: Record<string, ResDataset>; errores: string[]; }
@@ -20,13 +29,15 @@ export function Uploader({ datasets }: { datasets: DatasetPermitido[] }) {
 
   const total = Object.values(files).filter(Boolean).length;
 
-  // Con 16 archivos una lista plana no se navega. Se agrupa por módulo
-  // conservando el orden del catálogo, que ya viene ordenado a propósito
-  // (en Inventario, por ejemplo, las bodegas van antes que los movimientos).
+  // Con 16 archivos una lista plana no se navega. Se agrupa por módulo,
+  // conservando dentro de cada grupo el orden del catálogo, que está puesto a
+  // propósito (en Inventario las bodegas van antes que los movimientos).
+  // Ojo: agrupar por tramos consecutivos NO sirve, porque el catálogo tiene
+  // los módulos intercalados y el mismo título saldría repetido.
   const porGrupo: { grupo: string; items: DatasetPermitido[] }[] = [];
   for (const d of datasets) {
-    const ultimo = porGrupo[porGrupo.length - 1];
-    if (ultimo && ultimo.grupo === d.grupo) ultimo.items.push(d);
+    const g = porGrupo.find((x) => x.grupo === d.grupo);
+    if (g) g.items.push(d);
     else porGrupo.push({ grupo: d.grupo, items: [d] });
   }
 
@@ -85,7 +96,23 @@ export function Uploader({ datasets }: { datasets: DatasetPermitido[] }) {
                   {files[d.clave] ? files[d.clave]!.name : d.archivoSugerido}
                 </div>
               </div>
-              <span style={{ fontSize: 13, fontWeight: 700, color: "var(--brand)", flex: "0 0 auto" }}>
+
+              {/* Última actualización: sin esto no hay forma de ver si un
+                  archivo está al día o lleva meses sin subirse. */}
+              <div style={{ flex: "0 0 auto", textAlign: "right", minWidth: 0 }}>
+                {d.ultima ? (
+                  <>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: "var(--ink)" }}>{d.ultima.fecha}</div>
+                    <div className="flag" style={{ fontSize: 11 }}>
+                      {d.ultima.usuario ?? "automática"}
+                    </div>
+                  </>
+                ) : (
+                  <div className="flag" style={{ fontSize: 11, fontStyle: "italic" }}>sin registro</div>
+                )}
+              </div>
+
+              <span style={{ fontSize: 13, fontWeight: 700, color: "var(--brand)", flex: "0 0 auto", marginLeft: 14 }}>
                 {files[d.clave] ? "Cambiar" : "Elegir"}
               </span>
               <input type="file" accept=".xlsx" hidden

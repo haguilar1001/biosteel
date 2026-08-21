@@ -30,6 +30,8 @@ import {
 import { prisma } from "../src/lib/db";
 
 const DIR = process.env.DIR_COMPRAS ?? "D:/Escritorio";
+/** Autor que queda en la bitácora cuando la carga se hace por consola. */
+const AUTOR = "consola (db:compras)";
 const SOLO = process.env.SOLO ?? "";
 const hacer = (paso: string) => !SOLO || SOLO === paso;
 const fmt = (v: number) => new Intl.NumberFormat("es-CO", { maximumFractionDigits: 0 }).format(v);
@@ -42,6 +44,14 @@ function buscar(pred: (nombre: string) => boolean): string | undefined {
     .sort();
   return encontrados[0] ? path.join(DIR, encontrados[0]) : undefined;
 }
+
+/**
+ * Lo cargado en esta corrida, con la misma forma que guarda /cargar. Se
+ * escribe en CargaSiesa al terminar para que la pantalla de carga muestre la
+ * fecha real: sin esto un archivo subido por consola aparecía como "sin
+ * registro" aunque estuviera al día.
+ */
+const bitacora: Record<string, unknown> = {};
 
 async function main() {
   if (!fs.existsSync(DIR)) {
@@ -65,6 +75,7 @@ async function main() {
       await persistirTiposProveedor(lista);
       const tipos = [...new Set(lista.map((p) => p.tipoCompra))].filter(Boolean);
       console.log(`   ✓ ${path.basename(ruta)} → ${lista.length} proveedores · tipos: ${tipos.join(", ")}`);
+      bitacora["compras-tipos"] = { titulo: "Compras · Tipos de Proveedores", archivo: path.basename(ruta), hoja: "TIPOS DE PROVEEDORES", filas: lista.length, cargadas: lista.length, omitidas: 0 };
     }
   }
 
@@ -81,6 +92,7 @@ async function main() {
       console.log(`   ✓ ${path.basename(ruta)} [${p.hoja}] → ${fmt(cargadas)} renglones de ${fmt(p.filas)} · ${fmt(ordenes)} órdenes · ${cop(total)}`);
       console.log(`     periodos reemplazados: ${p.periodos.join(", ")}`);
       if (p.omitidas) console.log(`     ! ${fmt(p.omitidas)} renglones sin fecha de orden (omitidos)`);
+      bitacora["compras-ordenes"] = { titulo: "Compras · Órdenes de Compra", archivo: path.basename(ruta), hoja: p.hoja, filas: p.filas, cargadas, omitidas: p.omitidas };
     }
   }
 
@@ -96,6 +108,7 @@ async function main() {
       const ordenes = new Set(p.datos.map((d) => d.nroOrden)).size;
       console.log(`   ✓ ${path.basename(ruta)} [${p.hoja}] → ${fmt(cargadas)} renglones · ${fmt(ordenes)} órdenes pendientes · ${cop(total)}`);
       if (p.omitidas) console.log(`     ! ${fmt(p.omitidas)} renglones sin fecha (omitidos)`);
+      bitacora["compras-pendientes"] = { titulo: "Compras · Pendientes por Despacho", archivo: path.basename(ruta), hoja: p.hoja, filas: p.filas, cargadas, omitidas: p.omitidas };
     }
   }
 
@@ -111,6 +124,7 @@ async function main() {
       console.log(`   ✓ ${path.basename(ruta)} [${p.hoja}] → ${fmt(cargadas)} documentos de ${fmt(p.filas)} · ${cop(total)}`);
       console.log(`     periodos reemplazados: ${p.periodos.join(", ")}`);
       if (p.omitidas) console.log(`     ! ${fmt(p.omitidas)} filas sin fecha o repetidas (omitidas)`);
+      bitacora["compras-facturas"] = { titulo: "Compras · Facturas de Proveedores", archivo: path.basename(ruta), hoja: p.hoja, filas: p.filas, cargadas, omitidas: p.omitidas };
     }
   }
 
@@ -127,7 +141,14 @@ async function main() {
       console.log(`     periodos reemplazados: ${p.periodos.join(", ")}`);
       if (p.ambiguos.length) console.log(`     ! ${p.ambiguos.length} documento(s) con más de un proveedor: ${p.ambiguos.slice(0, 5).join(", ")}`);
       if (p.omitidas) console.log(`     ! ${fmt(p.omitidas)} renglones sin fecha o sin proveedor (omitidos)`);
+      bitacora["compras-entradas"] = { titulo: "Compras · Entradas por Compra", archivo: path.basename(ruta), hoja: p.hoja, filas: p.filas, cargadas, omitidas: p.omitidas };
     }
+  }
+
+  if (Object.keys(bitacora).length) {
+    await prisma.cargaSiesa.create({
+      data: { ok: true, resumen: { datasets: bitacora, usuario: AUTOR } as object },
+    });
   }
 
   console.log("✅ Listo.");

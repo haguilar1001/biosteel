@@ -65,3 +65,39 @@ export async function listarHistorialCargas(limite = 40): Promise<ItemHistorial[
   const rows = await prisma.cargaSiesa.findMany({ orderBy: { cargadaEn: "desc" }, take: limite });
   return rows.map((r) => normalizar(r.id, r.cargadaEn, r.ok, r.mensaje, r.resumen));
 }
+
+// ---------- Última carga por dataset ----------
+
+export interface UltimaCarga {
+  /** Cuándo se cargó por última vez con éxito. */
+  fecha: Date;
+  /** Quién la subió; null = la hizo el cron (sincronización automática). */
+  usuario: string | null;
+}
+
+/**
+ * Fecha y autor de la última carga EXITOSA de cada dataset, para mostrarlo
+ * junto a su casilla en /cargar. Sin esto no hay forma de saber si un archivo
+ * está al día o lleva meses sin actualizarse.
+ *
+ * Las cargas manuales guardan `{ datasets: { clave: … }, usuario }` y el cron
+ * del flujo guarda `{ flujo: … }` sin usuario, así que hay que mirar las dos
+ * formas: si no, "Ingresos y Egresos" saldría como nunca cargado aunque el
+ * cron lo actualice dos veces al día.
+ */
+export async function ultimaCargaPorDataset(): Promise<Map<string, UltimaCarga>> {
+  const filas = await prisma.$queryRaw<{ clave: string; fecha: Date; usuario: string | null }[]>`
+    WITH expandidas AS (
+      SELECT "cargadaEn" AS fecha, "resumen"->>'usuario' AS usuario,
+             jsonb_object_keys("resumen"->'datasets') AS clave
+      FROM "CargaSiesa"
+      WHERE "ok" = true AND jsonb_typeof("resumen"->'datasets') = 'object'
+      UNION ALL
+      SELECT "cargadaEn", "resumen"->>'usuario', 'flujo'
+      FROM "CargaSiesa"
+      WHERE "ok" = true AND jsonb_typeof("resumen"->'flujo') = 'object'
+    )
+    SELECT DISTINCT ON (clave) clave, fecha, usuario
+    FROM expandidas ORDER BY clave, fecha DESC`;
+  return new Map(filas.map((f) => [f.clave, { fecha: f.fecha, usuario: f.usuario }]));
+}
