@@ -162,6 +162,16 @@ h1, h2, h3 { margin: 0; }
   display: flex; align-items: center; gap: 14px;
   background: var(--brand); color: #fff; padding: 8px 18px;
 }
+.appbar .identidad { display: flex; flex-direction: column; gap: 5px; flex: 0 0 auto; }
+.appbar .quien { display: flex; align-items: center; gap: 7px; min-width: 0; }
+.appbar .avatar-mini {
+  flex: 0 0 auto; width: 22px; height: 22px; border-radius: 50%; background: var(--brand-2);
+  display: grid; place-items: center; font-size: 10px; font-weight: 800; color: #fff;
+  border: 1.5px solid rgba(255,255,255,.4);
+}
+.appbar .quien-txt { display: flex; flex-direction: column; line-height: 1.15; min-width: 0; }
+.appbar .quien-nombre { font-size: 12px; font-weight: 700; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 180px; }
+.appbar .quien-rol { font-size: 10px; font-weight: 600; letter-spacing: .3px; color: rgba(255,255,255,.7); text-transform: uppercase; }
 .appbar .logo { display: flex; align-items: center; gap: 10px; font-weight: 700; letter-spacing: .2px; }
 .appbar .logo small { font-weight: 400; opacity: .8; letter-spacing: 1px; font-size: 9px; display: block; margin-top: -2px; }
 .appbar .logo-img { height: 34px; width: auto; display: block; background: #fff; padding: 4px 9px; border-radius: 9px; box-shadow: 0 1px 3px rgba(0,0,0,.18); }
@@ -216,20 +226,45 @@ h1, h2, h3 { margin: 0; }
 .fila-modulo td { background: var(--canvas); padding-top: 10px; padding-bottom: 6px; }
 .appbar .sep { flex: 1; }
 .appbar .ctx { display: flex; align-items: center; gap: 8px; }
-.chip-ctx {
+.icon-btn {
+  display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%;
   background: rgba(255,255,255,.16); border: 1px solid rgba(255,255,255,.22); color: #fff;
-  padding: 4px 10px; border-radius: 20px; font-size: 12.5px; display: inline-flex; gap: 6px; align-items: center;
+  text-decoration: none; font-size: 16px; line-height: 1; cursor: pointer;
+  font-family: inherit; padding: 0; transition: background .14s, color .14s;
 }
-.avatar {
-  width: 30px; height: 30px; border-radius: 50%; background: var(--brand-2);
-  display: grid; place-items: center; font-size: 12px; font-weight: 700; border: 2px solid rgba(255,255,255,.35);
+.icon-btn:hover { background: rgba(255,255,255,.32); }
+.icon-btn.abierto { background: #fff; color: var(--brand); border-color: rgba(255,255,255,.6); }
+
+/* Menú de configuración (⚙️): tema, formato de cifras y accesos */
+.cfg-wrap { position: relative; }
+.cfg-menu {
+  position: absolute; top: calc(100% + 6px); right: 0; z-index: 60;
+  min-width: 240px; padding: 6px; background: var(--surface);
+  border: 1px solid var(--line); border-radius: 12px;
+  box-shadow: 0 10px 28px rgba(0,0,0,.18);
 }
-.bell {
-  display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%;
-  background: rgba(255,255,255,.16); border: 1px solid rgba(255,255,255,.22);
-  text-decoration: none; font-size: 15px; line-height: 1;
+.cfg-sec + .cfg-sec { margin-top: 6px; border-top: 1px solid var(--line); padding-top: 6px; }
+.cfg-titulo {
+  font-size: 10px; letter-spacing: 1px; text-transform: uppercase;
+  color: var(--muted); font-weight: 800; padding: 4px 10px 6px;
 }
-.bell:hover { background: rgba(255,255,255,.30); }
+.cfg-ops { display: flex; flex-direction: column; gap: 2px; }
+.cfg-op {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  width: 100%; text-align: left; padding: 7px 10px; border-radius: 8px;
+  border: 1px solid transparent; background: transparent; color: var(--ink);
+  font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer;
+}
+.cfg-op:hover { background: var(--brand-tint); }
+.cfg-op.on { background: var(--brand-tint); color: var(--brand); border-color: var(--brand-soft); }
+.cfg-op.on::after { content: "✓"; font-weight: 800; }
+.cfg-ej { font-size: 11px; font-weight: 600; color: var(--muted); font-variant-numeric: tabular-nums; }
+.cfg-op.on .cfg-ej { color: var(--brand); }
+.cfg-link {
+  display: block; padding: 8px 10px; border-radius: 8px; white-space: nowrap;
+  color: var(--ink); font-size: 13px; font-weight: 600; text-decoration: none;
+}
+.cfg-link:hover { background: var(--brand-tint); }
 
 /* Grupos en la barra azul: cada uno abre su lista desplegable */
 .nav-grupos { display: flex; gap: 5px; flex-wrap: wrap; align-items: center; }
@@ -454,7 +489,7 @@ td.r, th.r { text-align: right; }
 @media print {
   /* Marco de la app y controles fuera del PDF */
   .appbar, .nav-grupos, .nav-menu, .subnav, .toolbar, .buscador, .no-print,
-  .hact, .ord, .bell, .logout, .avatar { display: none !important; }
+  .hact, .ord, .icon-btn, .cfg-menu, .logout { display: none !important; }
 
   html, body { background: #fff !important; }
   .wrap { max-width: none !important; margin: 0 !important; padding: 0 !important; }
