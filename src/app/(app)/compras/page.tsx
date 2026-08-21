@@ -1,8 +1,12 @@
 // ==========================================================
-// Informe de Compras — réplica del tablero de Power BI, con las cuatro
-// medidas cuadradas contra él (corte 11-ago-2026):
+// Informe de Compras — nació como réplica del tablero de Power BI, con las
+// cuatro medidas cuadradas contra él (corte 11-ago-2026):
 //   Entradas por Compras $43.832.727 · Órdenes $85.066.190 / 20 ODC ·
 //   Pendiente $1.417.489 / 1 PPD · Facturado $4.283.621 / 7 FPP
+//
+// Desde el 21-ago-2026 las Entradas incluyen también ECG (entrada en
+// consignación) por decisión de Héctor, así que ese KPI ya no coincide con
+// el tablero: el mismo día pasa a $51.567.285. Los otros tres siguen igual.
 //
 // Las cuatro miden momentos distintos de la misma compra —se pide (ODC),
 // llega (entrada), queda faltando (pendiente) y se factura (FPP)—, así que

@@ -9,7 +9,8 @@
 //   Cantidad PPD             nro de órdenes distintas
 //   $ Facturado Proveedor    Σ CompraFactura.valorNeto      por fecha
 //   Cantidad FPP             nro de documentos distintos
-//   $ Entradas por Compras   Σ InvMovimiento.costoEntradas  con tipoDoc = EPC
+//   $ Entradas por Compras   Σ InvMovimiento.costoEntradas  con tipoDoc EPC o ECG
+//                            (Power BI mide solo EPC: ver TIPOS_ENTRADA_COMPRA)
 //
 // Ojo con el PENDIENTE: se agrupa por FECHA DE ENTREGA de la orden, no por
 // fecha de la orden. Agruparlo por fecha de orden da otra cifra (y fue el
@@ -37,8 +38,20 @@ export const MES_CORTO = ["", "Ene", "Feb", "Mar", "Abr", "May", "Jun",
 /** Etiqueta de los proveedores que no están en el catálogo de tipos. */
 export const SIN_CLASIFICAR = "SIN CLASIFICAR";
 
-/** Tipo de documento de inventario que representa la entrada por compra. */
-const TIPO_ENTRADA_COMPRA = "EPC";
+/**
+ * Documentos de inventario que cuentan como entrada por compra:
+ *   EPC — entrada por compra
+ *   ECG — entrada en consignación (decisión de Héctor, 21-ago-2026)
+ *
+ * OJO: el tablero de Power BI mide solo EPC, así que desde que entra ECG las
+ * dos cifras dejan de coincidir a propósito (~$139 M más en 2026).
+ * Los ajustes y devoluciones en compra (AEC, DEC) NO entran: son valores
+ * negativos que restarían de la entrada, y nadie los ha pedido.
+ */
+const TIPOS_ENTRADA_COMPRA = ["EPC", "ECG"];
+
+/** Fragmento SQL con la lista de tipos, para los IN (...). */
+const listaTipos = () => Prisma.join(TIPOS_ENTRADA_COMPRA.map((t) => Prisma.sql`${t}`));
 
 const n = (v: unknown): number => (v == null ? 0 : Number(v));
 
@@ -96,7 +109,7 @@ function whereFacturas(f: FiltroCompras): Prisma.Sql {
 }
 /** WHERE de entradas por compra: sin proveedor (el movimiento trae marca). */
 function whereEntradas(f: FiltroCompras): Prisma.Sql {
-  return Prisma.sql`m."tipoDoc" = ${TIPO_ENTRADA_COMPRA} AND ${periodo(f, "fecha")}${porLineaSql(f)}`;
+  return Prisma.sql`m."tipoDoc" IN (${listaTipos()}) AND ${periodo(f, "fecha")}${porLineaSql(f)}`;
 }
 
 /** Filtros que una fuente no puede aplicar tal cual (para avisarlo en pantalla). */
@@ -113,7 +126,7 @@ export async function aniosConCompras(): Promise<number[]> {
     SELECT DISTINCT "anio" FROM "CompraOrden"
     UNION SELECT DISTINCT "anio" FROM "CompraFactura"
     UNION SELECT DISTINCT "anio" FROM "CompraPendiente"
-    UNION SELECT DISTINCT "anio" FROM "InvMovimiento" WHERE "tipoDoc" = ${TIPO_ENTRADA_COMPRA}
+    UNION SELECT DISTINCT "anio" FROM "InvMovimiento" WHERE "tipoDoc" IN (${listaTipos()})
     ORDER BY 1`;
   return filas.map((f) => Number(f.anio));
 }
@@ -123,7 +136,7 @@ export async function mesesConCompras(anio: number): Promise<number[]> {
     SELECT DISTINCT "mes" FROM "CompraOrden" WHERE "anio" = ${anio}
     UNION SELECT DISTINCT "mes" FROM "CompraFactura" WHERE "anio" = ${anio}
     UNION SELECT DISTINCT "mes" FROM "CompraPendiente" WHERE "anio" = ${anio}
-    UNION SELECT DISTINCT "mes" FROM "InvMovimiento" WHERE "anio" = ${anio} AND "tipoDoc" = ${TIPO_ENTRADA_COMPRA}
+    UNION SELECT DISTINCT "mes" FROM "InvMovimiento" WHERE "anio" = ${anio} AND "tipoDoc" IN (${listaTipos()})
     ORDER BY 1`;
   return filas.map((f) => Number(f.mes));
 }
@@ -135,7 +148,7 @@ export async function diasConCompras(anio: number, mes: number): Promise<number[
     UNION SELECT DISTINCT EXTRACT(DAY FROM "fechaEntrega")::int FROM "CompraPendiente"
       WHERE "anio" = ${anio} AND "mes" = ${mes} AND "fechaEntrega" IS NOT NULL
     UNION SELECT DISTINCT EXTRACT(DAY FROM "fecha")::int FROM "InvMovimiento"
-      WHERE "anio" = ${anio} AND "mes" = ${mes} AND "tipoDoc" = ${TIPO_ENTRADA_COMPRA}
+      WHERE "anio" = ${anio} AND "mes" = ${mes} AND "tipoDoc" IN (${listaTipos()})
     ORDER BY 1`;
   return filas.map((f) => Number(f.dia)).filter((d) => d >= 1 && d <= 31);
 }
