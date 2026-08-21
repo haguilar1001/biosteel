@@ -7,6 +7,7 @@ const ITEMS = [
   { href: "/compras/ordenes", label: "Órdenes de Compra" },
   { href: "/compras/pendientes", label: "Pendientes por Despacho" },
   { href: "/compras/facturado", label: "Facturado Proveedor" },
+  { href: "/compras/proveedores", label: "Por Proveedor x Mes" },
 ];
 
 export default async function ComprasLayout({ children }: { children: React.ReactNode }) {

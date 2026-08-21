@@ -58,6 +58,7 @@ export const MENU_BASE: MenuGrupoDef[] = [
     { href: "/compras/ordenes", label: "📄 Órdenes de Compra", permiso: "compras.view" },
     { href: "/compras/pendientes", label: "⏳ Pendientes por Despacho", permiso: "compras.view" },
     { href: "/compras/facturado", label: "🧾 Facturado Proveedor", permiso: "compras.view" },
+    { href: "/compras/proveedores", label: "🏭 Por Proveedor × Mes", permiso: "compras.view" },
   ] },
   { id: "inventarios", label: "Inventarios", icon: "📦", items: [
     { href: "/inventario", label: "📦 Resumen", permiso: "inventario.view", seccion: "Equipos" },

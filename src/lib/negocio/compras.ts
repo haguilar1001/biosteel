@@ -613,3 +613,68 @@ export async function corteDePendientes(): Promise<Date | null> {
   const r = await prisma.compraPendiente.aggregate({ _max: { cargadoEn: true } });
   return r._max.cargadoEn ?? null;
 }
+
+// ---------- Matriz proveedor × mes ----------
+
+export interface FilaMatrizProveedor {
+  proveedor: string;
+  tipoCompra: string;
+  /** 12 posiciones, enero a diciembre. */
+  meses: number[];
+  total: number;
+}
+
+export interface MatrizProveedorMes {
+  filas: FilaMatrizProveedor[];
+  totalMes: number[];
+  total: number;
+}
+
+/**
+ * Facturado por proveedor abierto mes a mes, para el año del filtro.
+ *
+ * Sale de CompraFactura (reporte de facturas de proveedor de SIESA). La
+ * versión anterior de esta vista vivía en /ventas y se alimentaba de
+ * DocumentoCxp, que NO es un reporte de compras sino el saldo de cuentas por
+ * pagar: solo trae los documentos con saldo abierto, arrastra notas crédito
+ * en negativo y llega hasta 2017. Por eso daba $1.840M para 2025 cuando lo
+ * realmente facturado fueron $14.668M.
+ */
+export async function facturadoPorProveedorMes(f: FiltroCompras): Promise<MatrizProveedorMes> {
+  const anual: FiltroCompras = { ...f, mes: undefined, dia: undefined };
+  const [filas, tipos] = await Promise.all([
+    prisma.$queryRaw<{ proveedor: string; mes: number; valor: unknown }[]>`
+      SELECT m."proveedor" AS proveedor, m."mes" AS mes, SUM(m."valorNeto") AS valor
+      FROM "CompraFactura" m WHERE ${whereFacturas(anual)} GROUP BY 1, 2`,
+    prisma.proveedorCompra.findMany({ select: { razonSocial: true, tipoCompra: true } }),
+  ]);
+
+  const tipo = new Map(tipos.map((t) => [t.razonSocial, t.tipoCompra]));
+  const mapa = new Map<string, FilaMatrizProveedor>();
+  const totalMes = Array<number>(12).fill(0);
+  let total = 0;
+
+  for (const r of filas) {
+    const mes = Number(r.mes);
+    if (mes < 1 || mes > 12) continue;
+    const valor = n(r.valor);
+    let fila = mapa.get(r.proveedor);
+    if (!fila) {
+      fila = {
+        proveedor: r.proveedor || "(sin proveedor)",
+        tipoCompra: tipo.get(r.proveedor) || SIN_CLASIFICAR,
+        meses: Array<number>(12).fill(0), total: 0,
+      };
+      mapa.set(r.proveedor, fila);
+    }
+    fila.meses[mes - 1] = (fila.meses[mes - 1] ?? 0) + valor;
+    fila.total += valor;
+    totalMes[mes - 1] = (totalMes[mes - 1] ?? 0) + valor;
+    total += valor;
+  }
+
+  return {
+    filas: [...mapa.values()].sort((a, b) => b.total - a.total),
+    totalMes, total,
+  };
+}

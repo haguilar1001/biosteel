@@ -10,7 +10,6 @@ const ITEMS = [
   { href: "/ventas/consumos", label: "Consumos" },
   { href: "/ventas/proveedores", label: "Proveedores" },
   { href: "/ventas/clientes", label: "Por Cliente" },
-  { href: "/ventas/compras", label: "Compras x Proveedor" },
 ];
 
 export default async function VentasLayout({ children }: { children: React.ReactNode }) {
