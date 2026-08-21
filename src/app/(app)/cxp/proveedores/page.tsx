@@ -4,7 +4,7 @@
 // Los anticipos NO entran aquí (van en /cxp/anticipos).
 // ==========================================================
 import { requirePermiso } from "@/server/auth-context";
-import { formatCOP, formatPorcentaje, formatNumero } from "@/lib/format";
+import { formatCOP, formatCOPCorto, formatPorcentaje, formatNumero } from "@/lib/format";
 import { Monto } from "../../_components/Monto";
 import { cxpPorProveedor, aniosCxp, type TipoProveedorFiltro } from "@/lib/negocio/cxp";
 import { leerPeriodo, etiquetaPeriodo } from "@/lib/periodo";
@@ -105,7 +105,7 @@ export default async function CxpPorProveedorPage({
           <div className="chart-head">Composición Interno vs Externo <span className="hact">por pagar (saldos positivos)</span></div>
           <div className="card-body">
             {totalViz === 0 ? <div className="empty">Sin saldos por pagar.</div> : (
-              <Donut data={donutTipo} centro={{ valor: (totalViz / 1e9).toFixed(1).replace(".", ",") + " MM", etiqueta: "por pagar" }} />
+              <Donut data={donutTipo} centro={{ valor: formatCOP(totalViz), valorCorto: formatCOPCorto(totalViz), etiqueta: "por pagar" }} />
             )}
           </div>
         </div>

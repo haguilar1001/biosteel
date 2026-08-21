@@ -5,7 +5,7 @@
 // ==========================================================
 import { requirePermiso } from "@/server/auth-context";
 import { alcanceDe } from "@/lib/rbac/authorize";
-import { formatCOP, formatPorcentaje, formatNumero } from "@/lib/format";
+import { formatCOP, formatCOPCorto, formatPorcentaje, formatNumero } from "@/lib/format";
 import { Monto } from "../_components/Monto";
 import { calcularIndicadores, type IndicadorCalc } from "@/lib/negocio/indicadores";
 import { flujoMensual } from "@/lib/negocio/flujo";
@@ -167,7 +167,7 @@ export default async function IndicadoresPage({
             <div className="grid two" style={{ gridTemplateColumns: "300px 1fr", gap: 20, alignItems: "start" }}>
               <div style={{ display: "grid", placeItems: "start center" }}>
                 <Donut azul legend size={280} data={donutLineas}
-                  centro={{ valor: (totalLineas / 1e9).toFixed(1).replace(".", ",") + " MM", etiqueta: "venta neta" }} />
+                  centro={{ valor: formatCOP(totalLineas), valorCorto: formatCOPCorto(totalLineas), etiqueta: "venta neta" }} />
               </div>
               <div className="tbl-wrap">
                 <table>

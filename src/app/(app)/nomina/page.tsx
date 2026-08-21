@@ -5,7 +5,7 @@
 // proceso vs año anterior. Selector de año.
 // ==========================================================
 import { requirePermiso } from "@/server/auth-context";
-import { formatNumero } from "@/lib/format";
+import { formatCOP, formatCOPCorto, formatNumero } from "@/lib/format";
 import { Monto } from "../_components/Monto";
 import {
   aniosConNomina, resumenAnual, porProceso, porCiudad,
@@ -16,7 +16,6 @@ import { TopRanking } from "../_components/charts/TopRanking";
 import { BarrasComparativas } from "../_components/charts/BarrasComparativas";
 import { FiltroAuto } from "../_components/FiltroAuto";
 
-const mill = (v: number) => `${new Intl.NumberFormat("es-CO", { maximumFractionDigits: 0 }).format(Math.round(v / 1e6))} MM`;
 
 export default async function NominaPage({ searchParams }: { searchParams: Promise<{ anio?: string }> }) {
   await requirePermiso("cxp.view");
@@ -75,7 +74,7 @@ export default async function NominaPage({ searchParams }: { searchParams: Promi
           <div className="chart-head">Composición del Costo <span className="hact">mensual · {anio}</span></div>
           <div className="card-body" style={{ display: "grid", placeItems: "center" }}>
             {donutComp.length === 0 ? <div className="empty">Sin datos.</div> : (
-              <Donut azul data={donutComp} size={220} centro={{ valor: mill(kpi.costoMensual), etiqueta: "costo/mes" }} />
+              <Donut azul data={donutComp} size={220} centro={{ valor: formatCOP(kpi.costoMensual), valorCorto: formatCOPCorto(kpi.costoMensual), etiqueta: "costo/mes" }} />
             )}
           </div>
         </div>

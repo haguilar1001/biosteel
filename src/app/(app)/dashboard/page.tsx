@@ -4,7 +4,7 @@
 // ==========================================================
 import { requirePermiso } from "@/server/auth-context";
 import { puede, alcanceDe } from "@/lib/rbac/authorize";
-import { formatCOP, formatPorcentaje, formatNumero, formatFecha } from "@/lib/format";
+import { formatCOP, formatCOPCorto, formatPorcentaje, formatNumero, formatFecha } from "@/lib/format";
 import { Monto } from "../_components/Monto";
 import { flujoMensual, totalesFlujo, presupuestoVsReal, MESES_LABEL } from "@/lib/negocio/flujo";
 import { resumenCxp } from "@/lib/negocio/cxp";
@@ -130,7 +130,6 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       ? [{ label: `Otros (${restoDonut.length})`, valor: restoValDonut, color: "var(--az-otros)", detalle: restoDonut.map((r) => ({ label: r.categoria, valor: r.real })) }]
       : []),
   ];
-  const donutCentro = `${new Intl.NumberFormat("es-CO", { maximumFractionDigits: 0 }).format(Math.round(totalDonut / 1e6))} MM`;
 
   return (
     <>
@@ -334,7 +333,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                     ¿En qué se va la plata? <span className="flag">· Top 5 · {mesDonut ? MESES_FULL[mesDonut] : ""}</span>
                   </div>
                   <div style={{ display: "grid", placeItems: "center" }}>
-                    <Donut data={donutEgresos} size={230} centro={{ valor: donutCentro, etiqueta: "egresos" }} />
+                    <Donut data={donutEgresos} size={230} centro={{ valor: formatCOP(totalDonut), valorCorto: formatCOPCorto(totalDonut), etiqueta: "egresos" }} />
                   </div>
                 </div>
               )}

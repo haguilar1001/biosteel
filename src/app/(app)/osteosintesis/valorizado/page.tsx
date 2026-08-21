@@ -11,7 +11,7 @@
 // otros, y la pantalla lo dice en vez de mostrar ceros.
 // ==========================================================
 import { requirePermiso } from "@/server/auth-context";
-import { formatNumero } from "@/lib/format";
+import { formatCOP, formatCOPCorto, formatNumero } from "@/lib/format";
 import { Monto } from "../../_components/Monto";
 import { FiltroAuto } from "../../_components/FiltroAuto";
 import { Donut } from "../../_components/charts/Donut";
@@ -28,7 +28,6 @@ import {
 const MES_LARGO = ["", "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
   "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 
-const mill = (v: number) => `${new Intl.NumberFormat("es-CO", { maximumFractionDigits: 0 }).format(Math.round(v / 1e6))} MM`;
 
 /** Rotación en meses de inventario, con semáforo: mucho saldo y poca salida es plata quieta. */
 function Rotacion({ meses }: { meses: number | null }) {
@@ -82,6 +81,7 @@ export default async function ValorizadoPage({
   const serieAnio = evolucion.filter((p) => p.anio === anio);
   const quietos = porDim.filter((d) => d.mesesInventario == null || d.mesesInventario > 8);
   const valorQuieto = quietos.reduce((a, d) => a + d.valor, 0);
+  const totalInv = porInst.reduce((a, i) => a + i.valor, 0);
 
   return (
     <>
@@ -217,7 +217,7 @@ export default async function ValorizadoPage({
                 label: `${i.instalacion} · ${NOMBRE_INSTALACION[i.instalacion] ?? "?"}`,
                 valor: i.valor,
               }))}
-              centro={{ valor: mill(porInst.reduce((a, i) => a + i.valor, 0)), etiqueta: "en inventario" }}
+              centro={{ valor: formatCOP(totalInv), valorCorto: formatCOPCorto(totalInv), etiqueta: "en inventario" }}
             />
             {(porInst.find((i) => i.instalacion === 106)?.unidades ?? 0) > 0 && (
               <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 10, textAlign: "center" }}>
