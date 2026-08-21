@@ -58,7 +58,7 @@ async function main() {
       nro: f.nro, tipo: f.tipo, aprobada: f.aprobada, fecha: new Date(f.ms), anio: f.anio, mes: f.mes, dia: new Date(f.ms).getUTCDate(),
       ips: f.ips, suc: f.suc, bod: f.bod, notas: f.notas, conv: f.conv, proc: f.proc, linea: f.linea,
       subtotal: r2(f.subtotal), fbd: f.fbd ?? null, costo: r2(f.costo), cliente: f.cliente, nit: f.nit, marca: f.marca,
-      referencia: f.referencia, cantidad: r2(f.cantidad),
+      referencia: f.referencia, cantidad: r2(f.cantidad), lista: f.lista,
     })),
   }));
 

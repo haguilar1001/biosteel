@@ -8,7 +8,8 @@ import { formatPorcentaje, formatNumero } from "@/lib/format";
 import { Monto } from "../../_components/Monto";
 import {
   aniosConVenta, mesesConVenta, ipsConVenta, ciudadesDeIps,
-  marcasFiltradas, ipsPorMarcaFiltrado, itemsPorMarcaFiltrado, type FiltroConsumo,
+  marcasFiltradas, ipsPorMarcaFiltrado, itemsPorMarcaFiltrado,
+  listasConVenta, utilidadPorLista, SIN_LISTA, type FiltroConsumo,
 } from "@/lib/negocio/ventas";
 import { FiltroAuto } from "../../_components/FiltroAuto";
 
@@ -17,7 +18,7 @@ const margen = (venta: number, costo: number) => (venta > 0 ? ((venta - costo) /
 
 type OrdenCol = "marca" | "venta" | "costo" | "utilidad" | "margen";
 
-export default async function ConsumosPage({ searchParams }: { searchParams: Promise<{ anio?: string; mes?: string; orden?: string; dir?: string; vista?: string; ips?: string; ciudad?: string }> }) {
+export default async function ConsumosPage({ searchParams }: { searchParams: Promise<{ anio?: string; mes?: string; orden?: string; dir?: string; vista?: string; ips?: string; ciudad?: string; lista?: string }> }) {
   await requirePermiso("cxp.view");
   const sp = await searchParams;
 
@@ -36,13 +37,22 @@ export default async function ConsumosPage({ searchParams }: { searchParams: Pro
   const ciudades = ciudadesDeIps(opcionesIps);
   const ipsSel = sp.ips && opcionesIps.some((o) => o.ips === sp.ips) ? sp.ips : undefined;
   const ciudadSel = !ipsSel && sp.ciudad && ciudades.some((c) => c.ciudad === sp.ciudad) ? sp.ciudad : undefined;
-  const filtro: FiltroConsumo = { anio, meses, ips: ipsSel, ciudad: ciudadSel };
+  // Listas de precios del año: se ofrecen sin filtrar (igual que las IPS) para
+  // que el selector no se vacíe a sí mismo al escoger una.
+  const listasDisp = await listasConVenta(anio);
+  const listaSel = sp.lista && (listasDisp.includes(sp.lista) || sp.lista === SIN_LISTA) ? sp.lista : undefined;
+  const filtro: FiltroConsumo = { anio, meses, ips: ipsSel, ciudad: ciudadSel, lista: listaSel };
 
-  const [marcasBase, ipsMap, itemsMap] = await Promise.all([
+  const [marcasBase, ipsMap, itemsMap, porLista] = await Promise.all([
     marcasFiltradas(filtro, opcionesIps),
     ipsPorMarcaFiltrado(filtro, opcionesIps),
     itemsPorMarcaFiltrado(filtro, opcionesIps),
+    // El desglose por lista ignora el propio filtro de lista: si no, al elegir
+    // una quedaría una sola fila y no se podrían comparar entre sí.
+    utilidadPorLista({ ...filtro, lista: undefined }, opcionesIps),
   ]);
+  const ventaListas = porLista.reduce((a, l) => a + l.valor, 0);
+  const hayListas = porLista.some((l) => l.lista !== SIN_LISTA);
   const marcas = marcasBase.map((m) => ({ ...m, ips: ipsMap.get(m.marca) ?? [] }));
   const venta = marcas.reduce((s, m) => s + m.valor, 0);
   const costo = marcas.reduce((s, m) => s + m.costo, 0);
@@ -116,6 +126,19 @@ export default async function ConsumosPage({ searchParams }: { searchParams: Pro
                 <option key={m} value={m}>{MESES[m]}</option>
               ))}
             </select>
+            {/* Lista de precios: es la tarifa aplicada al renglón, y lo que
+                permite ver qué tarifa deja el ítem en pérdida. Solo aparece
+                cuando hay datos con lista cargada. */}
+            {hayListas ? (
+              <>
+                <label className="flag" style={{ alignSelf: "center" }}>Lista:</label>
+                <select name="lista" defaultValue={listaSel ?? ""} className="select" style={{ maxWidth: 260 }}>
+                  <option value="">Todas</option>
+                  {listasDisp.map((l) => <option key={l} value={l}>{l}</option>)}
+                  <option value={SIN_LISTA}>{SIN_LISTA}</option>
+                </select>
+              </>
+            ) : null}
             <label className="flag" style={{ alignSelf: "center" }}>Ciudad:</label>
             <select name="ciudad" defaultValue={ciudadSel ?? ""} className="select">
               <option value="">Todas</option>
@@ -135,12 +158,59 @@ export default async function ConsumosPage({ searchParams }: { searchParams: Pro
                 </optgroup>
               )}
             </select>
-            {(mesSel || ipsSel || ciudadSel)
+            {(mesSel || ipsSel || ciudadSel || listaSel)
               ? <a href={`/ventas/consumos?anio=${anio}&orden=${orden}&dir=${dir}&vista=${vista}`} className="btn">Limpiar filtros</a>
               : null}
           </FiltroAuto>
         </div>
       </div>
+
+      {/* Utilidad por lista de precios: la tabla que dice qué tarifa
+          intervenir. Va antes del detalle por proveedor a propósito. */}
+      {hayListas ? (
+        <div className="card" style={{ marginBottom: 12 }}>
+          <div className="chart-head">
+            Utilidad por Lista de Precios
+            <span className="hact">{periodo} · {porLista.length} lista{porLista.length > 1 ? "s" : ""}</span>
+          </div>
+          <div className="tbl-wrap">
+            <table className="tabla-fit">
+              <thead>
+                <tr>
+                  <th>Lista de precios</th>
+                  <th className="r">Venta Neta</th>
+                  <th className="r">Costo</th>
+                  <th className="r">Utilidad</th>
+                  <th className="r">% Utilidad</th>
+                  <th className="r">% de la venta</th>
+                </tr>
+              </thead>
+              <tbody>
+                {porLista.map((l) => {
+                  const u = l.valor - l.costo;
+                  const pct = margen(l.valor, l.costo);
+                  return (
+                    <tr key={l.lista} style={listaSel === l.lista ? { background: "var(--brand-tint)" } : undefined}>
+                      <td style={{ fontWeight: 600 }}>{l.lista}</td>
+                      <td className="r num"><Monto value={l.valor} /></td>
+                      <td className="r num flag"><Monto value={l.costo} /></td>
+                      <td className="r num" style={{ fontWeight: 600, color: u < 0 ? "var(--bad)" : undefined }}>
+                        <Monto value={u} />
+                      </td>
+                      <td className="r num" style={{ fontWeight: 700, color: pct < 0 ? "var(--bad)" : pct >= 40 ? "var(--ok)" : undefined }}>
+                        {formatPorcentaje(pct)}
+                      </td>
+                      <td className="r num flag">
+                        {ventaListas > 0 ? formatPorcentaje((l.valor / ventaListas) * 100) : "—"}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ) : null}
 
       {/* KPIs */}
       <div className="grid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", marginBottom: 12 }}>

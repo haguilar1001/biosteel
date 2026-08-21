@@ -1051,6 +1051,9 @@ model VentaDoc {
   bod        String   @default("")
   notas      String   @default("")
   conv       String   @default("")
+  /// "Desc. lista de precios" del reporte. Es la tarifa que se le aplicó al
+  /// renglón; sin ella no se puede saber qué lista deja el ítem en pérdida.
+  lista      String   @default("")
   proc       String   @default("")
   linea      String   @default("")
   subtotal   Decimal  @default(0) @db.Decimal(18, 2)
@@ -1294,11 +1297,17 @@ model VentaItemIps {
   valor       Decimal @db.Decimal(18, 2) // venta neta
   costo       Decimal @default(0) @db.Decimal(18, 2)
 
-  @@unique([anio, mes, marca, referencia, ips])
+  /// Lista de precios aplicada. Entra en la llave: el mismo ítem se le puede
+  /// vender a la misma IPS con dos tarifas distintas en el mismo mes, y son
+  /// dos márgenes distintos que no hay que sumar en uno solo.
+  lista       String  @default("")
+
+  @@unique([anio, mes, marca, referencia, ips, lista])
   @@index([anio, mes])
   @@index([ips])
   @@index([marca])
   @@index([nit])
+  @@index([lista])
 }
 
 // ==========================================================

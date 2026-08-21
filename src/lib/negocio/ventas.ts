@@ -272,7 +272,54 @@ export function ciudadesDeIps(ips: OpcionIps[]): { ciudad: string; ips: number; 
   return [...map.values()].sort((a, b) => b.valor - a.valor);
 }
 
-export interface FiltroConsumo { anio: number; meses?: number[]; ips?: string; ciudad?: string }
+export interface FiltroConsumo { anio: number; meses?: number[]; ips?: string; ciudad?: string; lista?: string }
+
+/** Etiqueta de los renglones cuyo archivo de origen no traía lista de precios. */
+export const SIN_LISTA = "(sin lista)";
+
+/**
+ * Listas de precios con venta en el año. Solo existen desde que el reporte se
+ * cargó con la columna "Desc. lista de precios": los periodos cargados antes
+ * quedan en "" y salen agrupados como (sin lista).
+ */
+export async function listasConVenta(anio: number): Promise<string[]> {
+  const filas = await prisma.ventaItemIps.findMany({
+    where: { anio, lista: { not: "" } },
+    distinct: ["lista"],
+    select: { lista: true },
+    orderBy: { lista: "asc" },
+  });
+  return filas.map((f) => f.lista);
+}
+
+export interface FilaLista { lista: string; valor: number; costo: number }
+
+/** Venta, costo y utilidad por lista de precios, con el filtro vigente. */
+export async function utilidadPorLista(f: FiltroConsumo, opciones: OpcionIps[]): Promise<FilaLista[]> {
+  const ips = ipsDelFiltro(opciones, f);
+  const grupos = await prisma.ventaItemIps.groupBy({
+    by: ["lista"],
+    where: {
+      anio: f.anio,
+      ...(f.meses && f.meses.length ? { mes: { in: f.meses } } : {}),
+      ...(ips ? { ips: { in: ips } } : {}),
+    },
+    _sum: { valor: true, costo: true },
+  });
+  return grupos
+    .map((g) => ({
+      lista: g.lista || SIN_LISTA,
+      valor: g._sum.valor?.toNumber() ?? 0,
+      costo: g._sum.costo?.toNumber() ?? 0,
+    }))
+    .sort((a, b) => b.valor - a.valor);
+}
+
+/** Recorte por lista de precios; "(sin lista)" busca la cadena vacía. */
+function soloLista(f: FiltroConsumo) {
+  if (!f.lista) return {};
+  return { lista: f.lista === SIN_LISTA ? "" : f.lista };
+}
 
 /** Nombres de IPS que caen dentro del filtro (una sola, una ciudad, o todas). */
 function ipsDelFiltro(opciones: OpcionIps[], f: FiltroConsumo): string[] | undefined {
@@ -288,6 +335,7 @@ export async function marcasFiltradas(f: FiltroConsumo, opciones: OpcionIps[]): 
     anio: f.anio,
     ...(f.meses && f.meses.length ? { mes: { in: f.meses } } : {}),
     ...(lista ? { ips: { in: lista } } : {}),
+    ...soloLista(f),
   };
   const grupos = await prisma.ventaItemIps.groupBy({ by: ["marca"], where, _sum: { valor: true, costo: true } });
   return grupos
@@ -302,6 +350,7 @@ export async function ipsPorMarcaFiltrado(f: FiltroConsumo, opciones: OpcionIps[
     anio: f.anio,
     ...(f.meses && f.meses.length ? { mes: { in: f.meses } } : {}),
     ...(lista ? { ips: { in: lista } } : {}),
+    ...soloLista(f),
   };
   const grupos = await prisma.ventaItemIps.groupBy({ by: ["marca", "ips"], where, _sum: { valor: true, costo: true } });
   const map = new Map<string, MarcaConIps["ips"]>();
@@ -321,6 +370,7 @@ export async function itemsPorMarcaFiltrado(f: FiltroConsumo, opciones: OpcionIp
     anio: f.anio,
     ...(f.meses && f.meses.length ? { mes: { in: f.meses } } : {}),
     ...(lista ? { ips: { in: lista } } : {}),
+    ...soloLista(f),
   };
   const grupos = await prisma.ventaItemIps.groupBy({
     by: ["marca", "referencia", "descripcion"], where,

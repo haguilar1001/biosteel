@@ -73,7 +73,7 @@ export async function escribirAgregados(prisma: PrismaClient, filas: FilaVenta[]
     await crearEnLotes(M, (c) => prisma.ventaMarca.createMany({ data: c.map((e) => ({ anio: e.anio, mes: e.mes, marca: e.marca, valor: r2(e.valor), costo: r2(e.costo) })) }));
     await crearEnLotes(MI, (c) => prisma.ventaMarcaIps.createMany({ data: c.map((e) => ({ anio: e.anio, mes: e.mes, marca: e.marca, ips: e.ips, valor: r2(e.valor), costo: r2(e.costo) })) }));
     await crearEnLotes(I, (c) => prisma.ventaItem.createMany({ data: c.map((e) => ({ anio: e.anio, mes: e.mes, marca: e.marca, referencia: e.referencia, descripcion: e.descripcion, cantidad: r2(e.cantidad), valor: r2(e.valor), costo: r2(e.costo) })) }));
-    await crearEnLotes(II, (c) => prisma.ventaItemIps.createMany({ data: c.map((e) => ({ anio: e.anio, mes: e.mes, marca: e.marca, referencia: e.referencia, descripcion: e.descripcion, ips: e.ips, nit: e.nit, cantidad: r2(e.cantidad), valor: r2(e.valor), costo: r2(e.costo) })) }));
+    await crearEnLotes(II, (c) => prisma.ventaItemIps.createMany({ data: c.map((e) => ({ anio: e.anio, mes: e.mes, marca: e.marca, referencia: e.referencia, descripcion: e.descripcion, ips: e.ips, nit: e.nit, lista: e.lista, cantidad: r2(e.cantidad), valor: r2(e.valor), costo: r2(e.costo) })) }));
   }
 
   // Venta neta por día: reemplazo total (sin ajustes mensuales).
@@ -89,6 +89,7 @@ export function docABitVenta(d: {
   ips: string | null; suc: string; bod: string; notas: string; conv: string; proc: string;
   linea: string; subtotal: { toNumber(): number }; fbd: string | null; costo: { toNumber(): number };
   cliente: string; nit: string | null; marca: string; referencia?: string; cantidad?: { toNumber(): number };
+  lista?: string;
 }): FilaVenta {
   return {
     nro: d.nro, tipo: d.tipo, aprobada: d.aprobada, ms: d.fecha.getTime(), anio: d.anio, mes: d.mes,
@@ -96,5 +97,6 @@ export function docABitVenta(d: {
     subtotal: d.subtotal.toNumber(), fbd: d.fbd ?? undefined, costo: d.costo.toNumber(),
     cliente: d.cliente, nit: d.nit, marca: d.marca,
     referencia: d.referencia ?? "", cantidad: d.cantidad ? d.cantidad.toNumber() : 0,
+    lista: d.lista ?? "",
   };
 }

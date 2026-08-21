@@ -17,6 +17,7 @@ export interface FilaVenta extends VentaRow {
   marca: string;
   referencia: string; // código del ítem (SIESA "Referencia")
   cantidad: number;   // unidades del renglón (SIESA "Cantidad")
+  lista: string;      // "Desc. lista de precios": la tarifa aplicada
 }
 
 /** "$ 1,234.00" / "(1,234)" → número. Tolerante a formato es-CO con símbolo. */
@@ -60,6 +61,15 @@ export function leerRenglones(buffer: Buffer | ArrayBuffer): RenglonesLeidos {
   const aoa = XLSX.utils.sheet_to_json<unknown[]>(ws, { header: 1, raw: false, defval: null });
   const H = (aoa[0] as unknown[] ?? []).map((h) => String(h ?? "").trim());
   const ix = (n: string) => H.indexOf(n);
+  // La lista de precios se busca tolerante: SIESA la escribe "Desc. lista de
+  // precios" pero se ha visto sin el espacio tras el punto, y el nombre podría
+  // cambiar entre exports. Si no está, la columna queda vacía y la pantalla lo
+  // muestra como "(sin lista)" en vez de fallar la carga.
+  const norm = (s: string) => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z]/g, "");
+  const ixLista = H.findIndex((h) => {
+    const k = norm(h);
+    return k === "desclistadeprecios" || k === "listadeprecios" || k === "desclistaprecios";
+  });
   const C = {
     doc: ix("Nro documento"), est: ix("Estado"), fecha: ix("Fecha"),
     nit: ix("Cliente factura"), cli: ix("Razón social cliente despacho"),
@@ -98,6 +108,7 @@ export function leerRenglones(buffer: Buffer | ArrayBuffer): RenglonesLeidos {
       marca: (C.marca >= 0 ? String(r[C.marca] ?? "").trim() : "") || "(sin marca)",
       referencia: C.ref >= 0 ? String(r[C.ref] ?? "").trim() : "",
       cantidad: C.cant >= 0 ? limpiarMonto(r[C.cant]) : 0,
+      lista: ixLista >= 0 ? String(r[ixLista] ?? "").trim() : "",
     });
   }
   return { filas, sinFecha, hoja: nombreHoja };
@@ -108,7 +119,7 @@ export interface FilaClienteAgg { anio: number; mes: number; clienteNombre: stri
 export interface FilaMarcaAgg { anio: number; mes: number; marca: string; valor: number; costo: number }
 export interface FilaMarcaIpsAgg { anio: number; mes: number; marca: string; ips: string; valor: number; costo: number }
 export interface FilaItemAgg { anio: number; mes: number; marca: string; referencia: string; descripcion: string; cantidad: number; valor: number; costo: number }
-export interface FilaItemIpsAgg extends FilaItemAgg { ips: string; nit: string | null }
+export interface FilaItemIpsAgg extends FilaItemAgg { ips: string; nit: string | null; lista: string }
 export interface FilaDiaAgg { anio: number; mes: number; dia: number; valor: number; costo: number }
 
 export interface AgregadosVenta {
@@ -196,12 +207,16 @@ export function agregarVentas(filas: FilaVenta[], params: ParamNC[], excluidos: 
     eI.cantidad += r.cantidad; eI.valor += neto; eI.costo += r.costo;
     porItem.set(kI, eI);
 
-    // Mismo detalle, abierto por IPS: es lo que permite filtrar el consumo
-    // por cliente o por ciudad sin volver a recorrer VentaDoc.
-    const kII = `${kI}|${r.cliente}`;
+    // Mismo detalle, abierto por IPS y por LISTA DE PRECIOS: es lo que
+    // permite filtrar el consumo por cliente, ciudad o tarifa sin volver a
+    // recorrer VentaDoc. La lista va en la llave porque el mismo ítem se le
+    // puede vender a la misma IPS con dos tarifas en el mismo mes, y son dos
+    // márgenes distintos: sumarlos escondería justo el que está en pérdida.
+    const kII = `${kI}|${r.cliente}|${r.lista}`;
     const eII = porItemIps.get(kII) ?? {
       anio: r.anio, mes: r.mes, marca: r.marca, referencia: ref,
       descripcion: (r.notas || "").trim() || ref, ips: r.cliente, nit: r.nit,
+      lista: r.lista,
       cantidad: 0, valor: 0, costo: 0,
     };
     eII.cantidad += r.cantidad; eII.valor += neto; eII.costo += r.costo;
