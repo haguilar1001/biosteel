@@ -26,11 +26,13 @@ import {
   parsePendientesDespacho, persistirPendientesDespacho,
   parseFacturasProveedor, persistirFacturasProveedor,
   parseTiposProveedor, persistirTiposProveedor,
+  parseEntradasProveedor, persistirEntradasProveedor,
 } from "./importar-compras";
 
 export type CargaClave = DatasetKey | "pyg" | "flujo" | "presupuesto"
   | "inv-bodegas" | "inv-balance" | "inv-movimientos"
-  | "compras-tipos" | "compras-ordenes" | "compras-pendientes" | "compras-facturas";
+  | "compras-tipos" | "compras-ordenes" | "compras-pendientes" | "compras-facturas"
+  | "compras-entradas";
 
 export interface CargaDef {
   clave: CargaClave;
@@ -230,6 +232,23 @@ export const CARGAS: CargaDef[] = [
         titulo: "Compras · Pendientes por Despacho", archivo: nombre, hoja: p.hoja,
         filas: p.filas, cargadas, omitidas: p.omitidas,
         estrategia: `reemplaza TODA la foto anterior: ${nf.format(cargadas)} renglones · ${nf.format(ordenes)} órdenes pendientes · ${nf.format(Math.round(total))}`,
+      };
+    },
+  },
+  {
+    clave: "compras-entradas", titulo: "Compras · Entradas por Compra", permiso: "carga.compras.entradas",
+    archivoSugerido: "ENTRADAS POR COMPRAS.xlsx",
+    async procesar(buffer, nombre) {
+      const p = parseEntradasProveedor(buffer);
+      if (!p.datos.length) throw new Error("El archivo no trae entradas con fecha y proveedor.");
+      const cargadas = await persistirEntradasProveedor(p);
+      const amb = p.ambiguos.length
+        ? ` · OJO: ${p.ambiguos.length} documento(s) con más de un proveedor, manda el primero [${p.ambiguos.slice(0, 5).join(", ")}]`
+        : "";
+      return {
+        titulo: "Compras · Entradas por Compra", archivo: nombre, hoja: p.hoja,
+        filas: p.filas, cargadas, omitidas: p.omitidas,
+        estrategia: `reemplaza ${p.periodos.length} periodo(s) [${p.periodos[0]} … ${p.periodos[p.periodos.length - 1]}]: ${nf.format(cargadas)} documentos con proveedor (de ${nf.format(p.filas)} renglones). El valor sigue saliendo del movimiento de inventario.${amb}`,
       };
     },
   },

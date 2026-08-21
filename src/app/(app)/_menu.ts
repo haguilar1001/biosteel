@@ -30,7 +30,7 @@ export const MENU_BASE: MenuGrupoDef[] = [
     { href: "/consultas", label: "🤖 Asistente", permiso: "cxp.view" },
     { href: "/cargar", label: "⬆️ Cargar archivos", permiso: "carga.pendientes",
       permisosOr: ["carga.pendientes", "carga.ventas", "carga.facturacion", "carga.gastos", "carga.anuladas", "carga.pyg", "carga.flujo", "carga.presupuesto",
-        "carga.compras.ordenes", "carga.compras.pendientes", "carga.compras.facturas", "carga.compras.tipos"] },
+        "carga.compras.ordenes", "carga.compras.pendientes", "carga.compras.facturas", "carga.compras.tipos", "carga.compras.entradas"] },
   ] },
   { id: "tesoreria", label: "Tesorería", icon: "💰", items: [
     { href: "/flujo", label: "💵 Flujo de Caja", permiso: "cxp.view" },

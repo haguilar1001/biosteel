@@ -57,7 +57,7 @@ export default async function ComprasPage({ searchParams }: { searchParams: Prom
   const mostrarCumplimiento = !f.dia;
   const cumplimiento = kpi.ordenes > 0 ? (kpi.entradas / kpi.ordenes) * 100 : null;
 
-  const { filas: proveedores, entradasSinIdentificar } = tablaProv;
+  const { filas: proveedores, entradasSinIdentificar, entradasExacto, entradasPorMarca } = tablaProv;
   const totalProv = proveedores.reduce((s, p) => s + p.ordenes, 0);
   const totalEntradasTabla = proveedores.reduce((s, p) => s + p.entradas, 0) + entradasSinIdentificar;
 
@@ -117,7 +117,7 @@ export default async function ComprasPage({ searchParams }: { searchParams: Prom
         <div className="card" style={{ marginBottom: 12 }}>
           <div className="card-body" style={{ padding: "10px 14px", fontSize: 12.5, color: "var(--muted)" }}>
             ⚠️ Ojo con estas tarjetas:
-            {kpi.entradasEstimadas ? <> <b>Entradas por Compras</b> está atribuida por marca del producto, porque el movimiento de inventario no trae razón social: es una aproximación, no un dato del documento.</> : null}
+            {kpi.entradasEstimadas ? <> <b>Entradas por Compras</b> incluye periodos que el reporte de entradas por compra todavía no cubre, así que esa parte se atribuyó por marca del producto: es una aproximación. Carga el reporte del periodo para que salga del documento.</> : null}
             {ignorados.facturas.length ? <> <b>Facturado</b> ignora {ignorados.facturas.join(" y ")} (el documento CCP es de cabecera, sin línea de producto).</> : null}
           </div>
         </div>
@@ -391,11 +391,15 @@ export default async function ComprasPage({ searchParams }: { searchParams: Prom
           </table>
         </div>
         <div className="card-body" style={{ padding: "8px 14px", fontSize: 12, color: "var(--muted)" }}>
-          <b>*</b> Las entradas se atribuyen al proveedor por la <b>marca del producto</b>: el movimiento
-          de inventario no trae razón social. Cuando una marca se le compra a varios proveedores, la
-          entrada se le carga al que más ha ordenado esa marca, así que esta columna es una
-          aproximación — las otras tres salen directo del documento.
-          {entradasSinIdentificar > 0 ? " Lo que no cruzó con ninguna orden va en \"Sin identificar\"." : ""}
+          <b>*</b> El movimiento de inventario no trae razón social, así que las entradas se llevan al
+          proveedor de dos maneras: por <b>documento</b> (exacto, con el reporte de entradas por compra)
+          y, donde ese reporte no llega, por <b>marca del producto</b> (aproximado: se le carga al
+          proveedor que más ha ordenado esa marca).
+          {entradasExacto + entradasPorMarca > 0 ? (
+            <> En este periodo, <b>{((entradasExacto / (entradasExacto + entradasPorMarca)) * 100).toFixed(1).replace(".", ",")} %</b> del
+              valor viene del documento.</>
+          ) : null}
+          {entradasSinIdentificar > 0 ? " Lo que no cruzó por ninguna de las dos vías va en \"Sin identificar\"." : ""}
         </div>
       </div>
     </>

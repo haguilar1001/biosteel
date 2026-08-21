@@ -5,12 +5,13 @@
 //
 // Uso:   npm run db:compras
 //        DIR_COMPRAS="D:/otra/ruta" npm run db:compras
-//        SOLO=ordenes npm run db:compras   (ordenes|pendientes|facturas|tipos)
+//        SOLO=ordenes npm run db:compras   (ordenes|pendientes|facturas|tipos|entradas)
 //
 // Los archivos se buscan por nombre dentro del directorio:
 //   ORDENES DE COMPRA.xlsx · PENDIENTES POR DESPACHO.xlsx
-//   FACTURAS PROVEEDORES.xlsx · TABLAS AUXILIARES.xlsx (hoja TIPOS DE
-//   PROVEEDORES; opcional, es lo que llena el filtro de tipo de compra)
+//   FACTURAS PROVEEDORES.xlsx · ENTRADAS POR COMPRAS.xlsx
+//   TABLAS AUXILIARES.xlsx (hoja TIPOS DE PROVEEDORES; opcional, es lo que
+//   llena el filtro de tipo de compra)
 // ==========================================================
 import "./_env";
 import fs from "node:fs";
@@ -20,6 +21,7 @@ import {
   parsePendientesDespacho, persistirPendientesDespacho,
   parseFacturasProveedor, persistirFacturasProveedor,
   parseTiposProveedor, persistirTiposProveedor,
+  parseEntradasProveedor, persistirEntradasProveedor,
 } from "../src/lib/negocio/importar-compras";
 import { prisma } from "../src/lib/db";
 
@@ -105,6 +107,22 @@ async function main() {
       console.log(`   ✓ ${path.basename(ruta)} [${p.hoja}] → ${fmt(cargadas)} documentos de ${fmt(p.filas)} · ${cop(total)}`);
       console.log(`     periodos reemplazados: ${p.periodos.join(", ")}`);
       if (p.omitidas) console.log(`     ! ${fmt(p.omitidas)} filas sin fecha o repetidas (omitidas)`);
+    }
+  }
+
+  // --- 5) Entradas por compra: puente documento → proveedor ---
+  if (hacer("entradas")) {
+    const ruta = buscar((n) => n.includes("ENTRADAS POR COMPRA"));
+    if (!ruta) {
+      console.log("   · sin archivo de ENTRADAS POR COMPRAS (las entradas se atribuyen por marca, aproximado)");
+    } else {
+      const p = parseEntradasProveedor(fs.readFileSync(ruta));
+      const cargadas = await persistirEntradasProveedor(p);
+      const provs = new Set(p.datos.map((d) => d.proveedor)).size;
+      console.log(`   ✓ ${path.basename(ruta)} [${p.hoja}] → ${fmt(cargadas)} documentos de ${fmt(p.filas)} renglones · ${provs} proveedores`);
+      console.log(`     periodos reemplazados: ${p.periodos.join(", ")}`);
+      if (p.ambiguos.length) console.log(`     ! ${p.ambiguos.length} documento(s) con más de un proveedor: ${p.ambiguos.slice(0, 5).join(", ")}`);
+      if (p.omitidas) console.log(`     ! ${fmt(p.omitidas)} renglones sin fecha o sin proveedor (omitidos)`);
     }
   }
 

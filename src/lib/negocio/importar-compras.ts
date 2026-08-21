@@ -1,12 +1,14 @@
 // ==========================================================
-// Carga de los tres archivos SIESA del MÓDULO DE COMPRAS:
-//   · ORDENES DE COMPRA.xlsx      → CompraOrden      (renglón de ODC)
-//   · PENDIENTES POR DESPACHO.xlsx→ CompraPendiente  (foto del día)
-//   · FACTURAS PROVEEDORES.xlsx   → CompraFactura    (documentos CCP)
+// Carga de los archivos SIESA del MÓDULO DE COMPRAS:
+//   · ORDENES DE COMPRA.xlsx       → CompraOrden      (renglón de ODC)
+//   · PENDIENTES POR DESPACHO.xlsx → CompraPendiente  (foto del día)
+//   · FACTURAS PROVEEDORES.xlsx    → CompraFactura    (documentos CCP)
+//   · ENTRADAS POR COMPRAS.xlsx    → EntradaProveedor (documento → proveedor)
 //
-// La cuarta fuente del informe —las entradas por compra— NO se carga aquí:
-// ya viven en InvMovimiento con tipoDoc = "EPC" (ver inventario de
-// osteosíntesis). Por eso este archivo no toca inventario.
+// El VALOR de las entradas no se carga: ya vive en InvMovimiento con tipoDoc
+// EPC (ver inventario de osteosíntesis), y es el que cuadra con Power BI. Del
+// reporte de entradas solo se guarda a quién se le compró cada documento,
+// que es lo único que el movimiento de inventario no sabe.
 //
 // Estrategias de escritura, distintas a propósito:
 //   · Órdenes  → reemplaza los MESES presentes en el archivo. No hay llave
@@ -386,4 +388,89 @@ export async function persistirTiposProveedor(lista: ProveedorTipoParsed[]): Pro
     });
   }
   return lista.length;
+}
+
+// ---------- 5) Entradas por compra → puente documento/proveedor ----------
+
+export interface EntradaProveedorParsed {
+  documento: string; tipoDoc: string; proveedor: string; nit: string | null;
+  fecha: Date; anio: number; mes: number;
+}
+
+export interface EntradasProveedorParsed {
+  hoja: string; filas: number; omitidas: number; periodos: string[];
+  /** Documentos que traían más de un proveedor (no debería pasar). */
+  ambiguos: string[];
+  datos: EntradaProveedorParsed[];
+}
+
+/**
+ * Reporte "entradas por compra" de SIESA. Se lee a nivel RENGLÓN pero se
+ * guarda a nivel DOCUMENTO: lo único que aporta frente a InvMovimiento es la
+ * razón social del proveedor, y esa es la misma para todo el documento
+ * (verificado: 3.631 documentos de ene–jul 2026, ninguno con dos proveedores).
+ *
+ * El valor NO se guarda a propósito: este reporte valora al precio del
+ * documento de compra y el movimiento de inventario al costo promedio, así
+ * que guardar los dos dejaría dos cifras distintas para la misma entrada.
+ *
+ * La primera fila del archivo es un "Gran total" sin fecha; se descarta sola
+ * al exigir fecha válida.
+ */
+export function parseEntradasProveedor(buffer: Buffer): EntradasProveedorParsed {
+  const { hoja, h, filas } = leerHoja(buffer, ["Documento", "Razón social proveedor", "Fecha"]);
+  const iFec = exigir(h, "Fecha");
+  const iDoc = exigir(h, "Documento");
+  const iProv = exigir(h, "Razón social proveedor");
+  const iNit = col(h, "Proveedor");
+
+  const porDoc = new Map<string, EntradaProveedorParsed>();
+  const ambiguos = new Set<string>();
+  const periodos = new Set<string>();
+  let leidas = 0, omitidas = 0;
+
+  for (const r of filas) {
+    if (!r) continue;
+    const documento = txt(r[iDoc]);
+    if (!documento) continue;
+    leidas++;
+    const f = fecha(r[iFec]);
+    const proveedor = txt(r[iProv]);
+    if (!f || !proveedor) { omitidas++; continue; }
+
+    const previo = porDoc.get(documento);
+    if (previo) {
+      // Manda el primero y se reporta: cambiarlo en silencio movería plata
+      // de un proveedor a otro sin que nadie se entere.
+      if (previo.proveedor !== proveedor) ambiguos.add(documento);
+      continue;
+    }
+    const anio = f.getUTCFullYear(), mes = f.getUTCMonth() + 1;
+    periodos.add(`${anio}-${String(mes).padStart(2, "0")}`);
+    porDoc.set(documento, {
+      documento, tipoDoc: documento.slice(0, 3).toUpperCase(), proveedor,
+      nit: iNit != null ? (txt(r[iNit]) || null) : null,
+      fecha: f, anio, mes,
+    });
+  }
+  return {
+    hoja, filas: leidas, omitidas, periodos: [...periodos].sort(),
+    ambiguos: [...ambiguos], datos: [...porDoc.values()],
+  };
+}
+
+/**
+ * Reemplaza los meses del archivo. El documento es la llave, pero se borra
+ * por periodo para que un documento anulado y desaparecido del reporte no se
+ * quede colgado atribuyendo entradas a un proveedor que ya no es.
+ */
+export async function persistirEntradasProveedor(p: EntradasProveedorParsed): Promise<number> {
+  for (const per of p.periodos) {
+    const [anio, mes] = per.split("-").map(Number);
+    await prisma.entradaProveedor.deleteMany({ where: { anio, mes } });
+  }
+  const docs = p.datos.map((d) => d.documento);
+  await porLotes(docs, (lote) => prisma.entradaProveedor.deleteMany({ where: { documento: { in: lote } } }), 1000);
+  await porLotes(p.datos, (lote) => prisma.entradaProveedor.createMany({ data: lote as never }));
+  return p.datos.length;
 }

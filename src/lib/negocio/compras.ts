@@ -16,9 +16,10 @@
 // primer intento fallido al reconstruir el tablero).
 //
 // Qué filtro aplica a qué fuente — no todas tienen todas las columnas:
-//   · proveedor → órdenes, pendientes y facturas de forma exacta. A las
-//     entradas se les aplica por MARCA (el movimiento no trae razón social):
-//     es una atribución, no un dato del documento, y se marca como estimada.
+//   · proveedor → órdenes, pendientes y facturas de forma exacta. Las
+//     entradas se atribuyen por DOCUMENTO usando el reporte "entradas por
+//     compra" (tabla EntradaProveedor), y solo donde ese reporte no llega se
+//     cae a la MARCA, que sí es una aproximación y se marca como tal.
 //   · línea     → órdenes, pendientes y entradas. NO a las facturas: el
 //     documento CCP es de cabecera, sin línea de producto.
 //   · tipo de compra → igual que proveedor (vía ProveedorCompra).
@@ -296,36 +297,65 @@ export async function mapaMarcaProveedor(): Promise<Map<string, string>> {
   return new Map(filas.map((r) => [r.marca, r.proveedor]));
 }
 
-export interface EntradaProveedor { valor: number; unidades: number }
+export interface EntradaProveedor {
+  valor: number;
+  unidades: number;
+  /** true = parte del valor se dedujo por marca, no salió del documento. */
+  estimado: boolean;
+}
 
 export interface EntradasAtribuidas {
   /** proveedor → entradas por compra del periodo. */
   porProveedor: Map<string, EntradaProveedor>;
-  /** Entradas cuya marca no aparece en ninguna orden (no se pueden atribuir). */
+  /** Entradas que no se pudieron atribuir a ningún proveedor. */
   sinIdentificar: number;
+  /** Del total atribuido, cuánto salió del documento (exacto). */
+  exacto: number;
+  /** Del total atribuido, cuánto hubo que deducir por marca (aproximado). */
+  porMarca: number;
 }
 
-/** Entradas por compra (EPC) repartidas por proveedor a través de la marca. */
+/**
+ * Entradas por compra repartidas por proveedor. Dos caminos, en este orden:
+ *
+ *   1. Por DOCUMENTO (exacto). El reporte "entradas por compra" dice a quién
+ *      se le compró cada EPC/ECG; ese documento es el mismo de InvMovimiento.
+ *   2. Por MARCA (aproximado), para los documentos que ese reporte no cubre
+ *      todavía —hoy solo va de enero a julio de 2026—. Se le carga al
+ *      proveedor que más ha ordenado la marca.
+ *
+ * El VALOR siempre sale de InvMovimiento, nunca del reporte de entradas: son
+ * dos valoraciones distintas (costo promedio vs. precio del documento) y
+ * mezclarlas daría cifras que no cuadran con el resto del informe.
+ */
 export async function entradasPorProveedor(f: FiltroCompras): Promise<EntradasAtribuidas> {
-  const [porMarca, mapa] = await Promise.all([
-    prisma.$queryRaw<{ marca: string; valor: unknown; unidades: unknown }[]>`
-      SELECT m."marca" AS marca, SUM(m."costoEntradas") AS valor, SUM(m."cantEntradas") AS unidades
-      FROM "InvMovimiento" m WHERE ${whereEntradas(f)} GROUP BY 1`,
+  const [grupos, mapa] = await Promise.all([
+    prisma.$queryRaw<{ proveedor: string; marca: string; valor: unknown; unidades: unknown }[]>`
+      SELECT COALESCE(ep."proveedor", '') AS proveedor, m."marca" AS marca,
+             SUM(m."costoEntradas") AS valor, SUM(m."cantEntradas") AS unidades
+      FROM "InvMovimiento" m
+      LEFT JOIN "EntradaProveedor" ep ON ep."documento" = m."documento"
+      WHERE ${whereEntradas(f)} GROUP BY 1, 2`,
     mapaMarcaProveedor(),
   ]);
 
   const porProveedor = new Map<string, EntradaProveedor>();
-  let sinIdentificar = 0;
-  for (const r of porMarca) {
+  let sinIdentificar = 0, exacto = 0, porMarca = 0;
+  for (const r of grupos) {
     const valor = n(r.valor), unidades = n(r.unidades);
     if (!valor && !unidades) continue;
-    const proveedor = mapa.get(r.marca);
+
+    const delDocumento = r.proveedor !== "";
+    const proveedor = delDocumento ? r.proveedor : mapa.get(r.marca);
     if (!proveedor) { sinIdentificar += valor; continue; }
-    const acc = porProveedor.get(proveedor) ?? { valor: 0, unidades: 0 };
+
+    if (delDocumento) exacto += valor; else porMarca += valor;
+    const acc = porProveedor.get(proveedor) ?? { valor: 0, unidades: 0, estimado: false };
     acc.valor += valor; acc.unidades += unidades;
+    if (!delDocumento) acc.estimado = true;
     porProveedor.set(proveedor, acc);
   }
-  return { porProveedor, sinIdentificar };
+  return { porProveedor, sinIdentificar, exacto, porMarca };
 }
 
 /**
@@ -349,7 +379,7 @@ async function entradasDelFiltro(f: FiltroCompras): Promise<{ valor: number; uni
     tipos = new Map(cat.map((t) => [t.razonSocial, t.tipoCompra]));
   }
 
-  let valor = 0, unidades = 0;
+  let valor = 0, unidades = 0, estimado = false;
   for (const [proveedor, e] of porProveedor) {
     if (f.proveedor && proveedor !== f.proveedor) continue;
     if (f.tipoCompra) {
@@ -358,14 +388,19 @@ async function entradasDelFiltro(f: FiltroCompras): Promise<{ valor: number; uni
       if (!coincide) continue;
     }
     valor += e.valor; unidades += e.unidades;
+    if (e.estimado) estimado = true;
   }
-  return { valor, unidades, estimado: true };
+  return { valor, unidades, estimado };
 }
 
 export interface TablaProveedores {
   filas: FilaProveedor[];
   /** Entradas que no se pudieron atribuir a ningún proveedor. */
   entradasSinIdentificar: number;
+  /** Entradas atribuidas por documento (exactas). */
+  entradasExacto: number;
+  /** Entradas atribuidas por marca (aproximadas). */
+  entradasPorMarca: number;
 }
 
 /** Tabla del informe: órdenes, pendiente, facturado y entradas por proveedor. */
@@ -410,6 +445,8 @@ export async function comprasPorProveedor(f: FiltroCompras): Promise<TablaProvee
   return {
     filas: [...out.values()].sort((a, b) => (b.ordenes + b.facturado) - (a.ordenes + a.facturado)),
     entradasSinIdentificar,
+    entradasExacto: entradas.exacto,
+    entradasPorMarca: entradas.porMarca,
   };
 }
 

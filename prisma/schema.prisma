@@ -1429,3 +1429,29 @@ model ProveedorCompra {
 
   @@index([tipoCompra])
 }
+
+// Puente DOCUMENTO DE ENTRADA → PROVEEDOR, del reporte "entradas por compra"
+// de SIESA. El movimiento de inventario (InvMovimiento) no trae razón social,
+// solo la marca; este reporte sí, y su documento (EPC-00068925) es el mismo.
+//
+// Solo se guarda el nivel documento, no el renglón: el valor y la cantidad
+// siguen saliendo de InvMovimiento —que es lo que cuadra con Power BI— y
+// duplicarlos aquí crearía dos cifras distintas para lo mismo. El reporte
+// valora al precio del documento de compra y el movimiento al costo
+// promedio, así que nunca van a coincidir al peso.
+//
+// Verificado: 3.631 documentos de ene–jul 2026, ninguno con más de un
+// proveedor, y el conteo de renglones coincide exacto con InvMovimiento
+// (EPC 17.000 · ECG 319 · AEC 285 · DEC 2).
+model EntradaProveedor {
+  documento String   @id // EPC-00068925 · ECG / AEC / DEC también
+  tipoDoc   String   @default("") // 3 letras del documento
+  proveedor String
+  nit       String?
+  fecha     DateTime @db.Date
+  anio      Int
+  mes       Int
+
+  @@index([proveedor])
+  @@index([anio, mes])
+}
