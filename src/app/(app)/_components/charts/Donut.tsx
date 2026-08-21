@@ -62,7 +62,12 @@ export function Donut({
   agruparBajo = 1,
 }: {
   data: SegmentoDonut[];
-  centro?: { valor: string; etiqueta: string };
+  /**
+   * Texto del hueco. `valorCorto` activa el toggle global de cifras: se
+   * pintan las dos variantes y el CSS (data-montos en <html>) muestra una,
+   * igual que hace el componente Monto.
+   */
+  centro?: { valor: string; valorCorto?: string; etiqueta: string };
   size?: number;
   legend?: boolean;
   azul?: boolean;
@@ -83,6 +88,20 @@ export function Donut({
     if (!rect) return;
     setTip({ x: e.clientX - rect.left, y: e.clientY - rect.top, w: rect.width, seg });
   };
+
+  // El texto del hueco se encoge si la cifra es larga: un valor completo
+  // ($ 9.533.771.914) a tamaño fijo se salía del anillo y quedaba cortado.
+  // 0,55 em por carácter es el ancho aproximado de la fuente con cifras
+  // tabulares; se deja un 6 % de margen contra el borde del hueco.
+  const propsCentro = (txt: string) => ({
+    x: cx,
+    y: cy - 2,
+    textAnchor: "middle" as const,
+    fontSize: Math.min(size * 0.11, (ir * 2 * 0.94) / Math.max(txt.length * 0.55, 1)),
+    fontWeight: 800,
+    fill: "var(--ink)",
+    style: { fontVariantNumeric: "tabular-nums" as const },
+  });
 
   let ang = 0;
   const arcos = segs.map((d) => {
@@ -111,7 +130,14 @@ export function Donut({
         )}
         {centro && (
           <>
-            <text x={cx} y={cy - 2} textAnchor="middle" fontSize={size * 0.11} fontWeight="800" fill="var(--ink)" style={{ fontVariantNumeric: "tabular-nums" }}>{centro.valor}</text>
+            {centro.valorCorto ? (
+              <>
+                <text {...propsCentro(centro.valor)} className="monto-full">{centro.valor}</text>
+                <text {...propsCentro(centro.valorCorto)} className="monto-short">{centro.valorCorto}</text>
+              </>
+            ) : (
+              <text {...propsCentro(centro.valor)}>{centro.valor}</text>
+            )}
             <text x={cx} y={cy + size * 0.1} textAnchor="middle" fontSize={size * 0.06} fill="var(--muted)">{centro.etiqueta}</text>
           </>
         )}

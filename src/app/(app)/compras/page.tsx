@@ -9,7 +9,7 @@
 // NO tienen por qué sumar entre sí ni coincidir en el mismo día.
 // ==========================================================
 import { requirePermiso } from "@/server/auth-context";
-import { formatCOP, formatNumero, formatFecha } from "@/lib/format";
+import { formatCOP, formatCOPCorto, formatNumero, formatFecha } from "@/lib/format";
 import { Monto } from "../_components/Monto";
 import { Donut } from "../_components/charts/Donut";
 import { LineasMensuales } from "../_components/charts/LineasMensuales";
@@ -143,7 +143,11 @@ export default async function ComprasPage({ searchParams }: { searchParams: Prom
                 { label: "Entradas por compra", valor: kpi.entradas, color: "var(--ok)" },
                 { label: "Pendiente por despacho", valor: kpi.pendiente, color: "var(--w1)" },
               ]}
-              centro={{ valor: formatCOP(totalEntPen), etiqueta: "entradas + pendiente" }}
+              centro={{
+                valor: formatCOP(totalEntPen),
+                valorCorto: formatCOPCorto(totalEntPen),
+                etiqueta: "entradas + pendiente",
+              }}
             />
           </div>
         </div>

@@ -28,6 +28,20 @@ export function formatNumero(v: Numerico): string {
 }
 
 /**
+ * $ 223,46 M · $ 223 K — la versión corta de formatCOP, que es la que se ve
+ * cuando el usuario elige "cifras resumidas" (data-montos en <html>).
+ * Regla única para toda la app: la usan el componente Monto y el centro de
+ * los anillos, para que no queden dos abreviaturas distintas conviviendo.
+ */
+export function formatCOPCorto(v: Numerico): string {
+  const n = aNumero(v);
+  const a = Math.abs(n);
+  if (a >= 1e6) return `$ ${(n / 1e6).toLocaleString("es-CO", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} M`;
+  if (a >= 1e3) return `$ ${(n / 1e3).toLocaleString("es-CO", { maximumFractionDigits: 0 })} K`;
+  return formatCOP(n);
+}
+
+/**
  * 45,50 % (dos decimales).
  * @param valor  porcentaje ya en escala 0–100 (por defecto) o proporción 0–1 si `esProporcion`.
  */
