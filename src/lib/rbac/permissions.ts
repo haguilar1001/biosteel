@@ -26,6 +26,7 @@ export const PERMISOS = [
   { clave: "inventario.view", modulo: "Inventarios", descripcion: "Consultar el inventario de equipos" },
   { clave: "inventario.manage", modulo: "Inventarios", descripcion: "Gestionar equipos, ítems y novedades" },
   { clave: "osteo.view", modulo: "Inventarios", descripcion: "Consultar el inventario de material de osteosíntesis" },
+  { clave: "compras.view", modulo: "Compras", descripcion: "Consultar el informe de compras (órdenes, pendientes y facturado)" },
   { clave: "asistencia.manage", modulo: "Análisis", descripcion: "Registrar PQRS de Asistencia Técnica" },
   { clave: "tercero.manage", modulo: "Administración", descripcion: "Crear y editar terceros" },
   { clave: "usuario.manage", modulo: "Administración", descripcion: "Gestionar usuarios" },
@@ -44,6 +45,10 @@ export const PERMISOS = [
   { clave: "carga.inv.bodegas", modulo: "Cargas", descripcion: "Cargar Tablas Auxiliares de inventario (bodegas)" },
   { clave: "carga.inv.balance", modulo: "Cargas", descripcion: "Cargar Balance de inventario mensual" },
   { clave: "carga.inv.movimientos", modulo: "Cargas", descripcion: "Cargar Movimientos de inventario" },
+  { clave: "carga.compras.ordenes", modulo: "Cargas", descripcion: "Cargar Órdenes de compra generadas" },
+  { clave: "carga.compras.pendientes", modulo: "Cargas", descripcion: "Cargar Pendientes por despacho" },
+  { clave: "carga.compras.facturas", modulo: "Cargas", descripcion: "Cargar Facturas de proveedores" },
+  { clave: "carga.compras.tipos", modulo: "Cargas", descripcion: "Cargar Tipos de proveedores (tipo de compra)" },
 ] as const satisfies readonly PermisoDef[];
 
 export type PermisoClave = (typeof PERMISOS)[number]["clave"];
@@ -71,6 +76,9 @@ export const MATRIZ_ROLES: Record<RolNombre, Partial<Record<PermisoClave, Alcanc
     "dashboard.view": T, "cartera.view": T, "recaudo.create": T, "cxp.view": T,
     "pago.create": T, "nota.manage": T, "reporte.view": T, "tercero.manage": T,
     "inventario.view": T, "inventario.manage": T, "osteo.view": T, "flujo.manage": T, "ventas.manage": T,
+    "compras.view": T,
+    "carga.compras.ordenes": T, "carga.compras.pendientes": T, "carga.compras.facturas": T,
+    "carga.compras.tipos": T,
     "usuario.manage": T, "rol.manage": T, "parametro.manage": T, "auditoria.view": T,
     "carga.pendientes": T, "carga.ventas": T, "carga.facturacion": T, "carga.gastos": T,
     "carga.anuladas": T, "carga.pyg": T, "carga.flujo": T, "carga.presupuesto": T,
@@ -81,6 +89,7 @@ export const MATRIZ_ROLES: Record<RolNombre, Partial<Record<PermisoClave, Alcanc
     "dashboard.view": T, "cartera.view": T, "recaudo.create": N, "cxp.view": T,
     "pago.create": N, "nota.manage": N, "reporte.view": T, "tercero.manage": N,
     "inventario.view": T, "inventario.manage": N, "osteo.view": T, "ventas.manage": T,
+    "compras.view": T,
     "asistencia.manage": T,
     "usuario.manage": N, "rol.manage": N, "parametro.manage": N, "auditoria.view": T,
   },
@@ -88,12 +97,14 @@ export const MATRIZ_ROLES: Record<RolNombre, Partial<Record<PermisoClave, Alcanc
     "dashboard.view": T, "cartera.view": T, "recaudo.create": T, "cxp.view": T,
     "pago.create": T, "nota.manage": T, "reporte.view": T, "tercero.manage": T,
     "inventario.view": T, "inventario.manage": T, "osteo.view": T, "flujo.manage": T, "ventas.manage": T,
+    "compras.view": T,
     "usuario.manage": N, "rol.manage": N, "parametro.manage": N, "auditoria.view": N,
   },
   Vendedor: {
     "dashboard.view": T, "cartera.view": P, "recaudo.create": N, "cxp.view": N,
     "pago.create": N, "nota.manage": N, "reporte.view": P, "tercero.manage": N,
     "inventario.view": N, "inventario.manage": N, "osteo.view": N, "ventas.manage": N,
+    "compras.view": N,
     "usuario.manage": N, "rol.manage": N, "parametro.manage": N, "auditoria.view": N,
   },
 };

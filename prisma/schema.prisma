@@ -1149,23 +1149,23 @@ model InvBodega {
 // En la instalación 106 (aprovechamiento) el costo es SIEMPRE 0: hay
 // unidades pero nunca valor. No es un error de carga.
 model InvBalance {
-  id          Int    @id @default(autoincrement())
-  anio        Int
-  mes         Int // 1–12
-  instalacion Int // 101 | 102 | 103 | 104 | 106
+  id           Int    @id @default(autoincrement())
+  anio         Int
+  mes          Int // 1–12
+  instalacion  Int // 101 | 102 | 103 | 104 | 106
   /// Bodega del saldo. **"" en los meses cargados con el export viejo**, que
   /// solo llegaba hasta instalación. No es FK: el balance trae bodegas que el
   /// catálogo no tiene y la cadena vacía no apuntaría a ninguna.
   bodegaCodigo String @default("")
-  item        String // código SIESA del ítem (p.ej. "0000456")
-  referencia  String // código corto (p.ej. "PR08")
-  descripcion String @default("")
-  tipoInv     String @default("") // "Tipo inventario" (INV143502…)
-  marca       String @default("")
-  linea       String @default("")
-  anatomia    String @default("")
-  sistema     String @default("")
-  categoria   String @default("")
+  item         String // código SIESA del ítem (p.ej. "0000456")
+  referencia   String // código corto (p.ej. "PR08")
+  descripcion  String @default("")
+  tipoInv      String @default("") // "Tipo inventario" (INV143502…)
+  marca        String @default("")
+  linea        String @default("")
+  anatomia     String @default("")
+  sistema      String @default("")
+  categoria    String @default("")
 
   cantInicial   Decimal @default(0) @db.Decimal(18, 2)
   cantEntradas  Decimal @default(0) @db.Decimal(18, 2)
@@ -1299,4 +1299,133 @@ model VentaItemIps {
   @@index([ips])
   @@index([marca])
   @@index([nit])
+}
+
+// ==========================================================
+// MÓDULO DE COMPRAS
+// Réplica del "INFORME DE COMPRAS" de Power BI. Tres fuentes SIESA nuevas,
+// más las entradas por compra (EPC) que ya viven en InvMovimiento:
+//   · CompraOrden     — órdenes de compra generadas, a nivel renglón
+//   · CompraPendiente — pendientes por despacho (foto del día)
+//   · CompraFactura   — facturado por proveedor (documentos CCP)
+//
+// La bodega es TEXTO sin FK a InvBodega a propósito: las órdenes traen
+// bodegas que el catálogo no tiene (y con FK se perderían renglones).
+// El modelo de compra y la ciudad se resuelven por lookup al consultar.
+// ==========================================================
+
+// Renglón de orden de compra. NO hay llave natural única: una misma orden
+// puede repetir referencia+bodega (98 casos en 46k). Se carga reemplazando
+// el rango de fechas del archivo.
+model CompraOrden {
+  id           Int      @id @default(autoincrement())
+  fechaOrden   DateTime @db.Date
+  anio         Int
+  mes          Int // 1–12
+  dia          Int
+  nroOrden     String // OCV / ODC / OCP / OBS
+  prefijo      String   @default("") // 3 letras del nro de orden
+  bodegaCodigo String   @default("")
+  bodegaDesc   String   @default("")
+  referencia   String
+  descItem     String   @default("")
+  cantOrdenada Decimal  @default(0) @db.Decimal(18, 2)
+  valorBruto   Decimal  @default(0) @db.Decimal(18, 2)
+  valorNeto    Decimal  @default(0) @db.Decimal(18, 2)
+  proveedor    String   @default("")
+  estado       String   @default("") // Cumplido | Aprobado | Parcial | En elaboración
+  tipoDocto    String   @default("") // "Desc. tipo docto."
+  notas        String   @default("")
+  marca        String   @default("")
+  linea        String   @default("")
+  anatomia     String   @default("")
+
+  @@index([anio, mes])
+  @@index([fechaOrden])
+  @@index([nroOrden])
+  @@index([proveedor])
+  @@index([bodegaCodigo])
+  @@index([referencia])
+  @@index([estado])
+}
+
+// Pendientes por despacho. Es una FOTO del día: cada carga reemplaza todo.
+// El KPI del tablero se filtra por `fechaEntrega`, no por `fechaOrden`.
+model CompraPendiente {
+  id              Int       @id @default(autoincrement())
+  nroOrden        String
+  itemResumen     String    @default("")
+  cantPendiente   Decimal   @default(0) @db.Decimal(18, 2)
+  valorPendiente  Decimal   @default(0) @db.Decimal(18, 2)
+  bodegaCodigo    String    @default("")
+  bodegaDesc      String    @default("")
+  cantOrden       Decimal   @default(0) @db.Decimal(18, 2)
+  cantEntrada     Decimal   @default(0) @db.Decimal(18, 2)
+  entradasRel     String    @default("")
+  fechaUltEntrada DateTime? @db.Date
+  valorOrden      Decimal   @default(0) @db.Decimal(18, 2)
+  doctoReferencia String    @default("")
+  fechaEntrega    DateTime? @db.Date
+  anio            Int // año de fechaEntrega (o de fechaOrden si no hay)
+  mes             Int
+  fechaOrden      DateTime? @db.Date
+  proveedor       String    @default("")
+  marca           String    @default("")
+  linea           String    @default("")
+  anatomia        String    @default("")
+  sistema         String    @default("")
+  categoria       String    @default("")
+  cargadoEn       DateTime  @default(now())
+
+  @@index([anio, mes])
+  @@index([fechaEntrega])
+  @@index([nroOrden])
+  @@index([proveedor])
+  @@index([bodegaCodigo])
+}
+
+// Facturado por proveedor (documentos CCP de SIESA). Llave natural:
+// el nro de documento interno, que no se repite.
+model CompraFactura {
+  id               Int       @id @default(autoincrement())
+  nroDocumento     String    @unique
+  co               String    @default("")
+  fecha            DateTime  @db.Date
+  anio             Int
+  mes              Int
+  dia              Int
+  estado           String    @default("") // Aprobado | En elaboración | Anulado
+  doctoProveedor   String    @default("")
+  fechaDoctoProv   DateTime? @db.Date
+  claseDocto       String    @default("") // Factura de consignación | Factura de proveedor
+  proveedor        String    @default("")
+  moneda           String    @default("COP")
+  valorBruto       Decimal   @default(0) @db.Decimal(18, 2)
+  valorDesctos     Decimal   @default(0) @db.Decimal(18, 2)
+  valorImptos      Decimal   @default(0) @db.Decimal(18, 2)
+  valorNeto        Decimal   @default(0) @db.Decimal(18, 2)
+  valorRetenciones Decimal   @default(0) @db.Decimal(18, 2)
+  valorCxp         Decimal   @default(0) @db.Decimal(18, 2)
+  notas            String    @default("")
+  tipoDocto        String    @default("")
+  ciudad           String    @default("") // código de ciudad del documento
+  usuarioCreacion  String    @default("")
+
+  @@index([anio, mes])
+  @@index([fecha])
+  @@index([proveedor])
+  @@index([claseDocto])
+  @@index([estado])
+}
+
+// Catálogo proveedor → TIPO DE COMPRA (ALTO COSTO / BIENES Y SERVICIOS /
+// INSUMOS). En Power BI es la tabla "TIPOS DE PROVEEDORES"; aquí se puede
+// llenar por carga o editar en la app. Sin fila, el proveedor sale como
+// "SIN CLASIFICAR" y el filtro no lo pierde.
+model ProveedorCompra {
+  razonSocial String  @id
+  tipoCompra  String  @default("")
+  nit         String?
+
+  @@index([tipoCompra])
 }

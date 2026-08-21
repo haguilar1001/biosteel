@@ -1,0 +1,404 @@
+// ==========================================================
+// Consultas del MÓDULO DE COMPRAS — réplica del "INFORME DE COMPRAS" de
+// Power BI. Cuatro medidas, cada una de una fuente distinta, todas cuadradas
+// contra el tablero (corte 11-ago-2026):
+//
+//   $ Ordenes de Compra      Σ CompraOrden.valorNeto        por fechaOrden
+//   Cantidad ODC             nro de órdenes distintas
+//   $ Pendiente por Despacho Σ CompraPendiente.valorPendiente por fechaEntrega
+//   Cantidad PPD             nro de órdenes distintas
+//   $ Facturado Proveedor    Σ CompraFactura.valorNeto      por fecha
+//   Cantidad FPP             nro de documentos distintos
+//   $ Entradas por Compras   Σ InvMovimiento.costoEntradas  con tipoDoc = EPC
+//
+// Ojo con el PENDIENTE: se agrupa por FECHA DE ENTREGA de la orden, no por
+// fecha de la orden. Agruparlo por fecha de orden da otra cifra (y fue el
+// primer intento fallido al reconstruir el tablero).
+//
+// Qué filtro aplica a qué fuente — no todas tienen todas las columnas:
+//   · proveedor → órdenes, pendientes y facturas. NO a las entradas: el
+//     movimiento de inventario trae MARCA, no la razón social del proveedor.
+//   · línea     → órdenes, pendientes y entradas. NO a las facturas: el
+//     documento CCP es de cabecera, sin línea de producto.
+//   · tipo de compra → las tres fuentes con proveedor (vía ProveedorCompra).
+// La pantalla avisa cuando un filtro no aplica a una tarjeta.
+// ==========================================================
+import "server-only";
+import { prisma } from "@/lib/db";
+import { Prisma } from "@prisma/client";
+
+export const MES_LARGO = ["", "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+  "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+export const MES_CORTO = ["", "Ene", "Feb", "Mar", "Abr", "May", "Jun",
+  "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
+
+/** Etiqueta de los proveedores que no están en el catálogo de tipos. */
+export const SIN_CLASIFICAR = "SIN CLASIFICAR";
+
+/** Tipo de documento de inventario que representa la entrada por compra. */
+const TIPO_ENTRADA_COMPRA = "EPC";
+
+const n = (v: unknown): number => (v == null ? 0 : Number(v));
+
+export interface FiltroCompras {
+  anio: number;
+  /** 1–12. undefined = todo el año. */
+  mes?: number;
+  /** 1–31. Solo tiene efecto junto con `mes`. */
+  dia?: number;
+  proveedor?: string;
+  linea?: string;
+  tipoCompra?: string;
+}
+
+// ---------- Fragmentos de WHERE ----------
+
+/** Acota por año/mes/día sobre las columnas anio/mes + una columna de fecha. */
+function periodo(f: FiltroCompras, colFecha: string): Prisma.Sql {
+  const partes: Prisma.Sql[] = [Prisma.sql`m."anio" = ${f.anio}`];
+  if (f.mes) partes.push(Prisma.sql`m."mes" = ${f.mes}`);
+  if (f.mes && f.dia) {
+    partes.push(Prisma.sql`EXTRACT(DAY FROM m.${Prisma.raw(`"${colFecha}"`)}) = ${f.dia}`);
+  }
+  return Prisma.join(partes, " AND ");
+}
+
+/**
+ * Proveedores del tipo de compra pedido. "SIN CLASIFICAR" = los que no están
+ * en el catálogo, para que el filtro nunca esconda plata sin avisar.
+ */
+function porTipoCompra(f: FiltroCompras): Prisma.Sql {
+  if (!f.tipoCompra) return Prisma.empty;
+  if (f.tipoCompra === SIN_CLASIFICAR) {
+    return Prisma.sql` AND m."proveedor" NOT IN (SELECT "razonSocial" FROM "ProveedorCompra" WHERE "tipoCompra" <> '')`;
+  }
+  return Prisma.sql` AND m."proveedor" IN (SELECT "razonSocial" FROM "ProveedorCompra" WHERE "tipoCompra" = ${f.tipoCompra})`;
+}
+
+const porProveedorSql = (f: FiltroCompras): Prisma.Sql =>
+  f.proveedor ? Prisma.sql` AND m."proveedor" = ${f.proveedor}` : Prisma.empty;
+
+const porLineaSql = (f: FiltroCompras): Prisma.Sql =>
+  f.linea ? Prisma.sql` AND m."linea" = ${f.linea}` : Prisma.empty;
+
+/** WHERE de órdenes y pendientes (tienen proveedor y línea). */
+function whereOrdenes(f: FiltroCompras): Prisma.Sql {
+  return Prisma.sql`${periodo(f, "fechaOrden")}${porProveedorSql(f)}${porLineaSql(f)}${porTipoCompra(f)}`;
+}
+function wherePendientes(f: FiltroCompras): Prisma.Sql {
+  return Prisma.sql`${periodo(f, "fechaEntrega")}${porProveedorSql(f)}${porLineaSql(f)}${porTipoCompra(f)}`;
+}
+/** WHERE de facturas: sin línea (el documento CCP no la trae). */
+function whereFacturas(f: FiltroCompras): Prisma.Sql {
+  return Prisma.sql`${periodo(f, "fecha")}${porProveedorSql(f)}${porTipoCompra(f)}`;
+}
+/** WHERE de entradas por compra: sin proveedor (el movimiento trae marca). */
+function whereEntradas(f: FiltroCompras): Prisma.Sql {
+  return Prisma.sql`m."tipoDoc" = ${TIPO_ENTRADA_COMPRA} AND ${periodo(f, "fecha")}${porLineaSql(f)}`;
+}
+
+/** Filtros que la fuente no puede aplicar (para avisarlo en pantalla). */
+export function filtrosIgnorados(f: FiltroCompras): { entradas: string[]; facturas: string[] } {
+  const entradas: string[] = [];
+  if (f.proveedor) entradas.push("proveedor");
+  if (f.tipoCompra) entradas.push("tipo de compra");
+  const facturas: string[] = [];
+  if (f.linea) facturas.push("línea");
+  return { entradas, facturas };
+}
+
+// ---------- Catálogos para los selectores ----------
+
+export async function aniosConCompras(): Promise<number[]> {
+  const filas = await prisma.$queryRaw<{ anio: number }[]>`
+    SELECT DISTINCT "anio" FROM "CompraOrden"
+    UNION SELECT DISTINCT "anio" FROM "CompraFactura"
+    UNION SELECT DISTINCT "anio" FROM "CompraPendiente"
+    UNION SELECT DISTINCT "anio" FROM "InvMovimiento" WHERE "tipoDoc" = ${TIPO_ENTRADA_COMPRA}
+    ORDER BY 1`;
+  return filas.map((f) => Number(f.anio));
+}
+
+export async function mesesConCompras(anio: number): Promise<number[]> {
+  const filas = await prisma.$queryRaw<{ mes: number }[]>`
+    SELECT DISTINCT "mes" FROM "CompraOrden" WHERE "anio" = ${anio}
+    UNION SELECT DISTINCT "mes" FROM "CompraFactura" WHERE "anio" = ${anio}
+    UNION SELECT DISTINCT "mes" FROM "CompraPendiente" WHERE "anio" = ${anio}
+    UNION SELECT DISTINCT "mes" FROM "InvMovimiento" WHERE "anio" = ${anio} AND "tipoDoc" = ${TIPO_ENTRADA_COMPRA}
+    ORDER BY 1`;
+  return filas.map((f) => Number(f.mes));
+}
+
+export async function diasConCompras(anio: number, mes: number): Promise<number[]> {
+  const filas = await prisma.$queryRaw<{ dia: number }[]>`
+    SELECT DISTINCT "dia" FROM "CompraOrden" WHERE "anio" = ${anio} AND "mes" = ${mes}
+    UNION SELECT DISTINCT "dia" FROM "CompraFactura" WHERE "anio" = ${anio} AND "mes" = ${mes}
+    UNION SELECT DISTINCT EXTRACT(DAY FROM "fechaEntrega")::int FROM "CompraPendiente"
+      WHERE "anio" = ${anio} AND "mes" = ${mes} AND "fechaEntrega" IS NOT NULL
+    UNION SELECT DISTINCT EXTRACT(DAY FROM "fecha")::int FROM "InvMovimiento"
+      WHERE "anio" = ${anio} AND "mes" = ${mes} AND "tipoDoc" = ${TIPO_ENTRADA_COMPRA}
+    ORDER BY 1`;
+  return filas.map((f) => Number(f.dia)).filter((d) => d >= 1 && d <= 31);
+}
+
+/** Proveedores con actividad en el año (órdenes, pendientes o facturas). */
+export async function proveedoresConCompras(anio: number): Promise<string[]> {
+  const filas = await prisma.$queryRaw<{ proveedor: string }[]>`
+    SELECT DISTINCT "proveedor" FROM "CompraOrden" WHERE "anio" = ${anio} AND "proveedor" <> ''
+    UNION SELECT DISTINCT "proveedor" FROM "CompraFactura" WHERE "anio" = ${anio} AND "proveedor" <> ''
+    UNION SELECT DISTINCT "proveedor" FROM "CompraPendiente" WHERE "anio" = ${anio} AND "proveedor" <> ''
+    ORDER BY 1`;
+  return filas.map((f) => f.proveedor);
+}
+
+export async function lineasConCompras(anio: number): Promise<string[]> {
+  const filas = await prisma.$queryRaw<{ linea: string }[]>`
+    SELECT DISTINCT "linea" FROM "CompraOrden" WHERE "anio" = ${anio} AND "linea" <> ''
+    UNION SELECT DISTINCT "linea" FROM "CompraPendiente" WHERE "anio" = ${anio} AND "linea" <> ''
+    ORDER BY 1`;
+  return filas.map((f) => f.linea);
+}
+
+/** Tipos de compra del catálogo, más "SIN CLASIFICAR" si hay proveedores sueltos. */
+export async function tiposDeCompra(): Promise<string[]> {
+  const filas = await prisma.proveedorCompra.findMany({
+    where: { tipoCompra: { not: "" } },
+    distinct: ["tipoCompra"],
+    select: { tipoCompra: true },
+    orderBy: { tipoCompra: "asc" },
+  });
+  const tipos = filas.map((f) => f.tipoCompra);
+  return tipos.length ? [...tipos, SIN_CLASIFICAR] : [];
+}
+
+// ---------- Los cuatro KPI ----------
+
+export interface ResumenCompras {
+  entradas: number;
+  entradasUnidades: number;
+  ordenes: number;
+  ordenesCant: number;
+  pendiente: number;
+  pendienteCant: number;
+  facturado: number;
+  facturadoCant: number;
+}
+
+export async function resumenCompras(f: FiltroCompras): Promise<ResumenCompras> {
+  const [ent, ord, pen, fac] = await Promise.all([
+    prisma.$queryRaw<{ valor: unknown; unidades: unknown }[]>`
+      SELECT COALESCE(SUM(m."costoEntradas"), 0) AS valor, COALESCE(SUM(m."cantEntradas"), 0) AS unidades
+      FROM "InvMovimiento" m WHERE ${whereEntradas(f)}`,
+    prisma.$queryRaw<{ valor: unknown; cant: unknown }[]>`
+      SELECT COALESCE(SUM(m."valorNeto"), 0) AS valor, COUNT(DISTINCT m."nroOrden") AS cant
+      FROM "CompraOrden" m WHERE ${whereOrdenes(f)}`,
+    prisma.$queryRaw<{ valor: unknown; cant: unknown }[]>`
+      SELECT COALESCE(SUM(m."valorPendiente"), 0) AS valor, COUNT(DISTINCT m."nroOrden") AS cant
+      FROM "CompraPendiente" m WHERE ${wherePendientes(f)}`,
+    prisma.$queryRaw<{ valor: unknown; cant: unknown }[]>`
+      SELECT COALESCE(SUM(m."valorNeto"), 0) AS valor, COUNT(DISTINCT m."nroDocumento") AS cant
+      FROM "CompraFactura" m WHERE ${whereFacturas(f)}`,
+  ]);
+  return {
+    entradas: n(ent[0]?.valor), entradasUnidades: n(ent[0]?.unidades),
+    ordenes: n(ord[0]?.valor), ordenesCant: n(ord[0]?.cant),
+    pendiente: n(pen[0]?.valor), pendienteCant: n(pen[0]?.cant),
+    facturado: n(fac[0]?.valor), facturadoCant: n(fac[0]?.cant),
+  };
+}
+
+// ---------- Series y desgloses ----------
+
+export interface SerieMes { mes: number; ordenes: number; entradas: number; facturado: number }
+
+/** Las tres medidas mensuales del año, ignorando el filtro de mes/día. */
+export async function comprasPorMes(f: FiltroCompras): Promise<SerieMes[]> {
+  const anual: FiltroCompras = { ...f, mes: undefined, dia: undefined };
+  const [ord, ent, fac] = await Promise.all([
+    prisma.$queryRaw<{ mes: number; valor: unknown }[]>`
+      SELECT m."mes" AS mes, SUM(m."valorNeto") AS valor FROM "CompraOrden" m
+      WHERE ${whereOrdenes(anual)} GROUP BY m."mes"`,
+    prisma.$queryRaw<{ mes: number; valor: unknown }[]>`
+      SELECT m."mes" AS mes, SUM(m."costoEntradas") AS valor FROM "InvMovimiento" m
+      WHERE ${whereEntradas(anual)} GROUP BY m."mes"`,
+    prisma.$queryRaw<{ mes: number; valor: unknown }[]>`
+      SELECT m."mes" AS mes, SUM(m."valorNeto") AS valor FROM "CompraFactura" m
+      WHERE ${whereFacturas(anual)} GROUP BY m."mes"`,
+  ]);
+  const mapa = (filas: { mes: number; valor: unknown }[]) =>
+    new Map(filas.map((r) => [Number(r.mes), n(r.valor)]));
+  const mo = mapa(ord), me = mapa(ent), mf = mapa(fac);
+  return Array.from({ length: 12 }, (_, i) => ({
+    mes: i + 1,
+    ordenes: mo.get(i + 1) ?? 0,
+    entradas: me.get(i + 1) ?? 0,
+    facturado: mf.get(i + 1) ?? 0,
+  }));
+}
+
+export interface Segmento { label: string; valor: number }
+
+/**
+ * Órdenes por MODELO DE COMPRA. El modelo vive en el catálogo de bodegas
+ * (InvBodega.modeloCompra); las órdenes de bodegas sin catalogar caen en
+ * "Sin modelo", igual que el "(En blanco)" del tablero de Power BI.
+ */
+export async function ordenesPorModeloCompra(f: FiltroCompras): Promise<Segmento[]> {
+  const filas = await prisma.$queryRaw<{ label: string; valor: unknown }[]>`
+    SELECT COALESCE(NULLIF(b."modeloCompra", ''), 'Sin modelo') AS label, SUM(m."valorNeto") AS valor
+    FROM "CompraOrden" m LEFT JOIN "InvBodega" b ON b."codigo" = m."bodegaCodigo"
+    WHERE ${whereOrdenes(f)}
+    GROUP BY 1 ORDER BY 2 DESC`;
+  return filas.map((r) => ({ label: r.label, valor: n(r.valor) }));
+}
+
+/** Entradas por compra abiertas por ciudad de la bodega. */
+export async function entradasPorCiudad(f: FiltroCompras): Promise<Segmento[]> {
+  const filas = await prisma.$queryRaw<{ label: string; valor: unknown }[]>`
+    SELECT COALESCE(NULLIF(b."ciudad", ''), 'Sin ciudad') AS label, SUM(m."costoEntradas") AS valor
+    FROM "InvMovimiento" m LEFT JOIN "InvBodega" b ON b."codigo" = m."bodegaCodigo"
+    WHERE ${whereEntradas(f)}
+    GROUP BY 1 HAVING SUM(m."costoEntradas") <> 0 ORDER BY 2 DESC`;
+  return filas.map((r) => ({ label: r.label, valor: n(r.valor) }));
+}
+
+export interface FilaProveedor {
+  proveedor: string;
+  tipoCompra: string;
+  ordenes: number;
+  ordenesCant: number;
+  pendiente: number;
+  facturado: number;
+}
+
+/** Tabla del informe: órdenes, pendiente y facturado por proveedor. */
+export async function comprasPorProveedor(f: FiltroCompras): Promise<FilaProveedor[]> {
+  const [ord, pen, fac, tipos] = await Promise.all([
+    prisma.$queryRaw<{ proveedor: string; valor: unknown; cant: unknown }[]>`
+      SELECT m."proveedor" AS proveedor, SUM(m."valorNeto") AS valor, COUNT(DISTINCT m."nroOrden") AS cant
+      FROM "CompraOrden" m WHERE ${whereOrdenes(f)} GROUP BY 1`,
+    prisma.$queryRaw<{ proveedor: string; valor: unknown }[]>`
+      SELECT m."proveedor" AS proveedor, SUM(m."valorPendiente") AS valor
+      FROM "CompraPendiente" m WHERE ${wherePendientes(f)} GROUP BY 1`,
+    prisma.$queryRaw<{ proveedor: string; valor: unknown }[]>`
+      SELECT m."proveedor" AS proveedor, SUM(m."valorNeto") AS valor
+      FROM "CompraFactura" m WHERE ${whereFacturas(f)} GROUP BY 1`,
+    prisma.proveedorCompra.findMany({ select: { razonSocial: true, tipoCompra: true } }),
+  ]);
+
+  const tipo = new Map(tipos.map((t) => [t.razonSocial, t.tipoCompra]));
+  const out = new Map<string, FilaProveedor>();
+  const fila = (p: string) => {
+    let r = out.get(p);
+    if (!r) {
+      r = { proveedor: p, tipoCompra: tipo.get(p) || SIN_CLASIFICAR, ordenes: 0, ordenesCant: 0, pendiente: 0, facturado: 0 };
+      out.set(p, r);
+    }
+    return r;
+  };
+  for (const r of ord) { const x = fila(r.proveedor); x.ordenes = n(r.valor); x.ordenesCant = n(r.cant); }
+  for (const r of pen) fila(r.proveedor).pendiente = n(r.valor);
+  for (const r of fac) fila(r.proveedor).facturado = n(r.valor);
+
+  return [...out.values()].sort((a, b) => (b.ordenes + b.facturado) - (a.ordenes + a.facturado));
+}
+
+// ---------- Detalles ----------
+
+export interface DetalleOrden {
+  fechaOrden: Date; nroOrden: string; proveedor: string; bodegaCodigo: string; bodegaDesc: string;
+  referencia: string; descItem: string; cantOrdenada: number; valorNeto: number;
+  estado: string; linea: string; marca: string;
+}
+
+export async function detalleOrdenes(f: FiltroCompras, limite = 300): Promise<DetalleOrden[]> {
+  const filas = await prisma.$queryRaw<Record<string, unknown>[]>`
+    SELECT m."fechaOrden", m."nroOrden", m."proveedor", m."bodegaCodigo", m."bodegaDesc",
+           m."referencia", m."descItem", m."cantOrdenada", m."valorNeto", m."estado", m."linea", m."marca"
+    FROM "CompraOrden" m WHERE ${whereOrdenes(f)}
+    ORDER BY m."fechaOrden" DESC, m."nroOrden" DESC LIMIT ${limite}`;
+  return filas.map((r) => ({
+    fechaOrden: r.fechaOrden as Date, nroOrden: String(r.nroOrden), proveedor: String(r.proveedor),
+    bodegaCodigo: String(r.bodegaCodigo), bodegaDesc: String(r.bodegaDesc),
+    referencia: String(r.referencia), descItem: String(r.descItem),
+    cantOrdenada: n(r.cantOrdenada), valorNeto: n(r.valorNeto),
+    estado: String(r.estado), linea: String(r.linea), marca: String(r.marca),
+  }));
+}
+
+export interface DetallePendiente {
+  nroOrden: string; proveedor: string; itemResumen: string; bodegaCodigo: string; bodegaDesc: string;
+  cantOrden: number; cantEntrada: number; cantPendiente: number; valorPendiente: number;
+  fechaOrden: Date | null; fechaEntrega: Date | null; diasVencido: number | null; linea: string;
+}
+
+/**
+ * Pendientes con los días de atraso frente a la fecha de entrega pactada.
+ * `hoy` se pasa por parámetro para que la vista y el Excel den lo mismo.
+ */
+export async function detallePendientes(f: FiltroCompras, hoy: Date, limite = 500): Promise<DetallePendiente[]> {
+  const filas = await prisma.$queryRaw<Record<string, unknown>[]>`
+    SELECT m."nroOrden", m."proveedor", m."itemResumen", m."bodegaCodigo", m."bodegaDesc",
+           m."cantOrden", m."cantEntrada", m."cantPendiente", m."valorPendiente",
+           m."fechaOrden", m."fechaEntrega", m."linea"
+    FROM "CompraPendiente" m WHERE ${wherePendientes(f)}
+    ORDER BY m."fechaEntrega" ASC NULLS LAST, m."valorPendiente" DESC LIMIT ${limite}`;
+  const corte = Date.UTC(hoy.getUTCFullYear(), hoy.getUTCMonth(), hoy.getUTCDate());
+  return filas.map((r) => {
+    const fechaEntrega = (r.fechaEntrega as Date | null) ?? null;
+    return {
+      nroOrden: String(r.nroOrden), proveedor: String(r.proveedor), itemResumen: String(r.itemResumen),
+      bodegaCodigo: String(r.bodegaCodigo), bodegaDesc: String(r.bodegaDesc),
+      cantOrden: n(r.cantOrden), cantEntrada: n(r.cantEntrada), cantPendiente: n(r.cantPendiente),
+      valorPendiente: n(r.valorPendiente),
+      fechaOrden: (r.fechaOrden as Date | null) ?? null,
+      fechaEntrega,
+      diasVencido: fechaEntrega ? Math.round((corte - fechaEntrega.getTime()) / 86_400_000) : null,
+      linea: String(r.linea),
+    };
+  });
+}
+
+export interface DetalleFactura {
+  nroDocumento: string; fecha: Date; proveedor: string; doctoProveedor: string; claseDocto: string;
+  estado: string; valorBruto: number; valorImptos: number; valorNeto: number;
+  valorRetenciones: number; valorCxp: number; notas: string;
+}
+
+export async function detalleFacturas(f: FiltroCompras, limite = 300): Promise<DetalleFactura[]> {
+  const filas = await prisma.$queryRaw<Record<string, unknown>[]>`
+    SELECT m."nroDocumento", m."fecha", m."proveedor", m."doctoProveedor", m."claseDocto", m."estado",
+           m."valorBruto", m."valorImptos", m."valorNeto", m."valorRetenciones", m."valorCxp", m."notas"
+    FROM "CompraFactura" m WHERE ${whereFacturas(f)}
+    ORDER BY m."fecha" DESC, m."nroDocumento" DESC LIMIT ${limite}`;
+  return filas.map((r) => ({
+    nroDocumento: String(r.nroDocumento), fecha: r.fecha as Date, proveedor: String(r.proveedor),
+    doctoProveedor: String(r.doctoProveedor), claseDocto: String(r.claseDocto), estado: String(r.estado),
+    valorBruto: n(r.valorBruto), valorImptos: n(r.valorImptos), valorNeto: n(r.valorNeto),
+    valorRetenciones: n(r.valorRetenciones), valorCxp: n(r.valorCxp), notas: String(r.notas),
+  }));
+}
+
+/** Facturado abierto por clase de documento (consignación vs proveedor). */
+export async function facturadoPorClase(f: FiltroCompras): Promise<Segmento[]> {
+  const filas = await prisma.$queryRaw<{ label: string; valor: unknown }[]>`
+    SELECT COALESCE(NULLIF(m."claseDocto", ''), 'Sin clase') AS label, SUM(m."valorNeto") AS valor
+    FROM "CompraFactura" m WHERE ${whereFacturas(f)}
+    GROUP BY 1 ORDER BY 2 DESC`;
+  return filas.map((r) => ({ label: r.label, valor: n(r.valor) }));
+}
+
+/** Órdenes abiertas por estado (Cumplido / Aprobado / Parcial / En elaboración). */
+export async function ordenesPorEstado(f: FiltroCompras): Promise<Segmento[]> {
+  const filas = await prisma.$queryRaw<{ label: string; valor: unknown }[]>`
+    SELECT COALESCE(NULLIF(m."estado", ''), 'Sin estado') AS label, SUM(m."valorNeto") AS valor
+    FROM "CompraOrden" m WHERE ${whereOrdenes(f)}
+    GROUP BY 1 ORDER BY 2 DESC`;
+  return filas.map((r) => ({ label: r.label, valor: n(r.valor) }));
+}
+
+/** Fecha de la última carga de pendientes (la foto es de un día concreto). */
+export async function corteDePendientes(): Promise<Date | null> {
+  const r = await prisma.compraPendiente.aggregate({ _max: { cargadoEn: true } });
+  return r._max.cargadoEn ?? null;
+}

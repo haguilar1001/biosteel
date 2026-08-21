@@ -21,9 +21,16 @@ import {
   parseBalance, persistirBalance,
   parseMovimientos, persistirMovimientos,
 } from "./importar-inventario";
+import {
+  parseOrdenes, persistirOrdenes,
+  parsePendientesDespacho, persistirPendientesDespacho,
+  parseFacturasProveedor, persistirFacturasProveedor,
+  parseTiposProveedor, persistirTiposProveedor,
+} from "./importar-compras";
 
 export type CargaClave = DatasetKey | "pyg" | "flujo" | "presupuesto"
-  | "inv-bodegas" | "inv-balance" | "inv-movimientos";
+  | "inv-bodegas" | "inv-balance" | "inv-movimientos"
+  | "compras-tipos" | "compras-ordenes" | "compras-pendientes" | "compras-facturas";
 
 export interface CargaDef {
   clave: CargaClave;
@@ -171,6 +178,71 @@ export const CARGAS: CargaDef[] = [
         titulo: "Inventario · Movimientos", archivo: nombre, hoja: m.hoja,
         filas: m.filas, cargadas, omitidas: m.filas - cargadas,
         estrategia: `reemplaza ${m.periodos.length} periodo(s) [${m.periodos[0]} … ${m.periodos[m.periodos.length - 1]}]: ${nf.format(cargadas)} movimientos${nuevas}${choque}${sinBodega}`,
+      };
+    },
+  },
+  // --- Compras ---
+  // El catálogo de tipos va primero: es el que alimenta el filtro "tipo de
+  // compra" del informe. Los otros tres son independientes entre sí.
+  {
+    clave: "compras-tipos", titulo: "Compras · Tipos de Proveedores", permiso: "carga.compras.tipos",
+    archivoSugerido: "TIPOS DE PROVEEDORES.xlsx",
+    async procesar(buffer, nombre) {
+      const lista = parseTiposProveedor(buffer);
+      if (!lista.length) throw new Error("El archivo no trae ningún proveedor con tipo de compra.");
+      const cargadas = await persistirTiposProveedor(lista);
+      const tipos = [...new Set(lista.map((p) => p.tipoCompra))].filter(Boolean);
+      return {
+        titulo: "Compras · Tipos de Proveedores", archivo: nombre, hoja: "TIPOS DE PROVEEDORES",
+        filas: lista.length, cargadas, omitidas: 0,
+        estrategia: `upsert de ${nf.format(cargadas)} proveedor(es) · tipos: ${tipos.join(", ")}`,
+      };
+    },
+  },
+  {
+    clave: "compras-ordenes", titulo: "Compras · Órdenes de Compra", permiso: "carga.compras.ordenes",
+    archivoSugerido: "ORDENES DE COMPRA.xlsx",
+    async procesar(buffer, nombre) {
+      const p = parseOrdenes(buffer);
+      if (!p.datos.length) throw new Error("El archivo no trae órdenes con fecha válida.");
+      const cargadas = await persistirOrdenes(p);
+      const ordenes = new Set(p.datos.map((d) => d.nroOrden)).size;
+      const total = p.datos.reduce((a, d) => a + Number(d.valorNeto), 0);
+      return {
+        titulo: "Compras · Órdenes de Compra", archivo: nombre, hoja: p.hoja,
+        filas: p.filas, cargadas, omitidas: p.omitidas,
+        estrategia: `reemplaza ${p.periodos.length} periodo(s) [${p.periodos[0]} … ${p.periodos[p.periodos.length - 1]}]: ${nf.format(cargadas)} renglones · ${nf.format(ordenes)} órdenes · ${nf.format(Math.round(total))}`,
+      };
+    },
+  },
+  {
+    clave: "compras-pendientes", titulo: "Compras · Pendientes por Despacho", permiso: "carga.compras.pendientes",
+    archivoSugerido: "PENDIENTES POR DESPACHO.xlsx",
+    async procesar(buffer, nombre) {
+      const p = parsePendientesDespacho(buffer);
+      if (!p.datos.length) throw new Error("El archivo no trae pendientes con fecha válida.");
+      const cargadas = await persistirPendientesDespacho(p);
+      const ordenes = new Set(p.datos.map((d) => d.nroOrden)).size;
+      const total = p.datos.reduce((a, d) => a + Number(d.valorPendiente), 0);
+      return {
+        titulo: "Compras · Pendientes por Despacho", archivo: nombre, hoja: p.hoja,
+        filas: p.filas, cargadas, omitidas: p.omitidas,
+        estrategia: `reemplaza TODA la foto anterior: ${nf.format(cargadas)} renglones · ${nf.format(ordenes)} órdenes pendientes · ${nf.format(Math.round(total))}`,
+      };
+    },
+  },
+  {
+    clave: "compras-facturas", titulo: "Compras · Facturas de Proveedores", permiso: "carga.compras.facturas",
+    archivoSugerido: "FACTURAS PROVEEDORES.xlsx",
+    async procesar(buffer, nombre) {
+      const p = parseFacturasProveedor(buffer);
+      if (!p.datos.length) throw new Error("El archivo no trae documentos con fecha válida.");
+      const cargadas = await persistirFacturasProveedor(p);
+      const total = p.datos.reduce((a, d) => a + Number(d.valorNeto), 0);
+      return {
+        titulo: "Compras · Facturas de Proveedores", archivo: nombre, hoja: p.hoja,
+        filas: p.filas, cargadas, omitidas: p.omitidas,
+        estrategia: `reemplaza ${p.periodos.length} periodo(s) [${p.periodos[0]} … ${p.periodos[p.periodos.length - 1]}]: ${nf.format(cargadas)} documentos · ${nf.format(Math.round(total))}`,
       };
     },
   },
