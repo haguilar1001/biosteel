@@ -61,15 +61,20 @@ export function leerRenglones(buffer: Buffer | ArrayBuffer): RenglonesLeidos {
   const aoa = XLSX.utils.sheet_to_json<unknown[]>(ws, { header: 1, raw: false, defval: null });
   const H = (aoa[0] as unknown[] ?? []).map((h) => String(h ?? "").trim());
   const ix = (n: string) => H.indexOf(n);
-  // La lista de precios se busca tolerante: SIESA la escribe "Desc. lista de
-  // precios" pero se ha visto sin el espacio tras el punto, y el nombre podría
-  // cambiar entre exports. Si no está, la columna queda vacía y la pantalla lo
-  // muestra como "(sin lista)" en vez de fallar la carga.
+  // Lista de precios. SIESA exporta DOS columnas contiguas: "Lista de precios"
+  // con el código (4, 14, 999…) y "Desc. lista de precios" con el nombre. Por
+  // eso se buscan en ORDEN DE PREFERENCIA y no con un findIndex que acepte
+  // cualquiera: así se agarraba la que apareciera primero en el archivo, que
+  // es la del código, y la pantalla mostraba números en vez de nombres.
+  // Si no está ninguna, la columna queda vacía y la pantalla lo muestra como
+  // "(sin lista)" en vez de fallar la carga.
   const norm = (s: string) => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z]/g, "");
-  const ixLista = H.findIndex((h) => {
-    const k = norm(h);
-    return k === "desclistadeprecios" || k === "listadeprecios" || k === "desclistaprecios";
-  });
+  const CANDIDATAS_LISTA = ["desclistadeprecios", "desclistaprecios", "listadeprecios"];
+  let ixLista = -1;
+  for (const cand of CANDIDATAS_LISTA) {
+    const i = H.findIndex((h) => norm(h) === cand);
+    if (i >= 0) { ixLista = i; break; }
+  }
   const C = {
     doc: ix("Nro documento"), est: ix("Estado"), fecha: ix("Fecha"),
     nit: ix("Cliente factura"), cli: ix("Razón social cliente despacho"),
