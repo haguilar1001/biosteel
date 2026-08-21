@@ -16,8 +16,8 @@ import { LineasMensuales } from "../_components/charts/LineasMensuales";
 import { TopRanking } from "../_components/charts/TopRanking";
 import {
   resumenCompras, comprasPorMes, ordenesPorModeloCompra, entradasPorCiudad,
-  comprasPorProveedor, ordenesPorEstado, corteDePendientes, filtrosIgnorados,
-  MES_CORTO,
+  comprasPorProveedor, ordenesPorEstado, comprasPorTipoCompra, corteDePendientes,
+  filtrosIgnorados, SIN_CLASIFICAR, MES_CORTO,
 } from "@/lib/negocio/compras";
 import { resolverFiltro, type ParamsCompras } from "./_filtro";
 import { BarraFiltros } from "./_BarraFiltros";
@@ -38,9 +38,10 @@ export default async function ComprasPage({ searchParams }: { searchParams: Prom
   }
 
   const f = c.filtro;
-  const [kpi, meses, modelos, ciudades, tablaProv, estados, corte] = await Promise.all([
+  const [kpi, meses, modelos, ciudades, tablaProv, estados, tipos, corte] = await Promise.all([
     resumenCompras(f), comprasPorMes(f), ordenesPorModeloCompra(f),
-    entradasPorCiudad(f), comprasPorProveedor(f), ordenesPorEstado(f), corteDePendientes(),
+    entradasPorCiudad(f), comprasPorProveedor(f), ordenesPorEstado(f),
+    comprasPorTipoCompra(f), corteDePendientes(),
   ]);
 
   const ignorados = filtrosIgnorados(f);
@@ -59,6 +60,12 @@ export default async function ComprasPage({ searchParams }: { searchParams: Prom
   const { filas: proveedores, entradasSinIdentificar } = tablaProv;
   const totalProv = proveedores.reduce((s, p) => s + p.ordenes, 0);
   const totalEntradasTabla = proveedores.reduce((s, p) => s + p.entradas, 0) + entradasSinIdentificar;
+
+  // Si el catálogo de proveedores no está cargado, TODO cae en SIN CLASIFICAR
+  // y el indicador no dice nada: mejor explicar por qué que mostrar una barra
+  // del 100 % que parece un dato.
+  const tipoSinCatalogo = tipos.length > 0 && tipos.every((t) => t.tipo === SIN_CLASIFICAR);
+  const totalTipos = tipos.reduce((s, t) => s + t.ordenes, 0);
 
   return (
     <>
@@ -195,6 +202,73 @@ export default async function ComprasPage({ searchParams }: { searchParams: Prom
             ) : <div className="empty">Sin entradas por compra en el periodo.</div>}
           </div>
         </div>
+      </div>
+
+      {/* Reparto por tipo de compra: en qué se está yendo la plata. */}
+      <div className="card" style={{ marginBottom: 12 }}>
+        <div className="chart-head">
+          % por Tipo de Compra
+          <span className="hact">sobre $ órdenes de compra</span>
+        </div>
+        {tipoSinCatalogo ? (
+          <div className="card-body">
+            <div className="empty">
+              Falta el catálogo de tipos de proveedor: sin él todo queda en {SIN_CLASIFICAR}.
+              Sube la hoja <b>TIPOS DE PROVEEDORES</b> de las Tablas Auxiliares desde{" "}
+              <a href="/cargar">Cargar archivos</a>, o corre <code>npm run db:compras</code>.
+            </div>
+          </div>
+        ) : (
+          <div className="tbl-wrap">
+            <table className="tabla-fit">
+              <thead>
+                <tr>
+                  <th>Tipo de compra</th>
+                  <th className="r">$ Órdenes de Compra</th>
+                  <th className="r">%</th>
+                  <th>Reparto</th>
+                  <th className="r">$ Entradas *</th>
+                  <th className="r">$ Facturado</th>
+                </tr>
+              </thead>
+              <tbody>
+                {tipos.map((t, i) => {
+                  const pct = totalTipos > 0 ? (t.ordenes / totalTipos) * 100 : 0;
+                  const color = t.tipo === SIN_CLASIFICAR ? "var(--muted)" : CATS[i % CATS.length]!;
+                  return (
+                    <tr key={t.tipo}>
+                      <td style={{ fontWeight: 600 }}>
+                        <i style={{ display: "inline-block", width: 10, height: 10, borderRadius: 3, background: color, marginRight: 8 }} />
+                        {t.tipo}
+                      </td>
+                      <td className="r num">{t.ordenes ? <Monto value={t.ordenes} /> : "—"}</td>
+                      <td className="r num" style={{ fontWeight: 700 }}>{pct.toFixed(1).replace(".", ",")} %</td>
+                      <td style={{ minWidth: 160 }}>
+                        <div className="rank-bar"><div style={{ width: `${Math.max(pct, 0)}%`, background: color }} /></div>
+                      </td>
+                      <td className="r num" style={{ color: t.entradas ? "var(--ok)" : undefined }}>
+                        {t.entradas ? <Monto value={t.entradas} /> : "—"}
+                      </td>
+                      <td className="r num">{t.facturado ? <Monto value={t.facturado} /> : "—"}</td>
+                    </tr>
+                  );
+                })}
+                {tipos.length === 0 ? (
+                  <tr><td colSpan={6}><div className="empty">Sin compras en el periodo.</div></td></tr>
+                ) : (
+                  <tr className="fila-total">
+                    <td style={{ fontWeight: 800 }}>Total</td>
+                    <td className="r num" style={{ fontWeight: 800 }}><Monto value={totalTipos} /></td>
+                    <td className="r num" style={{ fontWeight: 800 }}>100,0 %</td>
+                    <td />
+                    <td className="r num" style={{ fontWeight: 800 }}><Monto value={totalEntradasTabla} /></td>
+                    <td className="r num" style={{ fontWeight: 800 }}><Monto value={kpi.facturado} /></td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {/* Estado de las órdenes + cumplimiento. */}

@@ -9,7 +9,8 @@
 //
 // Los archivos se buscan por nombre dentro del directorio:
 //   ORDENES DE COMPRA.xlsx · PENDIENTES POR DESPACHO.xlsx
-//   FACTURAS PROVEEDORES.xlsx · TIPOS DE PROVEEDORES.xlsx (opcional)
+//   FACTURAS PROVEEDORES.xlsx · TABLAS AUXILIARES.xlsx (hoja TIPOS DE
+//   PROVEEDORES; opcional, es lo que llena el filtro de tipo de compra)
 // ==========================================================
 import "./_env";
 import fs from "node:fs";
@@ -47,9 +48,12 @@ async function main() {
   // Va primero porque el filtro "TIPO DE COMPRA" del informe se apoya en él;
   // sin el archivo, todos los proveedores salen como SIN CLASIFICAR.
   if (hacer("tipos")) {
-    const ruta = buscar((n) => n.includes("TIPOS DE PROVEEDOR"));
+    // La hoja "TIPOS DE PROVEEDORES" viene dentro de TABLAS AUXILIARES.xlsx
+    // (el mismo libro del catálogo de bodegas); el parser la encuentra por
+    // sus columnas, así que basta con dar con el archivo.
+    const ruta = buscar((n) => n.includes("TIPOS DE PROVEEDOR") || n.includes("TABLAS AUXILIARES"));
     if (!ruta) {
-      console.log("   · sin archivo de TIPOS DE PROVEEDORES (el filtro por tipo de compra queda vacío)");
+      console.log("   · sin TABLAS AUXILIARES / TIPOS DE PROVEEDORES (el filtro por tipo de compra queda vacío)");
     } else {
       const lista = parseTiposProveedor(fs.readFileSync(ruta));
       await persistirTiposProveedor(lista);

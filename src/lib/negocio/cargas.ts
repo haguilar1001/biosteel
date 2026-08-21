@@ -186,7 +186,9 @@ export const CARGAS: CargaDef[] = [
   // compra" del informe. Los otros tres son independientes entre sí.
   {
     clave: "compras-tipos", titulo: "Compras · Tipos de Proveedores", permiso: "carga.compras.tipos",
-    archivoSugerido: "TIPOS DE PROVEEDORES.xlsx",
+    // Es una HOJA del libro de Tablas Auxiliares, el mismo de las bodegas:
+    // el parser la localiza por sus columnas, no por el nombre del archivo.
+    archivoSugerido: "TABLAS AUXILIARES.xlsx (hoja TIPOS DE PROVEEDORES)",
     async procesar(buffer, nombre) {
       const lista = parseTiposProveedor(buffer);
       if (!lista.length) throw new Error("El archivo no trae ningún proveedor con tipo de compra.");

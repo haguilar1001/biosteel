@@ -498,6 +498,57 @@ export async function facturadoPorClase(f: FiltroCompras): Promise<Segmento[]> {
   return filas.map((r) => ({ label: r.label, valor: n(r.valor) }));
 }
 
+export interface FilaTipoCompra {
+  tipo: string;
+  ordenes: number;
+  entradas: number;
+  facturado: number;
+}
+
+/**
+ * Reparto por TIPO DE COMPRA (MATERIAL DE OSTEOSÍNTESIS, ALTO COSTO,
+ * INSUMOS…). El tipo es del PROVEEDOR, no del documento: sale de la hoja
+ * "TIPOS DE PROVEEDORES" de las Tablas Auxiliares (tabla ProveedorCompra).
+ *
+ * Sin ese catálogo cargado todo cae en SIN CLASIFICAR — no es un error de
+ * cálculo, es que falta el archivo.
+ *
+ * Las entradas se reparten con la misma atribución por marca que usa la
+ * tabla por proveedor, así que también son aproximadas.
+ */
+export async function comprasPorTipoCompra(f: FiltroCompras): Promise<FilaTipoCompra[]> {
+  const [ord, fac, entradas, cat] = await Promise.all([
+    prisma.$queryRaw<{ tipo: string; valor: unknown }[]>`
+      SELECT COALESCE(NULLIF(pc."tipoCompra", ''), ${SIN_CLASIFICAR}) AS tipo, SUM(m."valorNeto") AS valor
+      FROM "CompraOrden" m LEFT JOIN "ProveedorCompra" pc ON pc."razonSocial" = m."proveedor"
+      WHERE ${whereOrdenes(f)} GROUP BY 1`,
+    prisma.$queryRaw<{ tipo: string; valor: unknown }[]>`
+      SELECT COALESCE(NULLIF(pc."tipoCompra", ''), ${SIN_CLASIFICAR}) AS tipo, SUM(m."valorNeto") AS valor
+      FROM "CompraFactura" m LEFT JOIN "ProveedorCompra" pc ON pc."razonSocial" = m."proveedor"
+      WHERE ${whereFacturas(f)} GROUP BY 1`,
+    entradasPorProveedor(f),
+    prisma.proveedorCompra.findMany({ select: { razonSocial: true, tipoCompra: true } }),
+  ]);
+
+  const tipoDe = new Map(cat.map((c) => [c.razonSocial, c.tipoCompra || SIN_CLASIFICAR]));
+  const out = new Map<string, FilaTipoCompra>();
+  const fila = (t: string) => {
+    let r = out.get(t);
+    if (!r) { r = { tipo: t, ordenes: 0, entradas: 0, facturado: 0 }; out.set(t, r); }
+    return r;
+  };
+  for (const r of ord) fila(r.tipo).ordenes += n(r.valor);
+  for (const r of fac) fila(r.tipo).facturado += n(r.valor);
+  for (const [proveedor, e] of entradas.porProveedor) {
+    if (f.proveedor && proveedor !== f.proveedor) continue;
+    fila(tipoDe.get(proveedor) ?? SIN_CLASIFICAR).entradas += e.valor;
+  }
+  // Las entradas sin marca reconocible no tienen proveedor y por tanto tampoco tipo.
+  if (!f.proveedor && entradas.sinIdentificar) fila(SIN_CLASIFICAR).entradas += entradas.sinIdentificar;
+
+  return [...out.values()].sort((a, b) => b.ordenes - a.ordenes);
+}
+
 /** Órdenes abiertas por estado (Cumplido / Aprobado / Parcial / En elaboración). */
 export async function ordenesPorEstado(f: FiltroCompras): Promise<Segmento[]> {
   const filas = await prisma.$queryRaw<{ label: string; valor: unknown }[]>`
