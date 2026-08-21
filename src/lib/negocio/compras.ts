@@ -16,12 +16,13 @@
 // primer intento fallido al reconstruir el tablero).
 //
 // Qué filtro aplica a qué fuente — no todas tienen todas las columnas:
-//   · proveedor → órdenes, pendientes y facturas. NO a las entradas: el
-//     movimiento de inventario trae MARCA, no la razón social del proveedor.
+//   · proveedor → órdenes, pendientes y facturas de forma exacta. A las
+//     entradas se les aplica por MARCA (el movimiento no trae razón social):
+//     es una atribución, no un dato del documento, y se marca como estimada.
 //   · línea     → órdenes, pendientes y entradas. NO a las facturas: el
 //     documento CCP es de cabecera, sin línea de producto.
-//   · tipo de compra → las tres fuentes con proveedor (vía ProveedorCompra).
-// La pantalla avisa cuando un filtro no aplica a una tarjeta.
+//   · tipo de compra → igual que proveedor (vía ProveedorCompra).
+// La pantalla avisa cuando una cifra es estimada o cuando un filtro no aplica.
 // ==========================================================
 import "server-only";
 import { prisma } from "@/lib/db";
@@ -97,14 +98,11 @@ function whereEntradas(f: FiltroCompras): Prisma.Sql {
   return Prisma.sql`m."tipoDoc" = ${TIPO_ENTRADA_COMPRA} AND ${periodo(f, "fecha")}${porLineaSql(f)}`;
 }
 
-/** Filtros que la fuente no puede aplicar (para avisarlo en pantalla). */
-export function filtrosIgnorados(f: FiltroCompras): { entradas: string[]; facturas: string[] } {
-  const entradas: string[] = [];
-  if (f.proveedor) entradas.push("proveedor");
-  if (f.tipoCompra) entradas.push("tipo de compra");
+/** Filtros que una fuente no puede aplicar tal cual (para avisarlo en pantalla). */
+export function filtrosIgnorados(f: FiltroCompras): { facturas: string[] } {
   const facturas: string[] = [];
   if (f.linea) facturas.push("línea");
-  return { entradas, facturas };
+  return { facturas };
 }
 
 // ---------- Catálogos para los selectores ----------
@@ -176,6 +174,8 @@ export async function tiposDeCompra(): Promise<string[]> {
 export interface ResumenCompras {
   entradas: number;
   entradasUnidades: number;
+  /** true = la cifra se atribuyó por marca (hay filtro de proveedor/tipo). */
+  entradasEstimadas: boolean;
   ordenes: number;
   ordenesCant: number;
   pendiente: number;
@@ -186,9 +186,7 @@ export interface ResumenCompras {
 
 export async function resumenCompras(f: FiltroCompras): Promise<ResumenCompras> {
   const [ent, ord, pen, fac] = await Promise.all([
-    prisma.$queryRaw<{ valor: unknown; unidades: unknown }[]>`
-      SELECT COALESCE(SUM(m."costoEntradas"), 0) AS valor, COALESCE(SUM(m."cantEntradas"), 0) AS unidades
-      FROM "InvMovimiento" m WHERE ${whereEntradas(f)}`,
+    entradasDelFiltro(f),
     prisma.$queryRaw<{ valor: unknown; cant: unknown }[]>`
       SELECT COALESCE(SUM(m."valorNeto"), 0) AS valor, COUNT(DISTINCT m."nroOrden") AS cant
       FROM "CompraOrden" m WHERE ${whereOrdenes(f)}`,
@@ -200,7 +198,7 @@ export async function resumenCompras(f: FiltroCompras): Promise<ResumenCompras> 
       FROM "CompraFactura" m WHERE ${whereFacturas(f)}`,
   ]);
   return {
-    entradas: n(ent[0]?.valor), entradasUnidades: n(ent[0]?.unidades),
+    entradas: ent.valor, entradasUnidades: ent.unidades, entradasEstimadas: ent.estimado,
     ordenes: n(ord[0]?.valor), ordenesCant: n(ord[0]?.cant),
     pendiente: n(pen[0]?.valor), pendienteCant: n(pen[0]?.cant),
     facturado: n(fac[0]?.valor), facturadoCant: n(fac[0]?.cant),
@@ -269,10 +267,109 @@ export interface FilaProveedor {
   ordenesCant: number;
   pendiente: number;
   facturado: number;
+  /** ATRIBUIDO por marca, no exacto. Ver `entradasPorProveedor`. */
+  entradas: number;
 }
 
-/** Tabla del informe: órdenes, pendiente y facturado por proveedor. */
-export async function comprasPorProveedor(f: FiltroCompras): Promise<FilaProveedor[]> {
+/**
+ * Puente marca → proveedor. El movimiento de inventario NO trae razón social,
+ * solo la marca del producto ("1046 - STRYKER"), así que la única forma de
+ * llevar las entradas a un proveedor es preguntarle a las órdenes, que sí
+ * traen las dos columnas.
+ *
+ * Cuando una marca se le compró a varios proveedores gana el que más ordenó.
+ * En 2026 eso pasa en 8 de 51 marcas, que pesan ~2 % del valor ordenado: la
+ * atribución es buena para leer el reparto, pero NO es exacta como las otras
+ * tres columnas, y por eso la pantalla la marca como estimada.
+ */
+export async function mapaMarcaProveedor(): Promise<Map<string, string>> {
+  const filas = await prisma.$queryRaw<{ marca: string; proveedor: string }[]>`
+    WITH pares AS (
+      SELECT "marca", "proveedor", SUM("valorNeto") AS v
+      FROM "CompraOrden" WHERE "marca" <> '' AND "proveedor" <> ''
+      GROUP BY 1, 2
+    ), ranked AS (
+      SELECT "marca", "proveedor", ROW_NUMBER() OVER (PARTITION BY "marca" ORDER BY v DESC, "proveedor") AS rn
+      FROM pares
+    )
+    SELECT "marca", "proveedor" FROM ranked WHERE rn = 1`;
+  return new Map(filas.map((r) => [r.marca, r.proveedor]));
+}
+
+export interface EntradaProveedor { valor: number; unidades: number }
+
+export interface EntradasAtribuidas {
+  /** proveedor → entradas por compra del periodo. */
+  porProveedor: Map<string, EntradaProveedor>;
+  /** Entradas cuya marca no aparece en ninguna orden (no se pueden atribuir). */
+  sinIdentificar: number;
+}
+
+/** Entradas por compra (EPC) repartidas por proveedor a través de la marca. */
+export async function entradasPorProveedor(f: FiltroCompras): Promise<EntradasAtribuidas> {
+  const [porMarca, mapa] = await Promise.all([
+    prisma.$queryRaw<{ marca: string; valor: unknown; unidades: unknown }[]>`
+      SELECT m."marca" AS marca, SUM(m."costoEntradas") AS valor, SUM(m."cantEntradas") AS unidades
+      FROM "InvMovimiento" m WHERE ${whereEntradas(f)} GROUP BY 1`,
+    mapaMarcaProveedor(),
+  ]);
+
+  const porProveedor = new Map<string, EntradaProveedor>();
+  let sinIdentificar = 0;
+  for (const r of porMarca) {
+    const valor = n(r.valor), unidades = n(r.unidades);
+    if (!valor && !unidades) continue;
+    const proveedor = mapa.get(r.marca);
+    if (!proveedor) { sinIdentificar += valor; continue; }
+    const acc = porProveedor.get(proveedor) ?? { valor: 0, unidades: 0 };
+    acc.valor += valor; acc.unidades += unidades;
+    porProveedor.set(proveedor, acc);
+  }
+  return { porProveedor, sinIdentificar };
+}
+
+/**
+ * Entradas del periodo respetando el filtro de proveedor / tipo de compra.
+ * Sin esos filtros la cifra sale directo del movimiento y es EXACTA; con
+ * ellos hay que pasar por la marca, y entonces es una aproximación. El flag
+ * `estimado` es lo que la pantalla usa para no presentarla como exacta.
+ */
+async function entradasDelFiltro(f: FiltroCompras): Promise<{ valor: number; unidades: number; estimado: boolean }> {
+  if (!f.proveedor && !f.tipoCompra) {
+    const r = await prisma.$queryRaw<{ valor: unknown; unidades: unknown }[]>`
+      SELECT COALESCE(SUM(m."costoEntradas"), 0) AS valor, COALESCE(SUM(m."cantEntradas"), 0) AS unidades
+      FROM "InvMovimiento" m WHERE ${whereEntradas(f)}`;
+    return { valor: n(r[0]?.valor), unidades: n(r[0]?.unidades), estimado: false };
+  }
+
+  const { porProveedor } = await entradasPorProveedor(f);
+  let tipos: Map<string, string> | undefined;
+  if (f.tipoCompra) {
+    const cat = await prisma.proveedorCompra.findMany({ select: { razonSocial: true, tipoCompra: true } });
+    tipos = new Map(cat.map((t) => [t.razonSocial, t.tipoCompra]));
+  }
+
+  let valor = 0, unidades = 0;
+  for (const [proveedor, e] of porProveedor) {
+    if (f.proveedor && proveedor !== f.proveedor) continue;
+    if (f.tipoCompra) {
+      const t = tipos?.get(proveedor) ?? "";
+      const coincide = f.tipoCompra === SIN_CLASIFICAR ? t === "" : t === f.tipoCompra;
+      if (!coincide) continue;
+    }
+    valor += e.valor; unidades += e.unidades;
+  }
+  return { valor, unidades, estimado: true };
+}
+
+export interface TablaProveedores {
+  filas: FilaProveedor[];
+  /** Entradas que no se pudieron atribuir a ningún proveedor. */
+  entradasSinIdentificar: number;
+}
+
+/** Tabla del informe: órdenes, pendiente, facturado y entradas por proveedor. */
+export async function comprasPorProveedor(f: FiltroCompras): Promise<TablaProveedores> {
   const [ord, pen, fac, tipos] = await Promise.all([
     prisma.$queryRaw<{ proveedor: string; valor: unknown; cant: unknown }[]>`
       SELECT m."proveedor" AS proveedor, SUM(m."valorNeto") AS valor, COUNT(DISTINCT m."nroOrden") AS cant
@@ -286,12 +383,14 @@ export async function comprasPorProveedor(f: FiltroCompras): Promise<FilaProveed
     prisma.proveedorCompra.findMany({ select: { razonSocial: true, tipoCompra: true } }),
   ]);
 
+  const entradas = await entradasPorProveedor(f);
+
   const tipo = new Map(tipos.map((t) => [t.razonSocial, t.tipoCompra]));
   const out = new Map<string, FilaProveedor>();
   const fila = (p: string) => {
     let r = out.get(p);
     if (!r) {
-      r = { proveedor: p, tipoCompra: tipo.get(p) || SIN_CLASIFICAR, ordenes: 0, ordenesCant: 0, pendiente: 0, facturado: 0 };
+      r = { proveedor: p, tipoCompra: tipo.get(p) || SIN_CLASIFICAR, ordenes: 0, ordenesCant: 0, pendiente: 0, facturado: 0, entradas: 0 };
       out.set(p, r);
     }
     return r;
@@ -300,7 +399,18 @@ export async function comprasPorProveedor(f: FiltroCompras): Promise<FilaProveed
   for (const r of pen) fila(r.proveedor).pendiente = n(r.valor);
   for (const r of fac) fila(r.proveedor).facturado = n(r.valor);
 
-  return [...out.values()].sort((a, b) => (b.ordenes + b.facturado) - (a.ordenes + a.facturado));
+  // Con filtro de proveedor la tabla solo muestra ese proveedor: lo que se le
+  // atribuya a los demás no cabe en la tabla y se contaría de más en el total.
+  const entradasSinIdentificar = f.proveedor ? 0 : entradas.sinIdentificar;
+  for (const [proveedor, e] of entradas.porProveedor) {
+    if (f.proveedor && proveedor !== f.proveedor) continue;
+    fila(proveedor).entradas = e.valor;
+  }
+
+  return {
+    filas: [...out.values()].sort((a, b) => (b.ordenes + b.facturado) - (a.ordenes + a.facturado)),
+    entradasSinIdentificar,
+  };
 }
 
 // ---------- Detalles ----------

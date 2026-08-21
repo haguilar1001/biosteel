@@ -38,7 +38,7 @@ export default async function ComprasPage({ searchParams }: { searchParams: Prom
   }
 
   const f = c.filtro;
-  const [kpi, meses, modelos, ciudades, proveedores, estados, corte] = await Promise.all([
+  const [kpi, meses, modelos, ciudades, tablaProv, estados, corte] = await Promise.all([
     resumenCompras(f), comprasPorMes(f), ordenesPorModeloCompra(f),
     entradasPorCiudad(f), comprasPorProveedor(f), ordenesPorEstado(f), corteDePendientes(),
   ]);
@@ -56,7 +56,9 @@ export default async function ComprasPage({ searchParams }: { searchParams: Prom
   const mostrarCumplimiento = !f.dia;
   const cumplimiento = kpi.ordenes > 0 ? (kpi.entradas / kpi.ordenes) * 100 : null;
 
+  const { filas: proveedores, entradasSinIdentificar } = tablaProv;
   const totalProv = proveedores.reduce((s, p) => s + p.ordenes, 0);
+  const totalEntradasTabla = proveedores.reduce((s, p) => s + p.entradas, 0) + entradasSinIdentificar;
 
   return (
     <>
@@ -78,9 +80,11 @@ export default async function ComprasPage({ searchParams }: { searchParams: Prom
       {/* Los cuatro KPI del tablero. El subtítulo lleva el conteo de documentos. */}
       <div className="kpis" style={{ marginBottom: 12 }}>
         <div className="kpi kc k-ingreso">
-          <div className="klabel">📥 Entradas por Compras</div>
+          <div className="klabel">📥 Entradas por Compras{kpi.entradasEstimadas ? " *" : ""}</div>
           <div className="kval num"><Monto value={kpi.entradas} /></div>
-          <div className="ksub flag">{formatNumero(kpi.entradasUnidades)} unidades</div>
+          <div className="ksub flag">
+            {formatNumero(kpi.entradasUnidades)} unidades{kpi.entradasEstimadas ? " · estimado" : ""}
+          </div>
         </div>
         <div className="kpi kc">
           <div className="klabel">📄 Órdenes de Compra</div>
@@ -99,13 +103,14 @@ export default async function ComprasPage({ searchParams }: { searchParams: Prom
         </div>
       </div>
 
-      {/* Un filtro que una fuente no puede aplicar cambiaría la lectura del KPI
-          sin avisar; mejor decirlo que dejar comparar peras con manzanas. */}
-      {ignorados.entradas.length || ignorados.facturas.length ? (
+      {/* Una cifra estimada o un filtro que no aplica cambiarían la lectura
+          del KPI sin avisar; mejor decirlo que dejar comparar peras con
+          manzanas. */}
+      {kpi.entradasEstimadas || ignorados.facturas.length ? (
         <div className="card" style={{ marginBottom: 12 }}>
           <div className="card-body" style={{ padding: "10px 14px", fontSize: 12.5, color: "var(--muted)" }}>
-            ⚠️ Filtros que no aplican a todas las tarjetas:
-            {ignorados.entradas.length ? <> <b>Entradas</b> ignora {ignorados.entradas.join(" y ")} (el movimiento de inventario trae marca, no razón social).</> : null}
+            ⚠️ Ojo con estas tarjetas:
+            {kpi.entradasEstimadas ? <> <b>Entradas por Compras</b> está atribuida por marca del producto, porque el movimiento de inventario no trae razón social: es una aproximación, no un dato del documento.</> : null}
             {ignorados.facturas.length ? <> <b>Facturado</b> ignora {ignorados.facturas.join(" y ")} (el documento CCP es de cabecera, sin línea de producto).</> : null}
           </div>
         </div>
@@ -252,6 +257,7 @@ export default async function ComprasPage({ searchParams }: { searchParams: Prom
                 <th>Tipo de compra</th>
                 <th className="r">$ Órdenes de Compra</th>
                 <th className="r">ODC</th>
+                <th className="r" title="Atribuido al proveedor a través de la marca del producto: el movimiento de inventario no trae razón social.">$ Entradas por Compras *</th>
                 <th className="r">$ Pendiente por Despacho</th>
                 <th className="r">$ Facturado Proveedor</th>
                 <th className="r">% del total</th>
@@ -264,6 +270,9 @@ export default async function ComprasPage({ searchParams }: { searchParams: Prom
                   <td className="flag">{p.tipoCompra}</td>
                   <td className="r num">{p.ordenes ? <Monto value={p.ordenes} /> : "—"}</td>
                   <td className="r num flag">{p.ordenesCant || "—"}</td>
+                  <td className="r num" style={{ color: p.entradas ? "var(--ok)" : undefined }}>
+                    {p.entradas ? <Monto value={p.entradas} /> : "—"}
+                  </td>
                   <td className="r num" style={{ color: p.pendiente ? "var(--w1)" : undefined, fontWeight: p.pendiente ? 600 : undefined }}>
                     {p.pendiente ? <Monto value={p.pendiente} /> : "—"}
                   </td>
@@ -274,20 +283,45 @@ export default async function ComprasPage({ searchParams }: { searchParams: Prom
                 </tr>
               ))}
               {proveedores.length === 0 ? (
-                <tr><td colSpan={7}><div className="empty">Sin movimiento de compras en el periodo.</div></td></tr>
+                <tr><td colSpan={8}><div className="empty">Sin movimiento de compras en el periodo.</div></td></tr>
               ) : (
-                <tr className="fila-total">
-                  <td style={{ fontWeight: 800 }}>Total</td>
-                  <td />
-                  <td className="r num" style={{ fontWeight: 800 }}><Monto value={kpi.ordenes} /></td>
-                  <td className="r num" style={{ fontWeight: 800 }}>{formatNumero(kpi.ordenesCant)}</td>
-                  <td className="r num" style={{ fontWeight: 800 }}><Monto value={kpi.pendiente} /></td>
-                  <td className="r num" style={{ fontWeight: 800 }}><Monto value={kpi.facturado} /></td>
-                  <td />
-                </tr>
+                <>
+                  {/* Entradas cuya marca no aparece en ninguna orden. Va como
+                      fila propia para que la columna sume el KPI y no se
+                      pierda plata por el camino. */}
+                  {entradasSinIdentificar > 0 && (
+                    <tr>
+                      <td style={{ fontWeight: 600, color: "var(--muted)", fontStyle: "italic" }}>Sin identificar</td>
+                      <td className="flag">—</td>
+                      <td className="r num">—</td>
+                      <td className="r num flag">—</td>
+                      <td className="r num" style={{ color: "var(--muted)" }}><Monto value={entradasSinIdentificar} /></td>
+                      <td className="r num">—</td>
+                      <td className="r num">—</td>
+                      <td className="r num">—</td>
+                    </tr>
+                  )}
+                  <tr className="fila-total">
+                    <td style={{ fontWeight: 800 }}>Total</td>
+                    <td />
+                    <td className="r num" style={{ fontWeight: 800 }}><Monto value={kpi.ordenes} /></td>
+                    <td className="r num" style={{ fontWeight: 800 }}>{formatNumero(kpi.ordenesCant)}</td>
+                    <td className="r num" style={{ fontWeight: 800 }}><Monto value={totalEntradasTabla} /></td>
+                    <td className="r num" style={{ fontWeight: 800 }}><Monto value={kpi.pendiente} /></td>
+                    <td className="r num" style={{ fontWeight: 800 }}><Monto value={kpi.facturado} /></td>
+                    <td />
+                  </tr>
+                </>
               )}
             </tbody>
           </table>
+        </div>
+        <div className="card-body" style={{ padding: "8px 14px", fontSize: 12, color: "var(--muted)" }}>
+          <b>*</b> Las entradas se atribuyen al proveedor por la <b>marca del producto</b>: el movimiento
+          de inventario no trae razón social. Cuando una marca se le compra a varios proveedores, la
+          entrada se le carga al que más ha ordenado esa marca, así que esta columna es una
+          aproximación — las otras tres salen directo del documento.
+          {entradasSinIdentificar > 0 ? " Lo que no cruzó con ninguna orden va en \"Sin identificar\"." : ""}
         </div>
       </div>
     </>
