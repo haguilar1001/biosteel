@@ -96,6 +96,13 @@ export default async function VentasPage({ searchParams }: { searchParams: Promi
   const serieActual = mesesAct.map((m) => (esFuturo(m.mes) ? null : m.venta));
   const serieAnterior = mesesAnt.map((m) => m.venta);
 
+  // El eje se corta en el mes en curso, igual que en /compras: dibujar los
+  // meses que aún no han pasado dejaba media gráfica vacía a la derecha, con
+  // la línea del año anterior corriendo sola. Si hubiera venta más allá del
+  // mes actual, se extiende hasta ahí en vez de esconderla.
+  const ultimoConVenta = mesesAct.reduce((max, m) => (m.venta ? m.mes : max), 1);
+  const hastaMes = anio < hoy.getUTCFullYear() ? 12 : Math.max(mesActual, ultimoConVenta);
+
   return (
     <>
       <div className="card" style={{ marginBottom: 12 }}>
@@ -221,13 +228,18 @@ export default async function VentasPage({ searchParams }: { searchParams: Promi
       {/* Venta neta por mes (líneas, más angosta) + Venta por ciudad (mapa) */}
       <div className="grid two" style={{ alignItems: "start" }}>
         <div className="card">
-          <div className="chart-head">Venta neta por mes <span className="hact">{anio} vs {anio - 1}</span></div>
+          <div className="chart-head">
+            Venta neta por mes
+            <span className="hact">
+              {hastaMes < 12 ? `Ene–${MES_ABBR[hastaMes]} · ` : ""}{anio} vs {anio - 1}
+            </span>
+          </div>
           <div className="card-body">
             <LineasMensuales
-              categorias={MES_ABBR.slice(1)}
+              categorias={MES_ABBR.slice(1, hastaMes + 1)}
               series={[
-                { label: `${anio}`, color: "var(--brand)", data: serieActual },
-                { label: `${anio - 1}`, color: "var(--w1)", data: serieAnterior, dash: true },
+                { label: `${anio}`, color: "var(--brand)", data: serieActual.slice(0, hastaMes) },
+                { label: `${anio - 1}`, color: "var(--w1)", data: serieAnterior.slice(0, hastaMes), dash: true },
               ]}
             />
           </div>
