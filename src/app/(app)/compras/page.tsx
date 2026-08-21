@@ -58,6 +58,19 @@ export default async function ComprasPage({ searchParams }: { searchParams: Prom
   const cumplimiento = kpi.ordenes > 0 ? (kpi.entradas / kpi.ordenes) * 100 : null;
 
   const { filas: proveedores, entradasSinIdentificar, entradasExacto, entradasPorMarca } = tablaProv;
+  // La gráfica se corta en el mes actual: dibujar los meses que aún no han
+  // pasado deja medio año plano en cero, y la curva suave llega a bajar del
+  // eje buscando ese cero, que se lee como si hubiera compras negativas.
+  // Si por lo que sea hay datos más allá (una orden con fecha futura), se
+  // extiende hasta ahí en vez de esconderlos.
+  const hoy = new Date();
+  const ultimoConDato = meses.reduce(
+    (max, m) => (m.ordenes || m.entradas || m.facturado ? m.mes : max), 1);
+  const hastaMes = f.anio < hoy.getUTCFullYear()
+    ? 12
+    : Math.max(hoy.getUTCMonth() + 1, ultimoConDato);
+  const mesesVisibles = meses.slice(0, hastaMes);
+
   const totalProv = proveedores.reduce((s, p) => s + p.ordenes, 0);
   const totalEntradasTabla = proveedores.reduce((s, p) => s + p.entradas, 0) + entradasSinIdentificar;
 
@@ -128,15 +141,17 @@ export default async function ComprasPage({ searchParams }: { searchParams: Prom
         <div className="card">
           <div className="chart-head">
             Compras por Mes · {f.anio}
-            <span className="hact">valores en millones COP</span>
+            <span className="hact">
+              {hastaMes < 12 ? `Ene–${MES_CORTO[hastaMes]} · ` : ""}valores en millones COP
+            </span>
           </div>
           <div className="card-body">
             <LineasMensuales
-              categorias={MES_CORTO.slice(1)}
+              categorias={MES_CORTO.slice(1, hastaMes + 1)}
               series={[
-                { label: "Órdenes de compra", color: "var(--brand)", data: meses.map((m) => m.ordenes) },
-                { label: "Entradas por compra", color: "var(--ok)", data: meses.map((m) => m.entradas) },
-                { label: "Facturado proveedor", color: "var(--w1)", data: meses.map((m) => m.facturado), dash: true },
+                { label: "Órdenes de compra", color: "var(--brand)", data: mesesVisibles.map((m) => m.ordenes) },
+                { label: "Entradas por compra", color: "var(--ok)", data: mesesVisibles.map((m) => m.entradas) },
+                { label: "Facturado proveedor", color: "var(--w1)", data: mesesVisibles.map((m) => m.facturado), dash: true },
               ]}
             />
           </div>
