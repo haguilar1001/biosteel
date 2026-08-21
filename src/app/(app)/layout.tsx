@@ -38,12 +38,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         <div className="identidad">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/BIOSTEEL.png" alt="BioSteel de Colombia S.A.S" className="logo-img" />
-          <div className="quien">
+          {/* Solo el nombre: con el rol debajo las dos líneas quedaban
+              apretadas contra el logo. El rol se ve en Administración. */}
+          <div className="quien" title={usuario.rol.nombre}>
             <span className="avatar-mini" aria-hidden>{iniciales(usuario.nombre)}</span>
-            <span className="quien-txt">
-              <span className="quien-nombre">{usuario.nombre}</span>
-              <span className="quien-rol">{usuario.rol.nombre}</span>
-            </span>
+            <span className="quien-nombre">{usuario.nombre}</span>
           </div>
         </div>
 
