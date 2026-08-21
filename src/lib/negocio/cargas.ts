@@ -34,9 +34,16 @@ export type CargaClave = DatasetKey | "pyg" | "flujo" | "presupuesto"
   | "compras-tipos" | "compras-ordenes" | "compras-pendientes" | "compras-facturas"
   | "compras-entradas";
 
+/** Módulo al que pertenece el archivo; solo sirve para agrupar /cargar. */
+export type GrupoCarga = "Comercial" | "Financiero" | "Inventario" | "Compras";
+
+/** Orden en que se muestran los grupos en la pantalla de carga. */
+export const GRUPOS_CARGA: GrupoCarga[] = ["Comercial", "Financiero", "Inventario", "Compras"];
+
 export interface CargaDef {
   clave: CargaClave;
   titulo: string;
+  grupo: GrupoCarga;
   permiso: PermisoClave;
   archivoSugerido: string;
   procesar(buffer: Buffer, nombre: string, ip?: string): Promise<ResultadoDataset>;
@@ -54,32 +61,32 @@ async function procesarSiesa(clave: DatasetKey, titulo: string, buffer: Buffer, 
 
 export const CARGAS: CargaDef[] = [
   {
-    clave: "pendientes", titulo: "Pedidos Pendientes", permiso: "carga.pendientes",
+    clave: "pendientes", titulo: "Pedidos Pendientes", grupo: "Comercial", permiso: "carga.pendientes",
     archivoSugerido: "PEDIDOS PENDIENTES ACUMULADOS.xlsx",
     procesar: (b, n, ip) => procesarSiesa("pendientes", "Pedidos Pendientes", b, n, ip),
   },
   {
-    clave: "ventas", titulo: "Ventas x Item", permiso: "carga.ventas",
+    clave: "ventas", titulo: "Ventas x Item", grupo: "Comercial", permiso: "carga.ventas",
     archivoSugerido: "2026.xlsx",
     procesar: (b, n, ip) => procesarSiesa("ventas", "Ventas x Item", b, n, ip),
   },
   {
-    clave: "facturacion", titulo: "Facturación por Usuario", permiso: "carga.facturacion",
+    clave: "facturacion", titulo: "Facturación por Usuario", grupo: "Comercial", permiso: "carga.facturacion",
     archivoSugerido: "DATOS FACTURACIÓN.xlsx",
     procesar: (b, n, ip) => procesarSiesa("facturacion", "Facturación por Usuario", b, n, ip),
   },
   {
-    clave: "gastos", titulo: "Gastos", permiso: "carga.gastos",
+    clave: "gastos", titulo: "Gastos", grupo: "Financiero", permiso: "carga.gastos",
     archivoSugerido: "GASTOS.xlsx",
     procesar: (b, n, ip) => procesarSiesa("gastos", "Gastos", b, n, ip),
   },
   {
-    clave: "anuladas", titulo: "Facturas Anuladas", permiso: "carga.anuladas",
+    clave: "anuladas", titulo: "Facturas Anuladas", grupo: "Comercial", permiso: "carga.anuladas",
     archivoSugerido: "MOTIVO FACTURAS ANULADAS.xlsx",
     procesar: (b, n, ip) => procesarSiesa("anuladas", "Facturas Anuladas", b, n, ip),
   },
   {
-    clave: "pyg", titulo: "Estado de Resultados", permiso: "carga.pyg",
+    clave: "pyg", titulo: "Estado de Resultados", grupo: "Financiero", permiso: "carga.pyg",
     archivoSugerido: "E.R. Consolidado 2026.xlsx",
     async procesar(buffer, nombre) {
       const anio = new Date().getFullYear();
@@ -95,7 +102,7 @@ export const CARGAS: CargaDef[] = [
     },
   },
   {
-    clave: "flujo", titulo: "Ingresos y Egresos", permiso: "carga.flujo",
+    clave: "flujo", titulo: "Ingresos y Egresos", grupo: "Financiero", permiso: "carga.flujo",
     archivoSugerido: "Flujo de Caja Diario.xlsx",
     async procesar(buffer, nombre, ip) {
       const r = await sincronizarFlujoDesdeBuffer(buffer, ip, false);
@@ -109,7 +116,7 @@ export const CARGAS: CargaDef[] = [
     },
   },
   {
-    clave: "presupuesto", titulo: "Presupuesto de Egresos", permiso: "carga.presupuesto",
+    clave: "presupuesto", titulo: "Presupuesto de Egresos", grupo: "Financiero", permiso: "carga.presupuesto",
     archivoSugerido: "PRESUPUESTO BIO STEEL PROYECTADO 2026.xlsx",
     async procesar(buffer, nombre) {
       const anio = new Date().getFullYear();
@@ -127,7 +134,7 @@ export const CARGAS: CargaDef[] = [
   // El orden importa: los movimientos se rechazan si su bodega no está en el
   // catálogo, así que las Tablas Auxiliares se cargan primero.
   {
-    clave: "inv-bodegas", titulo: "Inventario · Tablas Auxiliares", permiso: "carga.inv.bodegas",
+    clave: "inv-bodegas", titulo: "Inventario · Tablas Auxiliares", grupo: "Inventario", permiso: "carga.inv.bodegas",
     archivoSugerido: "TABLAS AUXILIARES.xlsx",
     async procesar(buffer, nombre) {
       const bodegas = parseTablasAuxiliares(buffer);
@@ -142,7 +149,7 @@ export const CARGAS: CargaDef[] = [
     },
   },
   {
-    clave: "inv-balance", titulo: "Inventario · Balance mensual", permiso: "carga.inv.balance",
+    clave: "inv-balance", titulo: "Inventario · Balance mensual", grupo: "Inventario", permiso: "carga.inv.balance",
     archivoSugerido: "1. BALANCE ENERO.xlsx",
     async procesar(buffer, nombre) {
       const b = await parseBalance(buffer, nombre);
@@ -164,7 +171,7 @@ export const CARGAS: CargaDef[] = [
     },
   },
   {
-    clave: "inv-movimientos", titulo: "Inventario · Movimientos", permiso: "carga.inv.movimientos",
+    clave: "inv-movimientos", titulo: "Inventario · Movimientos", grupo: "Inventario", permiso: "carga.inv.movimientos",
     archivoSugerido: "MOVIMIENTOS DE INVENTARIO.xlsx",
     async procesar(buffer, nombre) {
       const catalogo = new Map((await prisma.invBodega.findMany({ select: { codigo: true, instalacion: true } })).map((b) => [b.codigo, b.instalacion]));
@@ -187,7 +194,7 @@ export const CARGAS: CargaDef[] = [
   // El catálogo de tipos va primero: es el que alimenta el filtro "tipo de
   // compra" del informe. Los otros tres son independientes entre sí.
   {
-    clave: "compras-tipos", titulo: "Compras · Tipos de Proveedores", permiso: "carga.compras.tipos",
+    clave: "compras-tipos", titulo: "Compras · Tipos de Proveedores", grupo: "Compras", permiso: "carga.compras.tipos",
     // Es una HOJA del libro de Tablas Auxiliares, el mismo de las bodegas:
     // el parser la localiza por sus columnas, no por el nombre del archivo.
     archivoSugerido: "TABLAS AUXILIARES.xlsx (hoja TIPOS DE PROVEEDORES)",
@@ -204,7 +211,7 @@ export const CARGAS: CargaDef[] = [
     },
   },
   {
-    clave: "compras-ordenes", titulo: "Compras · Órdenes de Compra", permiso: "carga.compras.ordenes",
+    clave: "compras-ordenes", titulo: "Compras · Órdenes de Compra", grupo: "Compras", permiso: "carga.compras.ordenes",
     archivoSugerido: "ORDENES DE COMPRA.xlsx",
     async procesar(buffer, nombre) {
       const p = parseOrdenes(buffer);
@@ -220,7 +227,7 @@ export const CARGAS: CargaDef[] = [
     },
   },
   {
-    clave: "compras-pendientes", titulo: "Compras · Pendientes por Despacho", permiso: "carga.compras.pendientes",
+    clave: "compras-pendientes", titulo: "Compras · Pendientes por Despacho", grupo: "Compras", permiso: "carga.compras.pendientes",
     archivoSugerido: "PENDIENTES POR DESPACHO.xlsx",
     async procesar(buffer, nombre) {
       const p = parsePendientesDespacho(buffer);
@@ -236,7 +243,7 @@ export const CARGAS: CargaDef[] = [
     },
   },
   {
-    clave: "compras-entradas", titulo: "Compras · Entradas por Compra", permiso: "carga.compras.entradas",
+    clave: "compras-entradas", titulo: "Compras · Entradas por Compra", grupo: "Compras", permiso: "carga.compras.entradas",
     archivoSugerido: "ENTRADAS POR COMPRAS.xlsx",
     async procesar(buffer, nombre) {
       const p = parseEntradasProveedor(buffer);
@@ -253,7 +260,7 @@ export const CARGAS: CargaDef[] = [
     },
   },
   {
-    clave: "compras-facturas", titulo: "Compras · Facturas de Proveedores", permiso: "carga.compras.facturas",
+    clave: "compras-facturas", titulo: "Compras · Facturas de Proveedores", grupo: "Compras", permiso: "carga.compras.facturas",
     archivoSugerido: "FACTURAS PROVEEDORES.xlsx",
     async procesar(buffer, nombre) {
       const p = parseFacturasProveedor(buffer);

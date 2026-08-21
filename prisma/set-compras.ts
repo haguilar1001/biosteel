@@ -1,7 +1,11 @@
 // ==========================================================
-// Carga masiva del MÓDULO DE COMPRAS desde los Excel de SIESA.
-// Mismos parsers que la carga web (/cargar), pero por consola: el archivo de
-// órdenes pasa de 46.000 renglones y no entra por el formulario.
+// Carga del MÓDULO DE COMPRAS desde los Excel de SIESA, por consola.
+//
+// La vía normal es /cargar dentro de la app: los cinco archivos caben por el
+// formulario (el más pesado, órdenes de compra, son 4,5 MB y 46.000 renglones
+// que se procesan en ~23 s, contra un tope de 300 s). Este script queda como
+// respaldo para recargas masivas, pruebas locales o si la app está caída;
+// usa exactamente los mismos parsers, así que da el mismo resultado.
 //
 // Uso:   npm run db:compras
 //        DIR_COMPRAS="D:/otra/ruta" npm run db:compras

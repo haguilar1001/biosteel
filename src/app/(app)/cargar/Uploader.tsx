@@ -5,7 +5,7 @@
 // ==========================================================
 import { useState } from "react";
 
-export interface DatasetPermitido { clave: string; titulo: string; archivoSugerido: string; }
+export interface DatasetPermitido { clave: string; titulo: string; grupo: string; archivoSugerido: string; }
 
 interface ResDataset { titulo: string; archivo: string; hoja: string; filas: number; cargadas: number; omitidas: number; estrategia: string; }
 interface Resultado { ok: boolean; datasets: Record<string, ResDataset>; errores: string[]; }
@@ -19,6 +19,16 @@ export function Uploader({ datasets }: { datasets: DatasetPermitido[] }) {
   const [res, setRes] = useState<Resultado | null>(null);
 
   const total = Object.values(files).filter(Boolean).length;
+
+  // Con 16 archivos una lista plana no se navega. Se agrupa por módulo
+  // conservando el orden del catálogo, que ya viene ordenado a propósito
+  // (en Inventario, por ejemplo, las bodegas van antes que los movimientos).
+  const porGrupo: { grupo: string; items: DatasetPermitido[] }[] = [];
+  for (const d of datasets) {
+    const ultimo = porGrupo[porGrupo.length - 1];
+    if (ultimo && ultimo.grupo === d.grupo) ultimo.items.push(d);
+    else porGrupo.push({ grupo: d.grupo, items: [d] });
+  }
 
   async function enviar() {
     if (total === 0 || cargando) return;
@@ -55,8 +65,12 @@ export function Uploader({ datasets }: { datasets: DatasetPermitido[] }) {
   return (
     <div className="card">
       <div className="card-body" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {datasets.map((d) => (
+        {porGrupo.map((g) => (
+        <div key={g.grupo} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <div className="eyebrow" style={{ marginTop: 2 }}>
+            {g.grupo} <span className="flag" style={{ fontWeight: 500 }}>· {g.items.length} archivo{g.items.length > 1 ? "s" : ""}</span>
+          </div>
+          {g.items.map((d) => (
             <label key={d.clave} className="carga-fila" style={{
               display: "flex", alignItems: "center", gap: 14, background: "var(--surface)",
               border: "1px solid var(--line)", borderRadius: 12, padding: "12px 14px", cursor: "pointer",
@@ -79,6 +93,7 @@ export function Uploader({ datasets }: { datasets: DatasetPermitido[] }) {
             </label>
           ))}
         </div>
+        ))}
 
         <button onClick={enviar} disabled={total === 0 || cargando} className="btn" style={{
           padding: "12px 18px", background: total === 0 || cargando ? "var(--muted)" : "var(--brand)",

@@ -16,7 +16,7 @@ export default async function CargarPage() {
   const flags = await Promise.all(CARGAS.map((c) => puede(usuario, c.permiso)));
   const permitidos: DatasetPermitido[] = CARGAS
     .filter((_, i) => flags[i])
-    .map((c) => ({ clave: c.clave, titulo: c.titulo, archivoSugerido: c.archivoSugerido }));
+    .map((c) => ({ clave: c.clave, titulo: c.titulo, grupo: c.grupo, archivoSugerido: c.archivoSugerido }));
 
   return (
     <>
