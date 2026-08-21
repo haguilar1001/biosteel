@@ -162,7 +162,7 @@ h1, h2, h3 { margin: 0; }
   display: flex; align-items: center; gap: 14px;
   background: var(--brand); color: #fff; padding: 8px 18px;
 }
-.appbar .identidad { display: flex; flex-direction: column; gap: 7px; flex: 0 0 auto; }
+.appbar .identidad { display: flex; flex-direction: column; align-items: flex-start; gap: 7px; flex: 0 0 auto; }
 .appbar .quien { display: flex; align-items: center; gap: 8px; min-width: 0; padding-left: 2px; }
 .appbar .avatar-mini {
   flex: 0 0 auto; width: 22px; height: 22px; border-radius: 50%; background: var(--brand-2);
@@ -170,9 +170,9 @@ h1, h2, h3 { margin: 0; }
   border: 1.5px solid rgba(255,255,255,.4);
 }
 .appbar .quien-nombre { font-size: 12.5px; font-weight: 600; color: rgba(255,255,255,.92); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px; }
-.appbar .logo { display: flex; align-items: center; gap: 10px; font-weight: 700; letter-spacing: .2px; }
-.appbar .logo small { font-weight: 400; opacity: .8; letter-spacing: 1px; font-size: 9px; display: block; margin-top: -2px; }
-.appbar .logo-img { height: 34px; width: auto; display: block; background: #fff; padding: 4px 9px; border-radius: 9px; box-shadow: 0 1px 3px rgba(0,0,0,.18); }
+/* align-self + object-fit: el logo conserva su proporción aunque el
+   contenedor sea más ancho (la fila del nombre lo es). */
+.appbar .logo-img { height: 34px; width: auto; align-self: flex-start; object-fit: contain; display: block; background: #fff; padding: 4px 9px; border-radius: 9px; box-shadow: 0 1px 3px rgba(0,0,0,.18); }
 .mes-chip {
   display: inline-flex; align-items: center; justify-content: center;
   min-width: 44px; padding: 6px 10px; border-radius: 8px;
