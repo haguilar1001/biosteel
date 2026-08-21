@@ -1,8 +1,13 @@
 name: Sync Flujo diario
 
-# Sincroniza el Flujo de Caja desde OneDrive una vez al día.
-# 08:00 UTC = 3:00 a. m. Colombia (UTC-5).
+# Sincroniza el Flujo de Caja desde OneDrive dos veces al día:
+#   08:00 UTC = 3:00 a. m. Colombia (UTC-5) — deja el día listo al abrir.
+#   15:00 UTC = 10:00 a. m. Colombia       — recoge lo que se cargó en la mañana.
 # También se puede ejecutar a mano: pestaña Actions → "Sync Flujo diario" → Run workflow.
+#
+# La sincronización REEMPLAZA los años presentes en el archivo, así que correrla
+# de nuevo no duplica nada: la segunda pasada simplemente vuelve a bajar la
+# versión más reciente del archivo de OneDrive.
 #
 # Requiere el secreto de repositorio CRON_SECRET (Settings → Secrets and
 # variables → Actions), con el MISMO valor que la variable CRON_SECRET del
@@ -10,6 +15,7 @@ name: Sync Flujo diario
 on:
   schedule:
     - cron: "0 8 * * *"
+    - cron: "0 15 * * *"
   workflow_dispatch: {}
 
 jobs:
