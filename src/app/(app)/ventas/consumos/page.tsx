@@ -9,7 +9,7 @@ import { Monto } from "../../_components/Monto";
 import {
   aniosConVenta, mesesConVenta, ipsConVenta, ciudadesDeIps,
   marcasFiltradas, ipsPorMarcaFiltrado, itemsPorMarcaFiltrado,
-  listasConVenta, utilidadPorLista, ipsPorLista, SIN_LISTA, type FiltroConsumo,
+  listasConVenta, utilidadPorLista, ipsPorLista, itemsPorListaIps, SIN_LISTA, type FiltroConsumo,
 } from "@/lib/negocio/ventas";
 import { FiltroAuto } from "../../_components/FiltroAuto";
 import { nombreLista } from "@/lib/negocio/listas-precio";
@@ -44,7 +44,7 @@ export default async function ConsumosPage({ searchParams }: { searchParams: Pro
   const listaSel = sp.lista && (listasDisp.includes(sp.lista) || sp.lista === SIN_LISTA) ? sp.lista : undefined;
   const filtro: FiltroConsumo = { anio, meses, ips: ipsSel, ciudad: ciudadSel, lista: listaSel };
 
-  const [marcasBase, ipsMap, itemsMap, porLista, ipsListaMap] = await Promise.all([
+  const [marcasBase, ipsMap, itemsMap, porLista, ipsListaMap, itemsListaMap] = await Promise.all([
     marcasFiltradas(filtro, opcionesIps),
     ipsPorMarcaFiltrado(filtro, opcionesIps),
     itemsPorMarcaFiltrado(filtro, opcionesIps),
@@ -52,6 +52,7 @@ export default async function ConsumosPage({ searchParams }: { searchParams: Pro
     // una quedaría una sola fila y no se podrían comparar entre sí.
     utilidadPorLista({ ...filtro, lista: undefined }, opcionesIps),
     ipsPorLista({ ...filtro, lista: undefined }, opcionesIps),
+    itemsPorListaIps({ ...filtro, lista: undefined }, opcionesIps),
   ]);
   const ventaListas = porLista.reduce((a, l) => a + l.valor, 0);
   const hayListas = porLista.some((l) => l.lista !== SIN_LISTA);
@@ -66,6 +67,8 @@ export default async function ConsumosPage({ searchParams }: { searchParams: Pro
   const GRID_ITEM = "minmax(200px, 3fr) 80px 120px 130px 130px 130px 90px";
   const GRID_LISTA = "minmax(200px, 2fr) 140px 130px 130px 100px 100px";
   const GRID_IPSL = "minmax(220px, 3fr) 140px 130px 130px 100px";
+  const GRID_ITL = "minmax(240px, 3fr) 70px 120px 130px 120px 90px";
+  const TOPE_ITEMS = 50; // ítems mostrados por IPS (los demás se resumen)
 
   // Orden de proveedores por columna (clic en el encabezado). Por defecto venta desc.
   const ORDENES: OrdenCol[] = ["marca", "venta", "costo", "utilidad", "margen"];
@@ -338,14 +341,51 @@ export default async function ConsumosPage({ searchParams }: { searchParams: Pro
                         {ipsList.map((x) => {
                           const ui = x.valor - x.costo;
                           const pi = margen(x.valor, x.costo);
+                          const items = itemsListaMap.get(l.lista)?.get(x.ips) ?? [];
                           return (
-                            <div key={x.ips} style={{ display: "grid", gridTemplateColumns: GRID_IPSL, gap: 8, alignItems: "center", padding: "5px 0", fontSize: 12.5, borderTop: "1px solid var(--line)" }}>
-                              <span>{x.ips}</span>
-                              <span className="num" style={{ textAlign: "right" }}><Monto value={x.valor} /></span>
-                              <span className="num flag" style={{ textAlign: "right" }}><Monto value={x.costo} /></span>
-                              <span className="num" style={{ textAlign: "right" }}><Monto value={ui} /></span>
-                              <span className="num" style={{ textAlign: "right", fontWeight: 600, color: pi < 0 ? "var(--bad)" : undefined }}>{formatPorcentaje(pi)}</span>
-                            </div>
+                            <details key={x.ips} className="cons-det">
+                              <summary>
+                                <div style={{ display: "grid", gridTemplateColumns: GRID_IPSL, gap: 8, alignItems: "center", padding: "5px 0", fontSize: 12.5 }}>
+                                  <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                                    <span className="cons-chev" style={{ fontSize: 11 }}>▸</span> {x.ips}
+                                    <span className="flag" style={{ fontWeight: 500 }}>({formatNumero(items.length)} ítems)</span>
+                                  </span>
+                                  <span className="num" style={{ textAlign: "right" }}><Monto value={x.valor} /></span>
+                                  <span className="num flag" style={{ textAlign: "right" }}><Monto value={x.costo} /></span>
+                                  <span className="num" style={{ textAlign: "right" }}><Monto value={ui} /></span>
+                                  <span className="num" style={{ textAlign: "right", fontWeight: 600, color: pi < 0 ? "var(--bad)" : undefined }}>{formatPorcentaje(pi)}</span>
+                                </div>
+                              </summary>
+                              <div style={{ padding: "2px 0 8px 18px" }}>
+                                <div style={{ display: "grid", gridTemplateColumns: GRID_ITL, gap: 8, padding: "4px 0", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".4px", color: "var(--muted)" }}>
+                                  <span>Referencia / descripción</span>
+                                  <span style={{ textAlign: "right" }}>Cant.</span>
+                                  <span style={{ textAlign: "right" }}>Costo</span>
+                                  <span style={{ textAlign: "right" }}>Venta neta</span>
+                                  <span style={{ textAlign: "right" }}>Utilidad</span>
+                                  <span style={{ textAlign: "right" }}>% Util.</span>
+                                </div>
+                                {items.slice(0, TOPE_ITEMS).map((it, k) => {
+                                  const uit = it.valor - it.costo;
+                                  const pit = margen(it.valor, it.costo);
+                                  return (
+                                    <div key={`${it.referencia}-${k}`} style={{ display: "grid", gridTemplateColumns: GRID_ITL, gap: 8, alignItems: "start", padding: "4px 0", fontSize: 12, borderTop: "1px solid var(--line)" }}>
+                                      <span style={{ lineHeight: 1.3 }}><span className="flag" style={{ fontWeight: 700 }}>{it.referencia}</span> {it.descripcion}</span>
+                                      <span className="num" style={{ textAlign: "right" }}>{formatNumero(it.cantidad)}</span>
+                                      <span className="num flag" style={{ textAlign: "right" }}><Monto value={it.costo} /></span>
+                                      <span className="num" style={{ textAlign: "right", fontWeight: 600 }}><Monto value={it.valor} /></span>
+                                      <span className="num" style={{ textAlign: "right" }}><Monto value={uit} /></span>
+                                      <span className="num" style={{ textAlign: "right", fontWeight: 700, color: pit < 0 ? "var(--bad)" : pit >= 40 ? "var(--ok)" : undefined }}>{formatPorcentaje(pit)}</span>
+                                    </div>
+                                  );
+                                })}
+                                {items.length > TOPE_ITEMS && (
+                                  <div className="flag" style={{ padding: "6px 0", fontStyle: "italic" }}>
+                                    +{formatNumero(items.length - TOPE_ITEMS)} ítems más (usa los filtros de mes/IPS para acotar).
+                                  </div>
+                                )}
+                              </div>
+                            </details>
                           );
                         })}
                       </>

@@ -340,6 +340,40 @@ export async function ipsPorLista(f: FiltroConsumo, opciones: OpcionIps[]): Prom
   return mapa;
 }
 
+export interface ItemLista { referencia: string; descripcion: string; cantidad: number; valor: number; costo: number }
+
+/** Ítems (referencias) vendidos por lista × IPS. Mapa lista → ips → ítems.
+ *  Para el tercer nivel de despliegue de "Utilidad por Lista de Precios". */
+export async function itemsPorListaIps(f: FiltroConsumo, opciones: OpcionIps[]): Promise<Map<string, Map<string, ItemLista[]>>> {
+  const ips = ipsDelFiltro(opciones, f);
+  const grupos = await prisma.ventaItemIps.groupBy({
+    by: ["lista", "ips", "referencia", "descripcion"],
+    where: {
+      anio: f.anio,
+      ...(f.meses && f.meses.length ? { mes: { in: f.meses } } : {}),
+      ...(ips ? { ips: { in: ips } } : {}),
+    },
+    _sum: { valor: true, costo: true, cantidad: true },
+  });
+  const mapa = new Map<string, Map<string, ItemLista[]>>();
+  for (const g of grupos) {
+    const lk = g.lista || SIN_LISTA;
+    const ik = g.ips || "(sin IPS)";
+    if (!mapa.has(lk)) mapa.set(lk, new Map());
+    const inner = mapa.get(lk)!;
+    if (!inner.has(ik)) inner.set(ik, []);
+    inner.get(ik)!.push({
+      referencia: g.referencia,
+      descripcion: g.descripcion,
+      cantidad: g._sum.cantidad?.toNumber() ?? 0,
+      valor: g._sum.valor?.toNumber() ?? 0,
+      costo: g._sum.costo?.toNumber() ?? 0,
+    });
+  }
+  for (const inner of mapa.values()) for (const arr of inner.values()) arr.sort((a, b) => b.valor - a.valor);
+  return mapa;
+}
+
 /** Recorte por lista de precios; "(sin lista)" busca la cadena vacía. */
 function soloLista(f: FiltroConsumo) {
   if (!f.lista) return {};
