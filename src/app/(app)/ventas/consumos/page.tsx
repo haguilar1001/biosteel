@@ -12,29 +12,10 @@ import {
   listasConVenta, utilidadPorLista, SIN_LISTA, type FiltroConsumo,
 } from "@/lib/negocio/ventas";
 import { FiltroAuto } from "../../_components/FiltroAuto";
+import { nombreLista } from "@/lib/negocio/listas-precio";
 
 const MESES = ["", "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 const margen = (venta: number, costo: number) => (venta > 0 ? ((venta - costo) / venta) * 100 : 0);
-
-// Nombre de cada lista de precios por su código SIESA (catálogo del cliente).
-// La base guarda el código sin ceros a la izquierda (4, 14, 999…), por eso el
-// lookup normaliza. Al re-importar ventas con "Desc. lista de precios", `lista`
-// ya trae el nombre y el mapa simplemente no aplica (cae al fallback).
-const LISTA_NOMBRES: Record<string, string> = {
-  "1": "INACTIVA", "2": "BARRIOS UNIDOS", "3": "ISS", "4": "SOAT", "5": "ARL",
-  "6": "COOSALUD", "7": "ORTOPEDISTAS", "8": "REINA CATALINA",
-  "9": "DISTRITO TURISTICO Y CULTURAL DE CTG", "10": "REEMPLAZOS POR PAQUETE",
-  "11": "SALUD VIDA-REEMPLAZOS", "12": "LISTA PROVEMEDICS", "13": "SMS DE COLOMBIA",
-  "14": "COOSALUD MAIS", "15": "COOSALUD EVENTOS", "16": "SURA",
-  "17": "LISTA CLINICA LA POLICIA", "18": "CLINICA CARIBE", "19": "SELSALUD",
-  "20": "ADRES", "21": "LISTA ADRES", "22": "LISTA PROVEMEDICS", "23": "ASMET SALUD",
-  "24": "MEDFIX", "25": "SIMALINK", "26": "ABUMAC MEDICAL", "27": "DR. JUAN GABRIEL REATIGA",
-  "999": "LISTA LIBRE",
-};
-const nombreLista = (codigo: string) => {
-  const norm = String(codigo).trim().replace(/^0+(?=\d)/, "");
-  return LISTA_NOMBRES[norm] ?? codigo;
-};
 
 type OrdenCol = "marca" | "venta" | "costo" | "utilidad" | "margen";
 
