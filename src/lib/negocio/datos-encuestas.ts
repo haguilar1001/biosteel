@@ -11,11 +11,25 @@ const avg = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.le
 const p2 = (n: number) => String(n).padStart(2, "0");
 const fechaDMY = (d: Date | null) => (d ? `${p2(d.getDate())}/${p2(d.getMonth() + 1)}/${d.getFullYear()}` : "—");
 
+export interface RecordInst { encuesta: number; fecha: string; cliente: string; cargo: string; items: (number | null)[]; promedio: number; pct: number }
+export interface PreguntaCalc { codigo: string; pregunta: string; promedio: number; pct: number; nivel: string }
+export interface ComponenteCalc { nombre: string; promedio: number; pct: number; nivel: string }
+export interface OverallCalc { promedio: number; pct: number; nivel: string; total_encuestas: number; total_respuestas: number; dist: Record<string, number> }
+export interface OrthoItemCalc { label: string; short: string; val: number }
+export interface OrthoCalc { items: OrthoItemCalc[]; promedio: number; n: number; recomendaria_pct: number; ciudades: string[] }
+export interface EncuestasData {
+  records: RecordInst[];
+  questions: PreguntaCalc[];
+  components: ComponenteCalc[];
+  overall: OverallCalc;
+  ortho: OrthoCalc;
+}
+
 export interface DatosEncuestas {
   anio: number | null;
   anios: number[];
   vacio: boolean;
-  data: unknown; // objeto DATA para la plantilla
+  data: EncuestasData | null;
 }
 
 export async function datosEncuestas(anioSel?: number): Promise<DatosEncuestas> {
@@ -91,7 +105,7 @@ export async function datosEncuestas(anioSel?: number): Promise<DatosEncuestas> 
     promedio: avg(orthoTodos),
     n: orth.length,
     recomendaria_pct: conRecom.length ? conRecom.filter((e) => e.recomienda).length / conRecom.length : 0,
-    ciudades: [...new Set(orth.map((e) => e.ciudad).filter(Boolean))],
+    ciudades: [...new Set(orth.map((e) => e.ciudad).filter((c): c is string => Boolean(c)))],
   };
 
   return {
