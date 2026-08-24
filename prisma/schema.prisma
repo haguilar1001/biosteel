@@ -1495,3 +1495,32 @@ model EncuestaRespuesta {
   @@index([encuestaId])
   @@index([codigo])
 }
+
+// =============== ASISTENCIA TÉCNICA · CIRUGÍAS ===============
+// Una fila por cirugía con asistencia técnica (material de osteosíntesis).
+// Fuente: "Consulta Cirugía Diaria" (SIESA) + CiudadCliente. Sin datos del
+// paciente (no se requieren para el análisis de volumen/cobertura).
+model Cirugia {
+  id           Int       @id @default(autoincrement())
+  nroDocumento String    @unique
+  numeroCaso   String?
+  fecha        DateTime?
+  anio         Int
+  mes          Int
+  dia          Int
+  co           String?
+  convenio     String?
+  asesor       String    // nombre del instrumentador, o "SIN SOPORTE"
+  sinSoporte   Boolean   @default(false)
+  ips          String
+  ciudad       String?
+  grupo        String?
+  medico       String?
+  minutos      Int?      // duración de cirugía (opcional)
+  createdAt    DateTime  @default(now())
+
+  @@index([anio, mes])
+  @@index([asesor])
+  @@index([ips])
+  @@index([sinSoporte])
+}

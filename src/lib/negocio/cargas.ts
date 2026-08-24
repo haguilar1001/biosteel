@@ -29,12 +29,13 @@ import {
   parseEntradasProveedor, persistirEntradasProveedor,
 } from "./importar-compras";
 import { parseInstitucional, parseOrtopedistas, persistirEncuestas } from "./importar-encuestas";
+import { parseCirugias, persistirCirugias } from "./importar-cirugias";
 
 export type CargaClave = DatasetKey | "pyg" | "flujo" | "presupuesto"
   | "inv-bodegas" | "inv-balance" | "inv-movimientos"
   | "compras-tipos" | "compras-ordenes" | "compras-pendientes" | "compras-facturas"
   | "compras-entradas"
-  | "encuestas-inst" | "encuestas-ortho";
+  | "encuestas-inst" | "encuestas-ortho" | "cirugias";
 
 /** Módulo al que pertenece el archivo; solo sirve para agrupar /cargar. */
 export type GrupoCarga = "Comercial" | "Financiero" | "Inventario" | "Compras" | "Calidad";
@@ -241,6 +242,20 @@ export const CARGAS: CargaDef[] = [
         titulo: "Compras · Pendientes por Despacho", archivo: nombre, hoja: p.hoja,
         filas: p.filas, cargadas, omitidas: p.omitidas,
         estrategia: `reemplaza TODA la foto anterior: ${nf.format(cargadas)} renglones · ${nf.format(ordenes)} órdenes pendientes · ${nf.format(Math.round(total))}`,
+      };
+    },
+  },
+  {
+    clave: "cirugias", titulo: "Cirugías · Consulta diaria", grupo: "Calidad", permiso: "carga.cirugias",
+    archivoSugerido: "Consulta Cirugía Diaria.xlsx",
+    async procesar(buffer, nombre) {
+      const parse = parseCirugias(buffer);
+      if (!parse.filas.length) throw new Error("No se encontraron cirugías (hoja 'Consulta Cirugía Diaria').");
+      const cargadas = await persistirCirugias(prisma, parse.filas);
+      return {
+        titulo: "Cirugías · Consulta diaria", archivo: nombre, hoja: parse.hoja,
+        filas: parse.filas.length + parse.omitidas, cargadas, omitidas: parse.omitidas,
+        estrategia: `reemplaza todas las cirugías: ${nf.format(cargadas)} registros (dedup por documento)`,
       };
     },
   },
