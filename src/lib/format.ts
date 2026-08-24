@@ -57,22 +57,36 @@ export function formatMoneda(v: Numerico, simbolo: string): string {
 
 // ==========================================================
 // Fechas — formato institucional DD/MM/AAAA (Día/Mes/Año).
-// Un único helper para toda la app; usa la zona horaria del entorno,
-// igual que el formato anterior (coherente en el servidor de Railway).
+// SIEMPRE en hora de Colombia (America/Bogota), sin importar la zona del
+// servidor. En Railway el proceso corre en UTC; usar getHours()/getDate()
+// mostraba la hora en UTC (+5 h), por eso los sellos salían adelantados.
 // ==========================================================
-const p2 = (n: number) => String(n).padStart(2, "0");
+const TZ = "America/Bogota";
 
-/** Fecha DD/MM/AAAA (p. ej. 13/08/2026). */
+function partesBogota(d: Date): { d: string; m: string; y: string; H: string; Min: string; S: string } {
+  const p = new Intl.DateTimeFormat("es-CO", {
+    timeZone: TZ, hourCycle: "h23",
+    year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", second: "2-digit",
+  }).formatToParts(d);
+  const g = (t: Intl.DateTimeFormatPartTypes) => p.find((x) => x.type === t)?.value ?? "";
+  return { d: g("day"), m: g("month"), y: g("year"), H: g("hour"), Min: g("minute"), S: g("second") };
+}
+
+/** Fecha DD/MM/AAAA (p. ej. 13/08/2026) en hora de Colombia. */
 export function formatFecha(d: Date): string {
-  return `${p2(d.getDate())}/${p2(d.getMonth() + 1)}/${d.getFullYear()}`;
+  const { d: dd, m, y } = partesBogota(d);
+  return `${dd}/${m}/${y}`;
 }
 
-/** Fecha y hora DD/MM/AAAA HH:mm. */
+/** Fecha y hora DD/MM/AAAA HH:mm (hora de Colombia). */
 export function formatFechaHora(d: Date): string {
-  return `${formatFecha(d)} ${p2(d.getHours())}:${p2(d.getMinutes())}`;
+  const { d: dd, m, y, H, Min } = partesBogota(d);
+  return `${dd}/${m}/${y} ${H}:${Min}`;
 }
 
-/** Fecha y hora con segundos DD/MM/AAAA HH:mm:ss (auditoría). */
+/** Fecha y hora con segundos DD/MM/AAAA HH:mm:ss (auditoría, hora de Colombia). */
 export function formatFechaHoraSeg(d: Date): string {
-  return `${formatFechaHora(d)}:${p2(d.getSeconds())}`;
+  const { d: dd, m, y, H, Min, S } = partesBogota(d);
+  return `${dd}/${m}/${y} ${H}:${Min}:${S}`;
 }
