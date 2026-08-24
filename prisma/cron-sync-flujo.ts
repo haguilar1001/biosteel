@@ -6,7 +6,7 @@
 //
 // En Railway: crea un servicio Cron con
 //   Start Command:  npm run sync:flujo
-//   Cron Schedule:  0 8 * * *      (08:00 UTC = 3:00 a. m. COT)
+//   Cron Schedule:  0 8,17,22 * * *   (08/17/22 UTC = 3:00 a. m., 12:00 m. y 5:00 p. m. COT)
 // Railway lo ejecuta a esa hora, imprime el resultado en Deploy Logs y
 // termina (Completed). Requiere las mismas variables del servicio web
 // (DATABASE_URL, FLUJO_ONEDRIVE_URL, FLUJO_GRAPH_*).

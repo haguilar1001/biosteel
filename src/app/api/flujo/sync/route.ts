@@ -1,7 +1,7 @@
 // ==========================================================
 // Sincronización diaria del Flujo de Caja desde OneDrive.
 // Protegido con CRON_SECRET (header x-cron-secret o ?secret=).
-// Configura un cron diario (3 am) en Railway que haga GET a esta ruta.
+// Cron en Railway (3:00 a.m., 12:00 m. y 5:00 p.m. COT → 0 8,17,22 * * * UTC).
 // ==========================================================
 import { NextResponse } from "next/server";
 import { env } from "@/lib/env";
