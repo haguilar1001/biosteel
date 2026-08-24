@@ -1,8 +1,9 @@
 name: Sync Flujo diario
 
-# Sincroniza el Flujo de Caja desde OneDrive dos veces al día:
+# Sincroniza el Flujo de Caja desde OneDrive tres veces al día:
 #   08:00 UTC = 3:00 a. m. Colombia (UTC-5) — deja el día listo al abrir.
-#   15:00 UTC = 10:00 a. m. Colombia       — recoge lo que se cargó en la mañana.
+#   17:00 UTC = 12:00 m. Colombia            — corte de mediodía.
+#   22:00 UTC =  5:00 p. m. Colombia         — cierre de la tarde.
 # También se puede ejecutar a mano: pestaña Actions → "Sync Flujo diario" → Run workflow.
 #
 # La sincronización REEMPLAZA los años presentes en el archivo, así que correrla
@@ -14,8 +15,7 @@ name: Sync Flujo diario
 # servicio biosteel en Railway. Llama al endpoint público protegido por token.
 on:
   schedule:
-    - cron: "0 8 * * *"
-    - cron: "0 15 * * *"
+    - cron: "0 8,17,22 * * *"
   workflow_dispatch: {}
 
 jobs:
