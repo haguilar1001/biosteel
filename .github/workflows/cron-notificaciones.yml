@@ -1,0 +1,31 @@
+name: Cron · Notificaciones
+
+# Ejecuta los recordatorios de pago (obligaciones) llamando al endpoint de la
+# app en Railway. Cron en GitHub, no en Railway. Requiere el secret CRON_SECRET.
+on:
+  schedule:
+    # 12:00 UTC = 7:00 a. m. hora Colombia (UTC-5). Un envío diario.
+    - cron: "0 12 * * *"
+  workflow_dispatch: {}
+
+concurrency:
+  group: cron-notificaciones
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ejecutar recordatorios
+        env:
+          APP_URL: ${{ vars.APP_URL || 'https://biosteel.up.railway.app' }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$CRON_SECRET" ]; then
+            echo "::error::Falta el secret CRON_SECRET en el repositorio."
+            exit 1
+          fi
+          echo "POST $APP_URL/api/notificaciones/run"
+          curl -fsS -X POST "$APP_URL/api/notificaciones/run" \
+            -H "x-cron-secret: $CRON_SECRET" \
+            --max-time 120 -w $'\nHTTP %{http_code}\n'

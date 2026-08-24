@@ -1,0 +1,35 @@
+name: Cron · Sync Flujo de Caja
+
+# Sincroniza el Flujo de Caja (descarga de OneDrive) llamando al endpoint de la
+# app en Railway. El cron vive AQUÍ (GitHub), no en Railway, para no tocar el
+# servicio web. Requiere el secret CRON_SECRET del repo (mismo valor que la
+# variable CRON_SECRET del servicio en Railway).
+on:
+  schedule:
+    # 08:00, 17:00 y 22:00 UTC = 3:00 a. m., 12:00 m. y 5:00 p. m. hora Colombia (UTC-5).
+    - cron: "0 8,17,22 * * *"
+  workflow_dispatch: {} # permite ejecutarlo manualmente ("Run workflow")
+
+concurrency:
+  group: cron-flujo
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Llamar al endpoint de sincronización
+        env:
+          APP_URL: ${{ vars.APP_URL || 'https://biosteel.up.railway.app' }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$CRON_SECRET" ]; then
+            echo "::error::Falta el secret CRON_SECRET en el repositorio (Settings → Secrets and variables → Actions)."
+            exit 1
+          fi
+          echo "POST $APP_URL/api/flujo/sync"
+          resp=$(curl -sS -X POST "$APP_URL/api/flujo/sync" \
+            -H "x-cron-secret: $CRON_SECRET" \
+            --max-time 300 -w $'\nHTTP_CODE:%{http_code}')
+          echo "$resp"
+          echo "$resp" | grep -q '"ok":true' || { echo "::error::La sincronización de flujo falló."; exit 1; }
