@@ -208,3 +208,21 @@ export async function sincronizarFlujo(origenIp?: string): Promise<ResultadoFluj
   }
   return sincronizarFlujoDesdeBuffer(buffer, origenIp);
 }
+
+// ---------- Última sincronización (para el sello en pantalla) ----------
+export interface UltimaSyncFlujo { cargadaEn: Date; ok: boolean; movimientos: number | null; error: string | null }
+
+/** Devuelve la última corrida de sincronización de flujo (busca en CargaSiesa). */
+export async function ultimaSyncFlujo(): Promise<UltimaSyncFlujo | null> {
+  const rows = await prisma.cargaSiesa.findMany({
+    orderBy: { cargadaEn: "desc" }, take: 50,
+    select: { cargadaEn: true, ok: true, resumen: true },
+  });
+  for (const r of rows) {
+    const res = r.resumen as { flujo?: { movimientos?: number; error?: string } } | null;
+    if (res && res.flujo) {
+      return { cargadaEn: r.cargadaEn, ok: r.ok, movimientos: res.flujo.movimientos ?? null, error: res.flujo.error ?? null };
+    }
+  }
+  return null;
+}
