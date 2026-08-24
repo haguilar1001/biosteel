@@ -28,17 +28,19 @@ import {
   parseTiposProveedor, persistirTiposProveedor,
   parseEntradasProveedor, persistirEntradasProveedor,
 } from "./importar-compras";
+import { parseInstitucional, parseOrtopedistas, persistirEncuestas } from "./importar-encuestas";
 
 export type CargaClave = DatasetKey | "pyg" | "flujo" | "presupuesto"
   | "inv-bodegas" | "inv-balance" | "inv-movimientos"
   | "compras-tipos" | "compras-ordenes" | "compras-pendientes" | "compras-facturas"
-  | "compras-entradas";
+  | "compras-entradas"
+  | "encuestas-inst" | "encuestas-ortho";
 
 /** Módulo al que pertenece el archivo; solo sirve para agrupar /cargar. */
-export type GrupoCarga = "Comercial" | "Financiero" | "Inventario" | "Compras";
+export type GrupoCarga = "Comercial" | "Financiero" | "Inventario" | "Compras" | "Calidad";
 
 /** Orden en que se muestran los grupos en la pantalla de carga. */
-export const GRUPOS_CARGA: GrupoCarga[] = ["Comercial", "Financiero", "Inventario", "Compras"];
+export const GRUPOS_CARGA: GrupoCarga[] = ["Comercial", "Financiero", "Inventario", "Compras", "Calidad"];
 
 export interface CargaDef {
   clave: CargaClave;
@@ -239,6 +241,34 @@ export const CARGAS: CargaDef[] = [
         titulo: "Compras · Pendientes por Despacho", archivo: nombre, hoja: p.hoja,
         filas: p.filas, cargadas, omitidas: p.omitidas,
         estrategia: `reemplaza TODA la foto anterior: ${nf.format(cargadas)} renglones · ${nf.format(ordenes)} órdenes pendientes · ${nf.format(Math.round(total))}`,
+      };
+    },
+  },
+  {
+    clave: "encuestas-inst", titulo: "Encuestas · Clientes institucionales", grupo: "Calidad", permiso: "carga.encuestas",
+    archivoSugerido: "Consolidado_Completo_Encuestas_Satisfaccion.xlsx",
+    async procesar(buffer, nombre) {
+      const parse = parseInstitucional(buffer);
+      if (!parse.filas.length) throw new Error("No se encontraron respuestas (hoja 'Respuestas detalladas').");
+      const cargadas = await persistirEncuestas(prisma, "institucional", parse.filas);
+      return {
+        titulo: "Encuestas · Clientes institucionales", archivo: nombre, hoja: parse.hoja,
+        filas: parse.filas.length, cargadas, omitidas: parse.omitidas,
+        estrategia: `reemplaza las encuestas institucionales: ${nf.format(cargadas)} respuestas`,
+      };
+    },
+  },
+  {
+    clave: "encuestas-ortho", titulo: "Encuestas · Ortopedistas", grupo: "Calidad", permiso: "carga.encuestas",
+    archivoSugerido: "Encuesta de Satisfacción del Cliente – Ortopedistas.xlsx",
+    async procesar(buffer, nombre) {
+      const parse = parseOrtopedistas(buffer);
+      if (!parse.filas.length) throw new Error("No se encontraron respuestas de ortopedistas en el formulario.");
+      const cargadas = await persistirEncuestas(prisma, "ortopedista", parse.filas);
+      return {
+        titulo: "Encuestas · Ortopedistas", archivo: nombre, hoja: parse.hoja,
+        filas: parse.filas.length, cargadas, omitidas: parse.omitidas,
+        estrategia: `reemplaza las encuestas de ortopedistas: ${nf.format(cargadas)} respuestas`,
       };
     },
   },

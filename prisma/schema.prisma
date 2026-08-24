@@ -1464,3 +1464,34 @@ model EntradaProveedor {
   @@index([proveedor])
   @@index([anio, mes])
 }
+
+// =============== ENCUESTAS DE SATISFACCIÓN ===============
+// Respuestas de las encuestas de satisfacción (institucional y ortopedistas).
+// Cada respuesta guarda sus calificaciones (1–5) por criterio en filas hijas.
+model EncuestaSatisfaccion {
+  id         Int       @id @default(autoincrement())
+  tipo       String    // "institucional" | "ortopedista"
+  origenId   String?   // N.º de encuesta (inst) o ID del formulario (ortho)
+  fecha      DateTime?
+  anio       Int
+  cliente    String    // cliente/referencia (inst) o nombre del profesional (ortho)
+  cargo      String?   // cargo del encuestado (inst)
+  ciudad     String?   // ciudad (ortho)
+  recomienda Boolean?  // ortho: ¿recomendaría el servicio?
+  createdAt  DateTime  @default(now())
+
+  respuestas EncuestaRespuesta[]
+
+  @@index([tipo, anio])
+}
+
+model EncuestaRespuesta {
+  id         Int                  @id @default(autoincrement())
+  encuesta   EncuestaSatisfaccion @relation(fields: [encuestaId], references: [id], onDelete: Cascade)
+  encuestaId Int
+  codigo     String // "1.1".."4.4" (inst) u "O1".."O14" (ortho)
+  valor      Int    // 1..5
+
+  @@index([encuestaId])
+  @@index([codigo])
+}

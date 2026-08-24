@@ -50,6 +50,7 @@ export const PERMISOS = [
   { clave: "carga.compras.facturas", modulo: "Cargas", descripcion: "Cargar Facturas de proveedores" },
   { clave: "carga.compras.tipos", modulo: "Cargas", descripcion: "Cargar Tipos de proveedores (tipo de compra)" },
   { clave: "carga.compras.entradas", modulo: "Cargas", descripcion: "Cargar Entradas por compra (documento → proveedor)" },
+  { clave: "carga.encuestas", modulo: "Cargas", descripcion: "Cargar Encuestas de Satisfacción (institucional y ortopedistas)" },
 ] as const satisfies readonly PermisoDef[];
 
 export type PermisoClave = (typeof PERMISOS)[number]["clave"];
@@ -84,6 +85,7 @@ export const MATRIZ_ROLES: Record<RolNombre, Partial<Record<PermisoClave, Alcanc
     "carga.pendientes": T, "carga.ventas": T, "carga.facturacion": T, "carga.gastos": T,
     "carga.anuladas": T, "carga.pyg": T, "carga.flujo": T, "carga.presupuesto": T,
     "carga.inv.bodegas": T, "carga.inv.balance": T, "carga.inv.movimientos": T,
+    "carga.encuestas": T,
     "asistencia.manage": T,
   },
   Gerente: {

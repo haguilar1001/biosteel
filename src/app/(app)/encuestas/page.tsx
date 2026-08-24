@@ -8,5 +8,5 @@ import { ReporteEmbed } from "./ReporteEmbed";
 
 export default async function EncuestasPage() {
   await requirePermiso("cxp.view");
-  return <ReporteEmbed src="/informes/encuestas-satisfaccion.html" title="Encuestas de Satisfacción" />;
+  return <ReporteEmbed src="/encuestas/reporte" title="Encuestas de Satisfacción" />;
 }
