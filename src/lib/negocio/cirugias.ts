@@ -75,6 +75,25 @@ export async function cirugiasPorAsesor(f: FiltroCx): Promise<FilaConteo[]> {
   const g = await prisma.cirugia.groupBy({ by: ["asesor"], where: { ...where(f), sinSoporte: false }, _count: { _all: true } });
   return g.map((x) => ({ nombre: x.asesor, total: x._count._all })).sort((a, b) => b.total - a.total);
 }
+/** Promedio de cirugías por día de cada asesor (total ÷ días que operó). */
+export async function promedioDiaAsesor(f: FiltroCx): Promise<FilaConteo[]> {
+  const g = await prisma.cirugia.groupBy({
+    by: ["asesor", "anio", "mes", "dia"],
+    where: { ...where(f), sinSoporte: false },
+    _count: { _all: true },
+  });
+  const acc = new Map<string, { total: number; dias: number }>();
+  for (const row of g) {
+    const m = acc.get(row.asesor) ?? { total: 0, dias: 0 };
+    m.total += row._count._all;
+    m.dias += 1;
+    acc.set(row.asesor, m);
+  }
+  return [...acc.entries()]
+    .map(([nombre, m]) => ({ nombre, total: m.dias ? m.total / m.dias : 0 }))
+    .sort((a, b) => b.total - a.total);
+}
+
 export async function cirugiasPorMedico(f: FiltroCx): Promise<FilaConteo[]> {
   const g = await prisma.cirugia.groupBy({ by: ["medico"], where: { ...where(f), medico: { not: null } }, _count: { _all: true } });
   return g.map((x) => ({ nombre: x.medico ?? "—", total: x._count._all })).sort((a, b) => b.total - a.total);

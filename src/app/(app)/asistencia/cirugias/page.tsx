@@ -9,7 +9,7 @@ import { FiltroAuto } from "../../_components/FiltroAuto";
 import { LineasMensuales } from "../../_components/charts/LineasMensuales";
 import {
   aniosConCirugias, mesesConCirugias, catalogosCx,
-  resumenCx, cirugiasPorMes, cirugiasPorAsesor, cirugiasPorMedico,
+  resumenCx, cirugiasPorMes, cirugiasPorAsesor, promedioDiaAsesor, cirugiasPorMedico,
   cirugiasPorIps, cirugiasPorCiudad, cirugiasPorGrupo,
   MES_CORTO, MES_LARGO, type FiltroCx,
 } from "@/lib/negocio/cirugias";
@@ -19,7 +19,7 @@ const n1 = (v: number) => v.toFixed(1).replace(".", ",");
 const pct1 = (v: number) => (v * 100).toFixed(1).replace(".", ",") + " %";
 
 /** Ranking horizontal de conteos (barra + valor). */
-function Ranking({ filas, tope = 15, color = "var(--brand)" }: { filas: { nombre: string; total: number }[]; tope?: number; color?: string }) {
+function Ranking({ filas, tope = 15, color = "var(--brand)", formato = nInt }: { filas: { nombre: string; total: number }[]; tope?: number; color?: string; formato?: (v: number) => string }) {
   const top = filas.slice(0, tope);
   const max = Math.max(1, ...top.map((f) => f.total));
   return (
@@ -31,7 +31,7 @@ function Ranking({ filas, tope = 15, color = "var(--brand)" }: { filas: { nombre
           <span style={{ height: 12, background: "var(--brand-tint)", borderRadius: 4, overflow: "hidden" }}>
             <span style={{ display: "block", height: "100%", width: `${(f.total / max) * 100}%`, background: color, borderRadius: 4 }} />
           </span>
-          <span className="num" style={{ textAlign: "right", fontWeight: 700 }}>{nInt(f.total)}</span>
+          <span className="num" style={{ textAlign: "right", fontWeight: 700 }}>{formato(f.total)}</span>
         </div>
       ))}
     </div>
@@ -62,8 +62,8 @@ export default async function CirugiasPage({
   const asesor = sp.asesor && cat.asesores.includes(sp.asesor) ? sp.asesor : undefined;
   const f: FiltroCx = { anio, mes, ciudad, grupo, asesor };
 
-  const [resumen, porMes, porAsesor, porIps, porCiudad, porGrupo, porMedico] = await Promise.all([
-    resumenCx(f), cirugiasPorMes(f), cirugiasPorAsesor(f), cirugiasPorIps(f),
+  const [resumen, porMes, porAsesor, promAsesor, porIps, porCiudad, porGrupo, porMedico] = await Promise.all([
+    resumenCx(f), cirugiasPorMes(f), cirugiasPorAsesor(f), promedioDiaAsesor(f), cirugiasPorIps(f),
     cirugiasPorCiudad(f), cirugiasPorGrupo(f), cirugiasPorMedico(f),
   ]);
 
@@ -182,9 +182,15 @@ export default async function CirugiasPage({
           <Ranking filas={porAsesor} color="var(--brand)" />
         </div>
         <div className="card">
-          <div className="chart-head">Top Médicos Cirujanos <span className="hact">{n1(resumen.promMedico)} cx/médico</span></div>
-          <Ranking filas={porMedico} tope={12} color="var(--az-3)" />
+          <div className="chart-head">Promedio de Cx Diarias por Asesor <span className="hact">cx ÷ días operados</span></div>
+          <Ranking filas={promAsesor} color="var(--ok)" formato={n1} />
         </div>
+      </div>
+
+      {/* Top médicos */}
+      <div className="card" style={{ marginBottom: 12 }}>
+        <div className="chart-head">Top Médicos Cirujanos <span className="hact">{porMedico.length} médicos · {n1(resumen.promMedico)} cx/médico</span></div>
+        <Ranking filas={porMedico} tope={15} color="var(--az-3)" />
       </div>
 
       {/* Por IPS */}
