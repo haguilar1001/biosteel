@@ -16,6 +16,12 @@ import { FiltroAuto } from "../../_components/FiltroAuto";
 const MESES = ["", "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 const margen = (venta: number, costo: number) => (venta > 0 ? ((venta - costo) / venta) * 100 : 0);
 
+// Nombre de cada lista de precios por su código SIESA. Se completa a mano
+// mientras los datos cargados tengan el código; al re-importar ventas con la
+// columna "Desc. lista de precios", `lista` ya trae el nombre y esto no aplica.
+const LISTA_NOMBRES: Record<string, string> = {};
+const nombreLista = (codigo: string) => LISTA_NOMBRES[codigo] ?? codigo;
+
 type OrdenCol = "marca" | "venta" | "costo" | "utilidad" | "margen";
 
 export default async function ConsumosPage({ searchParams }: { searchParams: Promise<{ anio?: string; mes?: string; orden?: string; dir?: string; vista?: string; ips?: string; ciudad?: string; lista?: string }> }) {
@@ -134,7 +140,7 @@ export default async function ConsumosPage({ searchParams }: { searchParams: Pro
                 <label className="flag" style={{ alignSelf: "center" }}>Lista:</label>
                 <select name="lista" defaultValue={listaSel ?? ""} className="select" style={{ maxWidth: 260 }}>
                   <option value="">Todas</option>
-                  {listasDisp.map((l) => <option key={l} value={l}>{l}</option>)}
+                  {listasDisp.map((l) => <option key={l} value={l}>{nombreLista(l)}</option>)}
                   <option value={SIN_LISTA}>{SIN_LISTA}</option>
                 </select>
               </>
@@ -164,53 +170,6 @@ export default async function ConsumosPage({ searchParams }: { searchParams: Pro
           </FiltroAuto>
         </div>
       </div>
-
-      {/* Utilidad por lista de precios: la tabla que dice qué tarifa
-          intervenir. Va antes del detalle por proveedor a propósito. */}
-      {hayListas ? (
-        <div className="card" style={{ marginBottom: 12 }}>
-          <div className="chart-head">
-            Utilidad por Lista de Precios
-            <span className="hact">{periodo} · {porLista.length} lista{porLista.length > 1 ? "s" : ""}</span>
-          </div>
-          <div className="tbl-wrap">
-            <table className="tabla-fit">
-              <thead>
-                <tr>
-                  <th>Lista de precios</th>
-                  <th className="r">Venta Neta</th>
-                  <th className="r">Costo</th>
-                  <th className="r">Utilidad</th>
-                  <th className="r">% Utilidad</th>
-                  <th className="r">% de la venta</th>
-                </tr>
-              </thead>
-              <tbody>
-                {porLista.map((l) => {
-                  const u = l.valor - l.costo;
-                  const pct = margen(l.valor, l.costo);
-                  return (
-                    <tr key={l.lista} style={listaSel === l.lista ? { background: "var(--brand-tint)" } : undefined}>
-                      <td style={{ fontWeight: 600 }}>{l.lista}</td>
-                      <td className="r num"><Monto value={l.valor} /></td>
-                      <td className="r num flag"><Monto value={l.costo} /></td>
-                      <td className="r num" style={{ fontWeight: 600, color: u < 0 ? "var(--bad)" : undefined }}>
-                        <Monto value={u} />
-                      </td>
-                      <td className="r num" style={{ fontWeight: 700, color: pct < 0 ? "var(--bad)" : pct >= 40 ? "var(--ok)" : undefined }}>
-                        {formatPorcentaje(pct)}
-                      </td>
-                      <td className="r num flag">
-                        {ventaListas > 0 ? formatPorcentaje((l.valor / ventaListas) * 100) : "—"}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      ) : null}
 
       {/* KPIs */}
       <div className="grid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", marginBottom: 12 }}>
@@ -323,6 +282,63 @@ export default async function ConsumosPage({ searchParams }: { searchParams: Pro
           </div>
         )}
       </div>
+
+      {/* Utilidad por Lista de Precios (abajo). Cada fila es un filtro: al
+          hacer clic acota todo el informe a esa lista. */}
+      {hayListas ? (
+        <div className="card" style={{ marginTop: 12 }}>
+          <div className="chart-head">
+            Utilidad por Lista de Precios
+            <span className="hact">{periodo} · {porLista.length} lista{porLista.length > 1 ? "s" : ""} · clic en una lista para filtrar</span>
+          </div>
+          <div className="tbl-wrap">
+            <table className="tabla-fit">
+              <thead>
+                <tr>
+                  <th>Lista de precios</th>
+                  <th className="r">Venta Neta</th>
+                  <th className="r">Costo</th>
+                  <th className="r">Utilidad</th>
+                  <th className="r">% Utilidad</th>
+                  <th className="r">% de la venta</th>
+                </tr>
+              </thead>
+              <tbody>
+                {porLista.map((l) => {
+                  const u = l.valor - l.costo;
+                  const pct = margen(l.valor, l.costo);
+                  const activo = listaSel === l.lista;
+                  const href = activo
+                    ? `${base}&orden=${orden}&dir=${dir}&vista=${vista}`
+                    : `${base}&orden=${orden}&dir=${dir}&vista=${vista}&lista=${encodeURIComponent(l.lista)}`;
+                  return (
+                    <tr key={l.lista} style={activo ? { background: "var(--brand-tint)" } : undefined}>
+                      <td style={{ fontWeight: 600 }}>
+                        <a href={href} title={activo ? "Quitar filtro" : "Filtrar por esta lista"}
+                          style={{ color: "inherit", textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 6 }}>
+                          <span aria-hidden style={{ color: "var(--brand)" }}>{activo ? "✓" : "▸"}</span>
+                          {nombreLista(l.lista)}
+                        </a>
+                      </td>
+                      <td className="r num"><Monto value={l.valor} /></td>
+                      <td className="r num flag"><Monto value={l.costo} /></td>
+                      <td className="r num" style={{ fontWeight: 600, color: u < 0 ? "var(--bad)" : undefined }}>
+                        <Monto value={u} />
+                      </td>
+                      <td className="r num" style={{ fontWeight: 700, color: pct < 0 ? "var(--bad)" : pct >= 40 ? "var(--ok)" : undefined }}>
+                        {formatPorcentaje(pct)}
+                      </td>
+                      <td className="r num flag">
+                        {ventaListas > 0 ? formatPorcentaje((l.valor / ventaListas) * 100) : "—"}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ) : null}
     </>
   );
 }
