@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Informe de Encuestas de Satisfacción · Bio Steel</title>
+<style>
+  :root{
+    --navy:#1F4E79; --ink:#0E2438; --ink2:#16324b;
+    --teal:#0FB5AE; --teal-d:#0d8a85; --teal-soft:#e3f6f5;
+    --slate:#5a6b7e; --line:#dbe4ec; --bg:#eef2f6; --card:#ffffff;
+    --green:#16A34A; --amber:#D97706; --red:#DC2626;
+    --violet:#7C3AED;
+    --shadow:0 1px 2px rgba(14,36,56,.06),0 6px 20px rgba(14,36,56,.07);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:"Segoe UI",Inter,system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--ink);
+       -webkit-font-smoothing:antialiased;line-height:1.4}
+  .tab{font-variant-numeric:tabular-nums;font-feature-settings:"tnum"}
+  .wrap{max-width:1180px;margin:0 auto;padding:0 20px 60px}
+
+  /* Header */
+  header{background:linear-gradient(135deg,var(--ink) 0%,var(--navy) 100%);color:#fff;padding:26px 0 22px;
+         box-shadow:var(--shadow);position:relative;overflow:hidden}
+  header::after{content:"";position:absolute;right:-60px;top:-60px;width:260px;height:260px;
+         background:radial-gradient(circle,rgba(15,181,174,.22),transparent 70%);pointer-events:none}
+  .hd{max-width:1180px;margin:0 auto;padding:0 20px;display:flex;align-items:flex-end;
+      justify-content:space-between;gap:24px;flex-wrap:wrap}
+  .eyebrow{font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--teal);font-weight:700;margin-bottom:6px}
+  h1{font-size:26px;font-weight:700;letter-spacing:-.02em;line-height:1.1}
+  h1 span{display:block;font-size:14px;font-weight:400;color:#b9cbdc;letter-spacing:0;margin-top:5px}
+  .brand{text-align:right;font-size:12px;color:#9fb6ca;line-height:1.5}
+  .brand b{color:#fff;font-size:15px;letter-spacing:.04em;display:block}
+
+  /* Filtro secciones */
+  .filterbar{max-width:1180px;margin:18px auto 0;padding:0 20px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .filterbar .lbl{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--slate);font-weight:700;margin-right:4px}
+  .chip{border:1px solid var(--line);background:var(--card);color:var(--navy);font:inherit;font-size:13px;font-weight:600;
+        padding:7px 15px;border-radius:20px;cursor:pointer;transition:.15s}
+  .chip:hover{border-color:var(--teal);color:var(--teal-d)}
+  .chip.on{background:var(--navy);border-color:var(--navy);color:#fff}
+
+  /* KPI */
+  .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-top:20px}
+  .kpi{background:var(--card);border-radius:14px;padding:18px 18px 16px;box-shadow:var(--shadow);
+       border-top:3px solid var(--teal);position:relative}
+  .kpi .k-lbl{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--slate);font-weight:700}
+  .kpi .k-val{font-size:34px;font-weight:700;letter-spacing:-.03em;margin-top:4px;color:var(--navy)}
+  .kpi .k-sub{font-size:12px;color:var(--slate);margin-top:2px}
+  .badge{display:inline-block;font-size:11px;font-weight:700;padding:3px 9px;border-radius:12px;margin-top:8px}
+  .badge.ok{background:#dcfce7;color:var(--green)} .badge.no{background:#fee2e2;color:var(--red)}
+  .gauge{position:absolute;right:14px;top:14px}
+
+  /* Grid tarjetas */
+  .grid{display:grid;grid-template-columns:1.35fr 1fr;gap:16px;margin-top:16px}
+  .card{background:var(--card);border-radius:14px;padding:18px 20px 14px;box-shadow:var(--shadow)}
+  .card h2{font-size:14px;font-weight:700;color:var(--navy);letter-spacing:-.01em;display:flex;
+           align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px}
+  .card .h-note{font-size:11px;color:var(--slate);font-weight:500}
+  .card.full{grid-column:1/-1}
+  .legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:10px;font-size:12px;color:var(--slate)}
+  .legend i{display:inline-block;width:11px;height:3px;border-radius:2px;margin-right:5px;vertical-align:middle}
+  .metaflag{font-size:11px;color:var(--teal-d);font-weight:600}
+
+  #compChart svg,#advChart svg,#itemBars svg,#orthoBars svg,#distChart svg{display:block;width:100%;height:auto;overflow:visible}
+  .gauge{width:52px;height:52px;overflow:visible}
+  .axis{stroke:var(--line);stroke-width:1}
+  .grid-l{stroke:#eef3f7;stroke-width:1}
+  .meta-l{stroke:var(--teal);stroke-width:1.5;stroke-dasharray:5 4}
+  .tick{fill:var(--slate);font-size:11px}
+  .ptlbl{fill:var(--navy);font-size:11px;font-weight:700}
+  .barlbl{fill:#fff;font-size:12px;font-weight:700}
+  .cat{fill:var(--ink);font-size:12px;font-weight:600}
+
+  footer{margin-top:22px;font-size:11.5px;color:var(--slate);line-height:1.6;
+         border-top:1px solid var(--line);padding-top:14px}
+  footer b{color:var(--navy)}
+
+  @media(max-width:900px){.kpis{grid-template-columns:repeat(2,1fr)}.grid{grid-template-columns:1fr}}
+  @media print{body{background:#fff}.chip{display:none}
+    .card,.kpi{box-shadow:none;border:1px solid var(--line)}}
+
+  /* Resumen del periodo */
+  .sum-kpis{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+  .sum-chip{flex:1 1 150px;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 14px}
+  .sum-chip .sc-lbl{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--slate);font-weight:700}
+  .sum-chip .sc-val{font-size:19px;font-weight:700;color:var(--navy);margin-top:2px}
+  .sum-chip .sc-sub{font-size:11.5px;color:var(--slate);margin-top:1px}
+  .sum-text{font-size:14px;line-height:1.65;color:var(--ink2)}
+
+  /* Objetivos */
+  .obj-box{display:flex;flex-direction:column;gap:10px;margin-bottom:16px;padding-bottom:16px;border-bottom:1px solid var(--line)}
+  .obj-row{display:flex;gap:14px;align-items:baseline;flex-wrap:wrap}
+  .obj-lbl{flex:0 0 150px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--teal-d);
+           font-weight:700;background:var(--teal-soft);padding:4px 10px;border-radius:6px;white-space:nowrap}
+  .obj-row p{flex:1 1 400px;font-size:13.5px;line-height:1.55;color:var(--ink2);margin:0}
+
+  /* Nota especial (Ortopedistas) */
+  .note-card{display:flex;gap:14px;align-items:flex-start;margin-top:16px;padding:14px 16px;
+             background:#f0f6fa;border:1px solid #cfe0ec;border-radius:10px}
+  .note-icon{flex:0 0 auto;width:34px;height:34px;border-radius:50%;background:var(--navy);color:#fff;
+             font-size:16px;font-weight:700;display:flex;align-items:center;justify-content:center}
+  .note-body{flex:1}
+  .note-title{font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--navy);font-weight:700}
+  .note-sub{font-size:12.5px;color:var(--ink2);margin-top:4px;line-height:1.5}
+
+  /* Detalle de evaluaciones */
+  .detail-controls{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+  .dtl-input{font:inherit;font-size:13px;padding:8px 12px;border:1px solid var(--line);border-radius:8px;
+             background:#fff;color:var(--ink);min-width:160px}
+  .dtl-input:focus{outline:none;border-color:var(--teal)}
+  #searchBox{flex:1 1 260px}
+  .tbl-scroll{overflow-x:auto;max-height:420px;overflow-y:auto;border:1px solid var(--line);border-radius:10px}
+  .dtl-table{width:100%;border-collapse:collapse;font-size:12.5px;min-width:720px}
+  .dtl-table thead th{position:sticky;top:0;background:var(--navy);color:#fff;text-align:left;
+                       padding:9px 10px;font-size:11px;letter-spacing:.05em;text-transform:uppercase;white-space:nowrap}
+  .dtl-table tbody td{padding:7px 10px;border-bottom:1px solid var(--line);white-space:nowrap;color:var(--ink2)}
+  .dtl-table tbody tr:nth-child(even){background:#f7fafc}
+  .dtl-table tbody tr:hover{background:var(--teal-soft)}
+  .dtl-table td.tab{font-weight:700}
+  .dtl-count{margin-top:8px;font-size:12px;color:var(--slate)}
+
+  .pill{display:inline-block;font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:10px}
+  .pill.ok{background:#dcfce7;color:var(--green)}
+  .pill.mid{background:#fef3c7;color:var(--amber)}
+  .pill.low{background:#fee2e2;color:var(--red)}
+
+  .section-title{font-size:18px;font-weight:700;color:var(--navy);margin:30px 0 4px;letter-spacing:-.01em}
+  .section-sub{font-size:12.5px;color:var(--slate);margin-bottom:14px}
+</style>
+</head>
+<body>
+<header>
+  <div class="hd">
+    <div>
+      <div class="eyebrow">Indicador de Calidad · 1er Semestre 2026</div>
+      <h1>Encuestas de Satisfacción del Cliente
+        <span>Eficacia · Oportunidad · Desempeño · Comunicación — Meta ≥ 4,5</span></h1>
+    </div>
+    <div class="brand"><b>BIO STEEL DE COLOMBIA</b>Osteosíntesis · Calidad del Servicio<br>Clientes Institucionales · Ortopedistas</div>
+  </div>
+</header>
+
+<div class="filterbar" id="views"><span class="lbl">Encuesta</span></div>
+
+<div class="wrap">
+
+  <div class="kpis" id="kpis"></div>
+
+  <div class="grid">
+    <div class="card full">
+      <h2>Calificación por componente <span class="h-note">Escala 1–5 · Meta 4,5</span></h2>
+      <div id="compChart"></div>
+      <div class="legend">
+        <span><i style="background:var(--navy)"></i>Promedio del componente</span>
+        <span><i style="background:var(--teal)"></i>Meta 4,5</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Calificación por encuesta / cliente <span class="h-note" id="adv-note">18 encuestas</span></h2>
+      <div id="advChart"></div>
+    </div>
+
+    <div class="card">
+      <h2>Distribución de calificaciones <span class="h-note">342 respuestas</span></h2>
+      <div id="distChart"></div>
+    </div>
+
+    <div class="card full">
+      <h2>Promedio por pregunta / ítem evaluado <span class="h-note">19 ítems · encuesta institucional</span></h2>
+      <div id="itemBars"></div>
+    </div>
+
+    <div class="card full" id="summaryCard">
+      <h2>Resumen del periodo <span class="h-note">Enero – Junio 2026</span></h2>
+      <div class="obj-box">
+        <div class="obj-row"><span class="obj-lbl">Objetivo general</span><p>Evaluar el nivel de satisfacción de los clientes institucionales con respecto al servicio prestado por Bio Steel de Colombia, con el fin de identificar fortalezas y áreas de mejora que permitan optimizar la calidad de la atención y los procesos internos.</p></div>
+        <div class="obj-row"><span class="obj-lbl">Objetivo específico</span><p>Analizar la eficacia del servicio, la oportunidad de respuesta, el desempeño del personal y la comunicación con los procesos, a través de una encuesta de 19 criterios aplicada a los clientes institucionales durante el primer semestre de 2026.</p></div>
+      </div>
+      <div class="sum-kpis" id="sumKpis"></div>
+      <p class="sum-text" id="sumText"></p>
+    </div>
+
+    <div class="card full">
+      <h2>Detalle de encuestas <span class="h-note" id="detail-note">18 encuestas registradas</span></h2>
+      <div class="detail-controls">
+        <input type="text" id="searchBox" class="dtl-input" placeholder="Buscar cliente, cargo…">
+      </div>
+      <div class="tbl-scroll">
+        <table class="dtl-table" id="dtlTable">
+          <thead>
+            <tr>
+              <th>N.º</th><th>Fecha</th><th>Cliente / referencia</th><th>Cargo</th>
+              <th>Promedio</th><th>Porcentaje</th><th>Nivel</th>
+            </tr>
+          </thead>
+          <tbody id="dtlBody"></tbody>
+        </table>
+      </div>
+      <div class="dtl-count" id="dtlCount"></div>
+    </div>
+  </div>
+
+  <div class="section-title">Encuesta de Satisfacción · Especialistas (Ortopedistas)</div>
+  <div class="section-sub">FOR-GC-011 · Encuesta ampliada de 14 criterios aplicada desde 2026 · 4 respuestas recibidas en mayo de 2026</div>
+
+  <div class="grid">
+    <div class="kpis" id="orthoKpis" style="grid-column:1/-1;margin-top:0"></div>
+
+    <div class="card full">
+      <h2>Promedio por criterio evaluado <span class="h-note">1er Semestre 2026 · n = 4</span></h2>
+      <div id="orthoBars"></div>
+    </div>
+
+    <div class="card full">
+      <div class="note-card">
+        <div class="note-icon">i</div>
+        <div class="note-body">
+          <div class="note-title">Nota metodológica</div>
+          <div class="note-sub">A partir de 2026 la encuesta de Satisfacción del Cliente (Especialista) se amplió de 3 a 14 criterios; el resultado se basa en 4 respuestas recibidas en mayo de 2026, provenientes de Cali, Cartagena, Barranquilla y Santa Marta. El 75% de los encuestados (3 de 4) recomendaría los servicios de Bio Steel a otros profesionales o instituciones.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <b>Metodología.</b> El indicador de encuestas institucionales corresponde al promedio de 19 criterios (escala 1–5) agrupados en 4 componentes: Eficacia del servicio, Oportunidad del servicio, Desempeño del personal y Comunicación. La meta institucional es ≥ 4,5.
+    El indicador de especialistas (ortopedistas) corresponde al promedio de 14 criterios (escala 1–5) recolectados vía formulario, formato FOR-GC-011.<br>
+    <b>Alcance.</b> Encuestas institucionales: 18 encuestas · 342 respuestas analizadas · Enero–Junio 2026. Encuesta de especialistas: 4 respuestas · Mayo 2026 · Cali, Cartagena, Barranquilla y Santa Marta.
+  </footer>
+</div>
+
+<script>
+const DATA = {"records": [{"encuesta": 1, "fecha": "19/05/2026", "cliente": "Inversiones Médicas Valle Salud – Jamundí", "cargo": "Coordinador", "items": [5.0, 4.0, 4.0, 4.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 4.0, 5.0, 4.0, 4.0, 4.0, 5.0, 5.0, 5.0, 5.0], "promedio": 4.632, "pct": 0.9263}, {"encuesta": 2, "fecha": "19/05/2026", "cliente": "Inversiones Médicas Barú – Alvernia", "cargo": "Coordinador", "items": [5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0], "promedio": 4.579, "pct": 0.9158}, {"encuesta": 3, "fecha": "19/05/2026", "cliente": "Inversiones Médicas Valle Salud – Trauma Oriente", "cargo": "Coordinador", "items": [4.0, 4.0, 4.0, 4.0, 5.0, 4.0, 4.0, 4.0, 4.0, 4.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0], "promedio": 4.526, "pct": 0.9053}, {"encuesta": 4, "fecha": "19/05/2026", "cliente": "Inversiones Médicas Valle Salud – Sede Sur", "cargo": "Coordinador", "items": [4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0], "promedio": 4.0, "pct": 0.8}, {"encuesta": 5, "fecha": "19/05/2026", "cliente": "Inversiones Médicas Valle Salud – San Fernando", "cargo": "Coordinador", "items": [4.0, 4.0, 4.0, 4.0, 5.0, 4.0, 5.0, 4.0, 5.0, 4.0, 5.0, 5.0, 4.0, 4.0, 4.0, 4.0, 5.0, 5.0, 5.0], "promedio": 4.421, "pct": 0.8842}, {"encuesta": 6, "fecha": "19/05/2026", "cliente": "Inversiones Médicas Valle Salud – Sede Norte", "cargo": "Coordinador", "items": [5.0, 5.0, 5.0, 5.0, 4.0, 5.0, 4.0, 5.0, 5.0, 4.0, 5.0, 4.0, 5.0, 5.0, 4.0, 4.0, 5.0, 4.0, 5.0], "promedio": 4.632, "pct": 0.9263}, {"encuesta": 7, "fecha": "19/05/2026", "cliente": "Inversiones Médicas Barú", "cargo": "Coordinador", "items": [4.0, 4.0, 4.0, 4.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 4.0, 5.0, 5.0, 4.0, 4.0, 5.0, 5.0, 4.0], "promedio": 4.579, "pct": 0.9158}, {"encuesta": 8, "fecha": "19/05/2026", "cliente": "Inversiones Azalud", "cargo": "Gerente", "items": [5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0], "promedio": 4.579, "pct": 0.9158}, {"encuesta": 9, "fecha": "19/05/2026", "cliente": "Fundación Campbell", "cargo": "Gerente", "items": [5.0, 5.0, 5.0, 4.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 4.0, 4.0, 4.0, 4.0, 5.0, 5.0, 5.0, 5.0], "promedio": 4.737, "pct": 0.9474}, {"encuesta": 10, "fecha": "06/01/2026", "cliente": "Fundación Campbell – San Fernando", "cargo": "Coordinador", "items": [5.0, 5.0, 5.0, 5.0, 4.0, 5.0, 5.0, 4.0, 4.0, 4.0, 5.0, 4.0, 4.0, 4.0, 4.0, 4.0, 5.0, 5.0, 5.0], "promedio": 4.526, "pct": 0.9053}, {"encuesta": 11, "fecha": "06/01/2026", "cliente": "Inversiones Azalud", "cargo": "No especificado", "items": [5.0, 5.0, 5.0, 5.0, 4.0, 4.0, 4.0, 4.0, 5.0, 5.0, 4.0, 4.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0], "promedio": 4.684, "pct": 0.9368}, {"encuesta": 12, "fecha": "06/01/2026", "cliente": "Inversiones Médicas Barú", "cargo": "Coordinador", "items": [5.0, 5.0, 5.0, 5.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0], "promedio": 4.632, "pct": 0.9263}, {"encuesta": 13, "fecha": "06/01/2026", "cliente": "Inversiones Médicas Valle Salud – Sede Norte", "cargo": "Gerente", "items": [4.0, 4.0, 4.0, 5.0, 4.0, 4.0, 4.0, 4.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0], "promedio": 4.632, "pct": 0.9263}, {"encuesta": 14, "fecha": "06/01/2026", "cliente": "Inversiones Médicas Valle Salud – Sede Sur", "cargo": "Gerente", "items": [4.0, 4.0, 4.0, 4.0, 5.0, 4.0, 5.0, 5.0, 4.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0], "promedio": 4.684, "pct": 0.9368}, {"encuesta": 15, "fecha": "06/01/2026", "cliente": "Inversiones Médicas Valle Salud – San Fernando", "cargo": "Coordinador", "items": [5.0, 4.0, 5.0, 5.0, 5.0, 5.0, 4.0, 4.0, 4.0, 4.0, 4.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0], "promedio": 4.684, "pct": 0.9368}, {"encuesta": 16, "fecha": "06/01/2026", "cliente": "Inversiones Médicas Valle Salud – Trauma Oriente", "cargo": "Coordinador", "items": [5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 4.0, 4.0, 5.0, 4.0, 4.0, 4.0, 5.0, 4.0, 5.0, 4.0], "promedio": 4.632, "pct": 0.9263}, {"encuesta": 17, "fecha": "06/01/2026", "cliente": "Alvernia", "cargo": "Gerente", "items": [5.0, 5.0, 4.0, 4.0, 5.0, 4.0, 4.0, 4.0, 4.0, 4.0, 5.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0], "promedio": 4.211, "pct": 0.8421}, {"encuesta": 18, "fecha": "06/01/2026", "cliente": "Inversiones Médicas Valle Salud – Jamundí", "cargo": "Coordinador", "items": [5.0, 5.0, 5.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 5.0, 5.0, 5.0, 5.0, 5.0, 4.0, 5.0, 4.0], "promedio": 4.474, "pct": 0.8947}], "questions": [{"codigo": "1.1", "pregunta": "Agilidad y rapidez de la prestación del servicio", "promedio": 4.667, "pct": 0.9333, "nivel": "Muy satisfecho"}, {"codigo": "1.2", "pregunta": "Ejecución correcta del servicio y a la primera vez", "promedio": 4.556, "pct": 0.9111, "nivel": "Muy satisfecho"}, {"codigo": "1.3", "pregunta": "Capacidad de reacción ante imprevistos/urgencias", "promedio": 4.556, "pct": 0.9111, "nivel": "Muy satisfecho"}, {"codigo": "1.4", "pregunta": "Claridad de la información", "promedio": 4.5, "pct": 0.9, "nivel": "Muy satisfecho"}, {"codigo": "2.1", "pregunta": "Tiempos de respuesta para suministro de material de osteosíntesis", "promedio": 4.611, "pct": 0.9222, "nivel": "Muy satisfecho"}, {"codigo": "2.2", "pregunta": "Tiempos de respuesta para envío de cotizaciones", "promedio": 4.5, "pct": 0.9, "nivel": "Muy satisfecho"}, {"codigo": "2.3", "pregunta": "Tiempos de respuesta para envío de facturas", "promedio": 4.5, "pct": 0.9, "nivel": "Muy satisfecho"}, {"codigo": "2.4", "pregunta": "Facilidad para contactar responsable de cotizaciones", "promedio": 4.444, "pct": 0.8889, "nivel": "Satisfecho"}, {"codigo": "2.5", "pregunta": "Facilidad para contactar responsable de facturación", "promedio": 4.556, "pct": 0.9111, "nivel": "Muy satisfecho"}, {"codigo": "2.6", "pregunta": "Facilidad para contactar responsable de contabilidad", "promedio": 4.444, "pct": 0.8889, "nivel": "Satisfecho"}, {"codigo": "2.7", "pregunta": "Facilidad para contactar responsable de asesoría quirúrgica", "promedio": 4.611, "pct": 0.9222, "nivel": "Muy satisfecho"}, {"codigo": "3.1", "pregunta": "Preparación y capacitación del personal", "promedio": 4.5, "pct": 0.9, "nivel": "Muy satisfecho"}, {"codigo": "3.2", "pregunta": "Actitud y cortesía del personal", "promedio": 4.5, "pct": 0.9, "nivel": "Muy satisfecho"}, {"codigo": "3.3", "pregunta": "Claridad en explicaciones, requisitos y documentación", "promedio": 4.5, "pct": 0.9, "nivel": "Muy satisfecho"}, {"codigo": "3.4", "pregunta": "Presentación personal de los funcionarios", "promedio": 4.389, "pct": 0.8778, "nivel": "Satisfecho"}, {"codigo": "4.1", "pregunta": "Comunicación oportuna con los procesos", "promedio": 4.556, "pct": 0.9111, "nivel": "Muy satisfecho"}, {"codigo": "4.2", "pregunta": "Información oportuna sobre novedades, cambios o demoras", "promedio": 4.667, "pct": 0.9333, "nivel": "Muy satisfecho"}, {"codigo": "4.3", "pregunta": "Claridad y comprensión de la información", "promedio": 4.722, "pct": 0.9444, "nivel": "Muy satisfecho"}, {"codigo": "4.4", "pregunta": "Coherencia de la información entre procesos", "promedio": 4.611, "pct": 0.9222, "nivel": "Muy satisfecho"}], "components": [{"nombre": "Eficacia del servicio", "promedio": 4.569, "pct": 0.9139, "nivel": "Muy satisfecho"}, {"nombre": "Oportunidad del servicio", "promedio": 4.524, "pct": 0.9048, "nivel": "Muy satisfecho"}, {"nombre": "Desempeño del personal", "promedio": 4.472, "pct": 0.8944, "nivel": "Satisfecho"}, {"nombre": "Comunicación", "promedio": 4.639, "pct": 0.9278, "nivel": "Muy satisfecho"}], "overall": {"promedio": 4.547, "pct": 0.9094, "nivel": "Muy satisfecho", "total_encuestas": 18, "total_respuestas": 342, "dist": {"5": 187, "4": 155, "3": 0, "2": 0, "1": 0}}, "ortho": {"items": [{"label": "Claridad y precisión de la información solicitada", "short": "Claridad info", "val": 4.5}, {"label": "Amabilidad y disposición del personal para atender solicitudes", "short": "Amabilidad", "val": 4.75}, {"label": "Rapidez en la entrega de la información solicitada", "short": "Rapidez info", "val": 4.0}, {"label": "Variedad y disponibilidad de productos ofrecidos", "short": "Variedad productos", "val": 4.0}, {"label": "Cumplimiento en los tiempos de entrega del material solicitado", "short": "Tiempos entrega", "val": 3.5}, {"label": "Conocimiento técnico y asesoría brindada por el personal", "short": "Conoc. técnico", "val": 4.5}, {"label": "Nivel de conocimiento técnico del asesor quirúrgico", "short": "Conoc. asesor", "val": 4.75}, {"label": "Cumplimiento en la disponibilidad del asesor asignado", "short": "Disp. asesor", "val": 4.75}, {"label": "Oportunidad de respuesta y acompañamiento en procedimientos quirúrgicos", "short": "Acompañamiento", "val": 4.75}, {"label": "Seguimiento postventa a requerimientos o inquietudes", "short": "Postventa", "val": 3.75}, {"label": "Facilidad de comunicación con el equipo logístico o servicio al cliente", "short": "Com. logística", "val": 3.5}, {"label": "Facilidad de contacto con el proceso administrativo", "short": "Contacto admin", "val": 4.0}, {"label": "Calidad de la orientación brindada antes, durante y después del procedimiento", "short": "Orientación", "val": 4.25}, {"label": "Satisfacción general con la calidad del servicio", "short": "Satisf. general", "val": 4.25}], "promedio": 4.23, "n": 4, "recomendaria_pct": 0.75, "ciudades": ["Cali", "Cartagena", "Barranquilla", "Santa Marta"]}}
+;
+
+const COL={navy:'#1F4E79',teal:'#0FB5AE',green:'#16A34A',amber:'#D97706',red:'#DC2626',slate:'#5a6b7e',violet:'#7C3AED'};
+function statusColor(v){ if(v>=4.5) return COL.green; if(v>=4.3) return COL.amber; return COL.red; }
+function fmt(v){ return v==null?'—':v.toFixed(2).replace('.',','); }
+function fmtPct(v){ return v==null?'—':(v*100).toFixed(1).replace('.',',')+'%'; }
+
+let view = 'inst'; // 'inst' = institucional, 'ortho' = ortopedistas
+
+/* ---------- Chips (vista) ---------- */
+const viewsEl=document.getElementById('views');
+function mkChip(label,val){
+  const b=document.createElement('button'); b.className='chip'+(view===val?' on':''); b.textContent=label;
+  b.onclick=()=>{view=val;render();}; return b;
+}
+function buildChips(){
+  viewsEl.querySelectorAll('.chip').forEach(c=>c.remove());
+  viewsEl.appendChild(mkChip('Clientes institucionales','inst'));
+  viewsEl.appendChild(mkChip('Ortopedistas (especialistas)','ortho'));
+}
+
+/* ---------- Radial gauge ---------- */
+function radial(v){
+  const p=Math.max(0,Math.min(1,(v-3)/2)); const r=20,c=2*Math.PI*r,off=c*(1-p);
+  const col=statusColor(v);
+  return `<svg class="gauge" width="52" height="52" viewBox="0 0 52 52">
+    <circle cx="26" cy="26" r="${r}" fill="none" stroke="#eef3f7" stroke-width="6"/>
+    <circle cx="26" cy="26" r="${r}" fill="none" stroke="${col}" stroke-width="6" stroke-linecap="round"
+      stroke-dasharray="${c}" stroke-dashoffset="${off}" transform="rotate(-90 26 26)"/>
+    </svg>`;
+}
+
+/* ---------- KPIs institucional ---------- */
+function renderKPIs(){
+  const k=document.getElementById('kpis'); k.innerHTML='';
+  const o=DATA.overall;
+  const best = DATA.records.reduce((a,b)=>b.promedio>a.promedio?b:a, DATA.records[0]);
+  const worst = DATA.records.reduce((a,b)=>b.promedio<a.promedio?b:a, DATA.records[0]);
+  const cards=[
+    {l:'Promedio general',v:fmt(o.promedio),s:fmtPct(o.pct)+' · escala 1–5',g:o.promedio,badge:o.promedio>=4.5},
+    {l:'Encuestas / respuestas',v:o.total_encuestas,s:o.total_respuestas+' respuestas analizadas',plain:true},
+    {l:'Mejor encuesta',v:fmt(best.promedio),s:best.cliente.length>28?best.cliente.slice(0,28)+'…':best.cliente,g:best.promedio},
+    {l:'Encuesta más baja',v:fmt(worst.promedio),s:worst.cliente.length>28?worst.cliente.slice(0,28)+'…':worst.cliente,g:worst.promedio},
+  ];
+  cards.forEach(c=>{
+    const el=document.createElement('div'); el.className='kpi';
+    el.style.borderTopColor = c.plain?COL.slate:statusColor(c.g||5);
+    el.innerHTML=`${(!c.plain)?radial(c.g):''}
+      <div class="k-lbl">${c.l}</div>
+      <div class="k-val tab">${c.v}</div>
+      <div class="k-sub">${c.s}</div>
+      ${c.badge!==undefined?`<span class="badge ${c.badge?'ok':'no'}">${c.badge?'CUMPLE META':'NO CUMPLE'}</span>`:''}`;
+    k.appendChild(el);
+  });
+}
+
+/* ---------- KPIs ortopedistas ---------- */
+function renderOrthoKPIs(){
+  const k=document.getElementById('orthoKpis'); k.innerHTML='';
+  const o=DATA.ortho;
+  const best = o.items.reduce((a,b)=>b.val>a.val?b:a, o.items[0]);
+  const worst = o.items.reduce((a,b)=>b.val<a.val?b:a, o.items[0]);
+  const cards=[
+    {l:'Promedio general',v:fmt(o.promedio),s:'1er Semestre 2026 · n = '+o.n,g:o.promedio,badge:o.promedio>=4.5},
+    {l:'Recomendaría el servicio',v:fmtPct(o.recomendaria_pct),s:'3 de 4 encuestados',plain:true},
+    {l:'Criterio más alto',v:fmt(best.val),s:best.short,g:best.val},
+    {l:'Criterio a reforzar',v:fmt(worst.val),s:worst.short,g:worst.val},
+  ];
+  cards.forEach(c=>{
+    const el=document.createElement('div'); el.className='kpi';
+    el.style.borderTopColor = c.plain?COL.slate:statusColor(c.g||5);
+    el.innerHTML=`${(!c.plain)?radial(c.g):''}
+      <div class="k-lbl">${c.l}</div>
+      <div class="k-val tab">${c.v}</div>
+      <div class="k-sub">${c.s}</div>
+      ${c.badge!==undefined?`<span class="badge ${c.badge?'ok':'no'}">${c.badge?'CUMPLE META':'NO CUMPLE'}</span>`:''}`;
+    k.appendChild(el);
+  });
+}
+
+/* ---------- Barras por componente ---------- */
+function renderComp(){
+  const items = DATA.components;
+  const W=860,n=items.length,pad={l:10,r:10,t:24,b:56};
+  const bw=(W-pad.l-pad.r)/n, innerW=bw*0.5;
+  const H=230;
+  const sc=(v)=>((v-4)/1)*(H-pad.t-pad.b);
+  let g='';
+  [4,4.5,5].forEach(t=>{const y=H-pad.b-sc(t);
+    g+=`<line class="${t===4.5?'meta-l':'grid-l'}" x1="${pad.l}" y1="${y}" x2="${W-pad.r}" y2="${y}"/>`;
+    g+=`<text class="tick" x="${pad.l}" y="${y-3}" font-size="9">${t.toFixed(1).replace('.',',')}</text>`;});
+  items.forEach((it,i)=>{
+    const cx=pad.l+bw*i+bw/2, h=sc(it.promedio), y=H-pad.b-h, x=cx-innerW/2;
+    g+=`<rect x="${x}" y="${y}" width="${innerW}" height="${h}" rx="4" fill="${COL.navy}"/>`;
+    g+=`<text class="tab" x="${cx}" y="${y-8}" text-anchor="middle" font-size="13" font-weight="700" fill="${COL.navy}">${fmt(it.promedio)}</text>`;
+    const words = it.nombre.split(' ');
+    let lines=[]; let cur='';
+    words.forEach(w=>{ if((cur+' '+w).trim().length>16){lines.push(cur.trim());cur=w;} else {cur=(cur+' '+w).trim();}});
+    if(cur) lines.push(cur);
+    lines.forEach((ln,li)=>{
+      g+=`<text x="${cx}" y="${H-pad.b+16+li*12}" text-anchor="middle" font-size="10.5" fill="${COL.slate}">${ln}</text>`;
+    });
+    g+=`<title>${it.nombre}: ${fmt(it.promedio)} (${fmtPct(it.pct)}) — ${it.nivel}</title>`;
+  });
+  document.getElementById('compChart').innerHTML=`<svg viewBox="0 0 ${W} ${H}">${g}</svg>`;
+}
+
+/* ---------- Barras horizontales por encuesta/cliente ---------- */
+function renderAdv(){
+  const W=430, rowH=26, pad={l:8,r:44,t:6,b:6};
+  const sorted = [...DATA.records].sort((a,b)=>b.promedio-a.promedio);
+  const H=pad.t+pad.b+sorted.length*rowH;
+  const x0=170, xw=W-x0-pad.r;
+  const sc=(v)=>((v-4)/1)*xw;
+  let g='';
+  const metaX=x0+sc(4.5);
+  g+=`<line class="meta-l" x1="${metaX}" y1="${pad.t}" x2="${metaX}" y2="${H-pad.b}"/>`;
+  g+=`<text class="metaflag" x="${metaX}" y="${pad.t-0}" text-anchor="middle" font-size="9" dy="10">4,5</text>`;
+  sorted.forEach((r,i)=>{
+    const v=r.promedio;
+    const y=pad.t+i*rowH+4, bh=14;
+    let short=r.cliente.length>24?r.cliente.slice(0,24)+'…':r.cliente;
+    g+=`<text x="${x0-8}" y="${y+bh-3}" text-anchor="end" font-size="10.5" fill="${COL.navy}" font-weight="600">${short}</text>`;
+    g+=`<rect x="${x0}" y="${y}" width="${xw}" height="${bh}" rx="3" fill="#eef3f7"/>`;
+    const w=Math.max(sc(v),2);
+    g+=`<rect x="${x0}" y="${y}" width="${w}" height="${bh}" rx="3" fill="${statusColor(v)}"/>`;
+    g+=`<text class="tab" x="${x0+w+6}" y="${y+bh-3}" font-size="10.5" font-weight="700" fill="${COL.navy}">${fmt(v)}</text>`;
+    g+=`<title>${r.cliente}: ${fmt(v)} (${fmtPct(r.pct)})</title>`;
+  });
+  document.getElementById('advChart').innerHTML=`<svg viewBox="0 0 ${W} ${H}">${g}</svg>`;
+}
+
+/* ---------- Distribución de calificaciones (dona) ---------- */
+function renderDist(){
+  const dist = DATA.overall.dist;
+  const entries = [['5',dist['5'],COL.green],['4',dist['4'],COL.teal],['3',dist['3'],COL.amber],['2',dist['2'],'#f59e0b'],['1',dist['1'],COL.red]]
+    .filter(e=>e[1]>0);
+  const total = entries.reduce((s,e)=>s+e[1],0);
+  const W=430,H=230, cx=115, cy=115, r=85, rInner=52;
+  let g='', angle=-Math.PI/2;
+  entries.forEach(([label,val,color])=>{
+    const frac = val/total;
+    const a0=angle, a1=angle+frac*2*Math.PI;
+    const x0=cx+r*Math.cos(a0), y0=cy+r*Math.sin(a0);
+    const x1=cx+r*Math.cos(a1), y1=cy+r*Math.sin(a1);
+    const xi0=cx+rInner*Math.cos(a1), yi0=cy+rInner*Math.sin(a1);
+    const xi1=cx+rInner*Math.cos(a0), yi1=cy+rInner*Math.sin(a0);
+    const large = frac>0.5?1:0;
+    g+=`<path d="M ${x0} ${y0} A ${r} ${r} 0 ${large} 1 ${x1} ${y1} L ${xi0} ${yi0} A ${rInner} ${rInner} 0 ${large} 0 ${xi1} ${yi1} Z" fill="${color}"><title>Calificación ${label}: ${val} respuestas (${(frac*100).toFixed(1).replace('.',',')}%)</title></path>`;
+    angle=a1;
+  });
+  g+=`<text x="${cx}" y="${cy-4}" text-anchor="middle" font-size="22" font-weight="700" fill="${COL.navy}">${total}</text>`;
+  g+=`<text x="${cx}" y="${cy+14}" text-anchor="middle" font-size="10.5" fill="${COL.slate}">respuestas</text>`;
+  let ly=30;
+  const legX=260;
+  entries.forEach(([label,val,color])=>{
+    g+=`<rect x="${legX}" y="${ly-9}" width="11" height="11" rx="2" fill="${color}"/>`;
+    g+=`<text x="${legX+18}" y="${ly}" font-size="12.5" fill="${COL.ink2||'#16324b'}">Calificación ${label} · ${val} (${(val/total*100).toFixed(1).replace('.',',')}%)</text>`;
+    ly+=26;
+  });
+  document.getElementById('distChart').innerHTML=`<svg viewBox="0 0 ${W} ${H}">${g}</svg>`;
+}
+
+/* ---------- Barras por pregunta/ítem (institucional) ---------- */
+function renderItemBars(){
+  const items = DATA.questions;
+  const W=1140,n=items.length,pad={l:14,r:14,t:24,b:70};
+  const bw=(W-pad.l-pad.r)/n, innerW=bw*0.6;
+  const H=250;
+  const sc=(v)=>((v-4)/1)*(H-pad.t-pad.b);
+  let g='';
+  [4,4.5,5].forEach(t=>{const y=H-pad.b-sc(t);
+    g+=`<line class="${t===4.5?'meta-l':'grid-l'}" x1="${pad.l}" y1="${y}" x2="${W-pad.r}" y2="${y}"/>`;
+    g+=`<text class="tick" x="${pad.l}" y="${y-3}" font-size="9">${t.toFixed(1).replace('.',',')}</text>`;});
+  items.forEach((it,i)=>{
+    const cx=pad.l+bw*i+bw/2, h=sc(it.promedio), y=H-pad.b-h, x=cx-innerW/2;
+    g+=`<rect x="${x}" y="${y}" width="${innerW}" height="${h}" rx="3" fill="${statusColor(it.promedio)}"/>`;
+    g+=`<text class="tab" x="${cx}" y="${y-6}" text-anchor="middle" font-size="10.5" font-weight="700" fill="${COL.navy}">${fmt(it.promedio)}</text>`;
+    g+=`<text x="${cx}" y="${H-pad.b+14}" text-anchor="middle" font-size="10" fill="${COL.slate}" font-weight="600">${it.codigo}</text>`;
+    g+=`<title>${it.codigo} — ${it.pregunta}: ${fmt(it.promedio)} (${fmtPct(it.pct)}) — ${it.nivel}</title>`;
+  });
+  document.getElementById('itemBars').innerHTML=`<svg viewBox="0 0 ${W} ${H}">${g}</svg>`;
+}
+
+/* ---------- Barras por criterio (ortopedistas) ---------- */
+function renderOrthoBars(){
+  const items = DATA.ortho.items;
+  const W=1140,n=items.length,pad={l:14,r:14,t:24,b:110};
+  const bw=(W-pad.l-pad.r)/n, innerW=bw*0.58;
+  const H=290;
+  const sc=(v)=>((v-3)/2)*(H-pad.t-pad.b);
+  let g='';
+  [3,3.5,4,4.5,5].forEach(t=>{const y=H-pad.b-sc(t);
+    g+=`<line class="${t===4.5?'meta-l':'grid-l'}" x1="${pad.l}" y1="${y}" x2="${W-pad.r}" y2="${y}"/>`;
+    g+=`<text class="tick" x="${pad.l}" y="${y-3}" font-size="9">${t.toFixed(1).replace('.',',')}</text>`;});
+  items.forEach((it,i)=>{
+    const cx=pad.l+bw*i+bw/2, h=sc(it.val), y=H-pad.b-h, x=cx-innerW/2;
+    g+=`<rect x="${x}" y="${y}" width="${innerW}" height="${h}" rx="3" fill="${statusColor(it.val)}"/>`;
+    g+=`<text class="tab" x="${cx}" y="${y-6}" text-anchor="middle" font-size="11" font-weight="700" fill="${COL.navy}">${fmt(it.val)}</text>`;
+    const words = it.short.split(' ');
+    let lines=[]; let cur='';
+    words.forEach(w=>{ if((cur+' '+w).trim().length>12){lines.push(cur.trim());cur=w;} else {cur=(cur+' '+w).trim();}});
+    if(cur) lines.push(cur);
+    lines.forEach((ln,li)=>{
+      g+=`<text x="${cx}" y="${H-pad.b+16+li*12}" text-anchor="middle" font-size="10" fill="${COL.slate}">${ln}</text>`;
+    });
+    g+=`<title>${it.label}: ${fmt(it.val)}</title>`;
+  });
+  document.getElementById('orthoBars').innerHTML=`<svg viewBox="0 0 ${W} ${H}">${g}</svg>`;
+}
+
+/* ---------- Resumen del periodo ---------- */
+function renderSummary(){
+  const o = DATA.overall;
+  const best = DATA.records.reduce((a,b)=>b.promedio>a.promedio?b:a, DATA.records[0]);
+  const worst = DATA.records.reduce((a,b)=>b.promedio<a.promedio?b:a, DATA.records[0]);
+  const maxPct = ((DATA.overall.dist['5']/DATA.overall.total_respuestas)*100).toFixed(0);
+  const lowestComp = DATA.components.reduce((a,b)=>b.promedio<a.promedio?b:a, DATA.components[0]);
+  const chips=[
+    {l:'Margen vs. meta', v:'+'+(o.promedio-4.5).toFixed(2).replace('.',',')},
+    {l:'Calificaciones máximas (5)', v:maxPct+'%'},
+    {l:'Mejor encuesta', v:fmt(best.promedio)},
+    {l:'Componente a reforzar', v:lowestComp.nombre},
+  ];
+  document.getElementById('sumKpis').innerHTML = chips.map(c=>
+    `<div class="sum-chip"><div class="sc-lbl">${c.l}</div><div class="sc-val">${c.v}</div></div>`).join('');
+  document.getElementById('sumText').textContent =
+    `El consolidado de las ${o.total_encuestas} encuestas institucionales aplicadas en el primer semestre de 2026 registra un promedio general de ${fmt(o.promedio)} sobre 5 (${fmtPct(o.pct)}), superando la meta institucional de 4,5. Las respuestas se concentran en las calificaciones 4 y 5, sin registros en 3, 2 ni 1. El componente de Comunicación fue el de mejor desempeño (${fmt(DATA.components.find(c=>c.nombre==='Comunicación').promedio)}), mientras que ${lowestComp.nombre} (${fmt(lowestComp.promedio)}) representa la principal oportunidad de mejora. La encuesta con calificación más baja fue "${worst.cliente}" (${fmt(worst.promedio)}), lo que sugiere un seguimiento puntual con ese cliente.`;
+}
+
+/* ---------- Detalle de encuestas (tabla filtrable) ---------- */
+function nivelFromPromedio(v){
+  if(v>=4.5) return 'Muy satisfecho';
+  if(v>=3.5) return 'Satisfecho';
+  if(v>=2.5) return 'Algo satisfecho';
+  if(v>=1.5) return 'Insatisfecho';
+  return 'Muy insatisfecho';
+}
+function pillClass(v){ if(v>=4.5) return 'ok'; if(v>=4.0) return 'mid'; return 'low'; }
+function renderDetail(){
+  const q = (document.getElementById('searchBox').value||'').toLowerCase().trim();
+  let rows = [...DATA.records];
+  if(q) rows = rows.filter(r =>
+    r.cliente.toLowerCase().includes(q) ||
+    (r.cargo||'').toLowerCase().includes(q));
+  const body=document.getElementById('dtlBody');
+  if(rows.length===0){
+    body.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--slate);padding:16px">Sin resultados para este filtro.</td></tr>`;
+  }else{
+    body.innerHTML = rows.map(r=>`<tr>
+      <td>${r.encuesta}</td>
+      <td>${r.fecha||'—'}</td>
+      <td>${r.cliente}</td>
+      <td>${r.cargo||'—'}</td>
+      <td class="tab" style="color:${statusColor(r.promedio)}">${fmt(r.promedio)}</td>
+      <td class="tab">${fmtPct(r.pct)}</td>
+      <td><span class="pill ${pillClass(r.promedio)}">${nivelFromPromedio(r.promedio)}</span></td>
+    </tr>`).join('');
+  }
+  document.getElementById('dtlCount').textContent = `${rows.length} encuesta(s) encontradas`;
+  document.getElementById('detail-note').textContent = `${DATA.overall.total_encuestas} encuestas registradas`;
+}
+function buildSearch(){
+  const box=document.getElementById('searchBox');
+  if(box.dataset.bound) return;
+  box.oninput = renderDetail;
+  box.dataset.bound='1';
+}
+
+/* ---------- Toggle secciones según vista ---------- */
+function applyView(){
+  const instKpis = document.getElementById('kpis');
+  const instBlock = document.querySelectorAll('.grid')[0];
+  const orthoTitle = document.querySelector('.section-title');
+  const orthoSub = document.querySelector('.section-sub');
+  const orthoGrid = document.querySelectorAll('.grid')[1];
+
+  if(view==='inst'){
+    instKpis.style.display='';
+    instBlock.style.display='';
+    orthoTitle.style.display='none';
+    orthoSub.style.display='none';
+    orthoGrid.style.display='none';
+  }else{
+    instKpis.style.display='none';
+    instBlock.style.display='none';
+    orthoTitle.style.display='';
+    orthoSub.style.display='';
+    orthoGrid.style.display='';
+  }
+}
+
+function render(){
+  buildChips();
+  applyView();
+  if(view==='inst'){
+    renderKPIs(); renderComp(); renderAdv(); renderDist(); renderItemBars(); renderSummary();
+    buildSearch(); renderDetail();
+  }else{
+    renderOrthoKPIs(); renderOrthoBars();
+  }
+}
+render();
+</script>
+</body>
+</html>

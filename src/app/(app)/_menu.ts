@@ -52,6 +52,7 @@ export const MENU_BASE: MenuGrupoDef[] = [
     { href: "/pyg", label: "📄 PyG", permiso: "cxp.view" },
     { href: "/asistencia", label: "🩺 Asistencia Técnica", permiso: "cxp.view" },
     { href: "/asistencia/pqrs", label: "📣 PQRS", permiso: "cxp.view" },
+    { href: "/encuestas", label: "🙂 Encuestas de Satisfacción", permiso: "cxp.view" },
   ] },
   { id: "compras", label: "Compras", icon: "🛍️", items: [
     { href: "/compras", label: "🛍️ Informe de Compras", permiso: "compras.view" },
