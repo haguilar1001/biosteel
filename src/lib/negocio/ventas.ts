@@ -315,6 +315,31 @@ export async function utilidadPorLista(f: FiltroConsumo, opciones: OpcionIps[]):
     .sort((a, b) => b.valor - a.valor);
 }
 
+export interface FilaIpsLista { ips: string; valor: number; costo: number }
+
+/** IPS a las que se vendió con cada lista de precios (para desplegar la lista).
+ *  Ignora el propio filtro de lista, igual que utilidadPorLista. */
+export async function ipsPorLista(f: FiltroConsumo, opciones: OpcionIps[]): Promise<Map<string, FilaIpsLista[]>> {
+  const ips = ipsDelFiltro(opciones, f);
+  const grupos = await prisma.ventaItemIps.groupBy({
+    by: ["lista", "ips"],
+    where: {
+      anio: f.anio,
+      ...(f.meses && f.meses.length ? { mes: { in: f.meses } } : {}),
+      ...(ips ? { ips: { in: ips } } : {}),
+    },
+    _sum: { valor: true, costo: true },
+  });
+  const mapa = new Map<string, FilaIpsLista[]>();
+  for (const g of grupos) {
+    const key = g.lista || SIN_LISTA;
+    if (!mapa.has(key)) mapa.set(key, []);
+    mapa.get(key)!.push({ ips: g.ips || "(sin IPS)", valor: g._sum.valor?.toNumber() ?? 0, costo: g._sum.costo?.toNumber() ?? 0 });
+  }
+  for (const arr of mapa.values()) arr.sort((a, b) => b.valor - a.valor);
+  return mapa;
+}
+
 /** Recorte por lista de precios; "(sin lista)" busca la cadena vacía. */
 function soloLista(f: FiltroConsumo) {
   if (!f.lista) return {};

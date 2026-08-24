@@ -9,7 +9,7 @@ import { Monto } from "../../_components/Monto";
 import {
   aniosConVenta, mesesConVenta, ipsConVenta, ciudadesDeIps,
   marcasFiltradas, ipsPorMarcaFiltrado, itemsPorMarcaFiltrado,
-  listasConVenta, utilidadPorLista, SIN_LISTA, type FiltroConsumo,
+  listasConVenta, utilidadPorLista, ipsPorLista, SIN_LISTA, type FiltroConsumo,
 } from "@/lib/negocio/ventas";
 import { FiltroAuto } from "../../_components/FiltroAuto";
 import { nombreLista } from "@/lib/negocio/listas-precio";
@@ -44,13 +44,14 @@ export default async function ConsumosPage({ searchParams }: { searchParams: Pro
   const listaSel = sp.lista && (listasDisp.includes(sp.lista) || sp.lista === SIN_LISTA) ? sp.lista : undefined;
   const filtro: FiltroConsumo = { anio, meses, ips: ipsSel, ciudad: ciudadSel, lista: listaSel };
 
-  const [marcasBase, ipsMap, itemsMap, porLista] = await Promise.all([
+  const [marcasBase, ipsMap, itemsMap, porLista, ipsListaMap] = await Promise.all([
     marcasFiltradas(filtro, opcionesIps),
     ipsPorMarcaFiltrado(filtro, opcionesIps),
     itemsPorMarcaFiltrado(filtro, opcionesIps),
     // El desglose por lista ignora el propio filtro de lista: si no, al elegir
     // una quedaría una sola fila y no se podrían comparar entre sí.
     utilidadPorLista({ ...filtro, lista: undefined }, opcionesIps),
+    ipsPorLista({ ...filtro, lista: undefined }, opcionesIps),
   ]);
   const ventaListas = porLista.reduce((a, l) => a + l.valor, 0);
   const hayListas = porLista.some((l) => l.lista !== SIN_LISTA);
@@ -63,6 +64,8 @@ export default async function ConsumosPage({ searchParams }: { searchParams: Pro
   const periodo = mesSel ? `${MESES[mesSel]} ${anio}` : `${anio}`;
   const GRID = "minmax(160px, 2fr) 150px 150px 150px 90px 90px";
   const GRID_ITEM = "minmax(200px, 3fr) 80px 120px 130px 130px 130px 90px";
+  const GRID_LISTA = "minmax(200px, 2fr) 140px 130px 130px 100px 100px";
+  const GRID_IPSL = "minmax(220px, 3fr) 140px 130px 130px 100px";
 
   // Orden de proveedores por columna (clic en el encabezado). Por defecto venta desc.
   const ORDENES: OrdenCol[] = ["marca", "venta", "costo", "utilidad", "margen"];
@@ -284,53 +287,73 @@ export default async function ConsumosPage({ searchParams }: { searchParams: Pro
         <div className="card" style={{ marginTop: 12 }}>
           <div className="chart-head">
             Utilidad por Lista de Precios
-            <span className="hact">{periodo} · {porLista.length} lista{porLista.length > 1 ? "s" : ""} · clic en una lista para filtrar</span>
+            <span className="hact">{periodo} · {porLista.length} lista{porLista.length > 1 ? "s" : ""} · clic en una lista para desplegar las IPS</span>
           </div>
-          <div className="tbl-wrap">
-            <table className="tabla-fit">
-              <thead>
-                <tr>
-                  <th>Lista de precios</th>
-                  <th className="r">Venta Neta</th>
-                  <th className="r">Costo</th>
-                  <th className="r">Utilidad</th>
-                  <th className="r">% Utilidad</th>
-                  <th className="r">% de la venta</th>
-                </tr>
-              </thead>
-              <tbody>
-                {porLista.map((l) => {
-                  const u = l.valor - l.costo;
-                  const pct = margen(l.valor, l.costo);
-                  const activo = listaSel === l.lista;
-                  const href = activo
-                    ? `${base}&orden=${orden}&dir=${dir}&vista=${vista}`
-                    : `${base}&orden=${orden}&dir=${dir}&vista=${vista}&lista=${encodeURIComponent(l.lista)}`;
-                  return (
-                    <tr key={l.lista} style={activo ? { background: "var(--brand-tint)" } : undefined}>
-                      <td style={{ fontWeight: 600 }}>
-                        <a href={href} title={activo ? "Quitar filtro" : "Filtrar por esta lista"}
-                          style={{ color: "inherit", textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 6 }}>
-                          <span aria-hidden style={{ color: "var(--brand)" }}>{activo ? "✓" : "▸"}</span>
-                          {nombreLista(l.lista)}
-                        </a>
-                      </td>
-                      <td className="r num"><Monto value={l.valor} /></td>
-                      <td className="r num flag"><Monto value={l.costo} /></td>
-                      <td className="r num" style={{ fontWeight: 600, color: u < 0 ? "var(--bad)" : undefined }}>
-                        <Monto value={u} />
-                      </td>
-                      <td className="r num" style={{ fontWeight: 700, color: pct < 0 ? "var(--bad)" : pct >= 40 ? "var(--ok)" : undefined }}>
-                        {formatPorcentaje(pct)}
-                      </td>
-                      <td className="r num flag">
-                        {ventaListas > 0 ? formatPorcentaje((l.valor / ventaListas) * 100) : "—"}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+          <div style={{ overflowX: "auto" }}>
+            {/* Encabezado */}
+            <div style={{ display: "grid", gridTemplateColumns: GRID_LISTA, gap: 8, alignItems: "center", padding: "8px 12px", fontWeight: 700, fontSize: 11, textTransform: "uppercase", letterSpacing: ".5px", color: "var(--muted)", borderBottom: "1px solid var(--line)" }}>
+              <span>Lista de precios</span>
+              <span style={{ textAlign: "right" }}>Venta neta</span>
+              <span style={{ textAlign: "right" }}>Costo</span>
+              <span style={{ textAlign: "right" }}>Utilidad</span>
+              <span style={{ textAlign: "right" }}>% Utilidad</span>
+              <span style={{ textAlign: "right" }}>% de la venta</span>
+            </div>
+            {porLista.map((l) => {
+              const u = l.valor - l.costo;
+              const pct = margen(l.valor, l.costo);
+              const activo = listaSel === l.lista;
+              const href = activo
+                ? `${base}&orden=${orden}&dir=${dir}&vista=${vista}`
+                : `${base}&orden=${orden}&dir=${dir}&vista=${vista}&lista=${encodeURIComponent(l.lista)}`;
+              const ipsList = ipsListaMap.get(l.lista) ?? [];
+              return (
+                <details key={l.lista} className="cons-det" open={activo}>
+                  <summary>
+                    <div style={{ display: "grid", gridTemplateColumns: GRID_LISTA, gap: 8, alignItems: "center", padding: "9px 12px", background: activo ? "var(--brand-tint)" : undefined }}>
+                      <span style={{ fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 6 }}>
+                        <span className="cons-chev">▸</span> {nombreLista(l.lista)}
+                        <span className="flag" style={{ fontWeight: 500 }}>({ipsList.length} IPS)</span>
+                      </span>
+                      <span className="num" style={{ textAlign: "right" }}><Monto value={l.valor} /></span>
+                      <span className="num flag" style={{ textAlign: "right" }}><Monto value={l.costo} /></span>
+                      <span className="num" style={{ textAlign: "right", fontWeight: 600, color: u < 0 ? "var(--bad)" : undefined }}><Monto value={u} /></span>
+                      <span className="num" style={{ textAlign: "right", fontWeight: 700, color: pct < 0 ? "var(--bad)" : pct >= 40 ? "var(--ok)" : undefined }}>{formatPorcentaje(pct)}</span>
+                      <span className="num flag" style={{ textAlign: "right" }}>{ventaListas > 0 ? formatPorcentaje((l.valor / ventaListas) * 100) : "—"}</span>
+                    </div>
+                  </summary>
+                  <div style={{ background: "var(--surface-2, #f6f8fc)", padding: "2px 12px 12px" }}>
+                    <div style={{ display: "flex", justifyContent: "flex-end", padding: "6px 0" }}>
+                      <a href={href} className="btn" style={{ fontSize: 12 }}>{activo ? "✓ Quitar filtro de esta lista" : "Filtrar todo el informe por esta lista"}</a>
+                    </div>
+                    {ipsList.length === 0 ? <div className="flag" style={{ padding: "4px 0" }}>Sin IPS en el período.</div> : (
+                      <>
+                        <div style={{ display: "grid", gridTemplateColumns: GRID_IPSL, gap: 8, padding: "4px 0", fontSize: 10.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".4px", color: "var(--muted)" }}>
+                          <span>IPS / cliente</span>
+                          <span style={{ textAlign: "right" }}>Venta neta</span>
+                          <span style={{ textAlign: "right" }}>Costo</span>
+                          <span style={{ textAlign: "right" }}>Utilidad</span>
+                          <span style={{ textAlign: "right" }}>% Utilidad</span>
+                        </div>
+                        {ipsList.map((x) => {
+                          const ui = x.valor - x.costo;
+                          const pi = margen(x.valor, x.costo);
+                          return (
+                            <div key={x.ips} style={{ display: "grid", gridTemplateColumns: GRID_IPSL, gap: 8, alignItems: "center", padding: "5px 0", fontSize: 12.5, borderTop: "1px solid var(--line)" }}>
+                              <span>{x.ips}</span>
+                              <span className="num" style={{ textAlign: "right" }}><Monto value={x.valor} /></span>
+                              <span className="num flag" style={{ textAlign: "right" }}><Monto value={x.costo} /></span>
+                              <span className="num" style={{ textAlign: "right" }}><Monto value={ui} /></span>
+                              <span className="num" style={{ textAlign: "right", fontWeight: 600, color: pi < 0 ? "var(--bad)" : undefined }}>{formatPorcentaje(pi)}</span>
+                            </div>
+                          );
+                        })}
+                      </>
+                    )}
+                  </div>
+                </details>
+              );
+            })}
           </div>
         </div>
       ) : null}
