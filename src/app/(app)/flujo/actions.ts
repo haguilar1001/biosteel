@@ -48,22 +48,3 @@ export async function reclasificarAction(movimientoId: number, categoriaId: numb
   revalidatePath("/flujo/presupuesto");
   return { ok: true };
 }
-
-// --- Sincronizar el Flujo de Caja AHORA (manual, desde OneDrive) ---
-export interface SyncState { ok?: boolean; error?: string; mensaje?: string }
-
-export async function sincronizarFlujoAhoraAction(_prev: SyncState): Promise<SyncState> {
-  const usuario = await requireUsuario();
-  try {
-    await exigirPermiso(usuario, "flujo.manage");
-  } catch {
-    return { error: "Sin permiso para sincronizar el flujo." };
-  }
-  const { sincronizarFlujo } = await import("@/lib/negocio/sync-flujo");
-  const res = await sincronizarFlujo("manual");
-  revalidatePath("/flujo");
-  revalidatePath("/flujo/ingresos");
-  revalidatePath("/flujo/egresos");
-  if (!res.ok) return { error: res.error ?? "Falló la sincronización." };
-  return { ok: true, mensaje: `${res.movimientos} movimientos · año(s) ${res.anios.join(", ")}` };
-}

@@ -1,12 +1,9 @@
 // Resumen del Flujo de Caja: ingresos vs egresos vs presupuesto por mes.
-import { requirePermiso, requireUsuario } from "@/server/auth-context";
-import { puede } from "@/lib/rbac/authorize";
-import { formatCOP, formatPorcentaje, formatFechaHora } from "@/lib/format";
+import { requirePermiso } from "@/server/auth-context";
+import { formatCOP, formatPorcentaje } from "@/lib/format";
 import { Monto } from "../_components/Monto";
 import { flujoMensual, MESES_LABEL } from "@/lib/negocio/flujo";
-import { ultimaSyncFlujo } from "@/lib/negocio/sync-flujo";
 import { FiltroAuto } from "../_components/FiltroAuto";
-import { BotonSync } from "./BotonSync";
 
 const ANIO = 2026;
 
@@ -16,12 +13,10 @@ export default async function FlujoResumenPage({
   searchParams: Promise<{ mes?: string }>;
 }) {
   await requirePermiso("cxp.view");
-  const usuario = await requireUsuario();
-  const puedeSync = await puede(usuario, "flujo.manage");
   const sp = await searchParams;
   const mes = sp.mes && /^\d+$/.test(sp.mes) ? Number(sp.mes) : undefined;
 
-  const [meses, ultima] = await Promise.all([flujoMensual(ANIO), ultimaSyncFlujo()]);
+  const meses = await flujoMensual(ANIO);
   const maxBar = Math.max(1, ...meses.map((m) => Math.max(m.ingresos, m.egresos)));
 
   // Totales según el filtro (mes seleccionado o año corrido).
@@ -40,7 +35,7 @@ export default async function FlujoResumenPage({
   return (
     <>
       <div className="card" style={{ marginBottom: 12 }}>
-        <div className="card-body" style={{ paddingBottom: 12, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
+        <div className="card-body" style={{ paddingBottom: 12 }}>
           <FiltroAuto className="toolbar">
             <label className="flag" style={{ alignSelf: "center" }}>Mes:</label>
             <select name="mes" defaultValue={mes ?? ""} className="select">
@@ -51,14 +46,6 @@ export default async function FlujoResumenPage({
             </select>
             {mes ? <a href="/flujo" className="btn">Todos los meses</a> : null}
           </FiltroAuto>
-          <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-            <span className="flag" title="Se sincroniza automáticamente 3 veces al día (3 a. m., 12 m. y 5 p. m.)">
-              {ultima
-                ? <>Última actualización: <b>{formatFechaHora(ultima.cargadaEn)}</b>{ultima.ok ? "" : " ⚠️"}</>
-                : "Sin sincronizaciones registradas"}
-            </span>
-            {puedeSync && <BotonSync />}
-          </div>
         </div>
       </div>
 
