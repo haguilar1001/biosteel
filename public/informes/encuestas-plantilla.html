@@ -163,7 +163,7 @@
     </div>
 
     <div class="card">
-      <h2>Distribución de calificaciones <span class="h-note">342 respuestas</span></h2>
+      <h2>Distribución de calificaciones <span class="h-note" id="dist-note">342 respuestas</span></h2>
       <div id="distChart"></div>
     </div>
 
@@ -203,13 +203,13 @@
   </div>
 
   <div class="section-title">Encuesta de Satisfacción · Especialistas (Ortopedistas)</div>
-  <div class="section-sub">FOR-GC-011 · Encuesta ampliada de 14 criterios aplicada desde 2026 · 4 respuestas recibidas en mayo de 2026</div>
+  <div class="section-sub" id="ortho-sub">FOR-GC-011 · Encuesta ampliada de 14 criterios aplicada desde 2026</div>
 
   <div class="grid">
     <div class="kpis" id="orthoKpis" style="grid-column:1/-1;margin-top:0"></div>
 
     <div class="card full">
-      <h2>Promedio por criterio evaluado <span class="h-note">1er Semestre 2026 · n = 4</span></h2>
+      <h2>Promedio por criterio evaluado <span class="h-note" id="ortho-note">1er Semestre · n = 4</span></h2>
       <div id="orthoBars"></div>
     </div>
 
@@ -362,6 +362,7 @@ function renderAdv(){
     g+=`<text class="tab" x="${x0+w+6}" y="${y+bh-3}" font-size="10.5" font-weight="700" fill="${COL.navy}">${fmt(v)}</text>`;
     g+=`<title>${r.cliente}: ${fmt(v)} (${fmtPct(r.pct)})</title>`;
   });
+  const an=document.getElementById('adv-note'); if(an) an.textContent=sorted.length+' encuestas';
   document.getElementById('advChart').innerHTML=`<svg viewBox="0 0 ${W} ${H}">${g}</svg>`;
 }
 
@@ -393,6 +394,7 @@ function renderDist(){
     g+=`<text x="${legX+18}" y="${ly}" font-size="12.5" fill="${COL.ink2||'#16324b'}">Calificación ${label} · ${val} (${(val/total*100).toFixed(1).replace('.',',')}%)</text>`;
     ly+=26;
   });
+  const dn=document.getElementById('dist-note'); if(dn) dn.textContent=total+' respuestas';
   document.getElementById('distChart').innerHTML=`<svg viewBox="0 0 ${W} ${H}">${g}</svg>`;
 }
 
@@ -533,6 +535,8 @@ function render(){
     buildSearch(); renderDetail();
   }else{
     renderOrthoKPIs(); renderOrthoBars();
+    const on=document.getElementById('ortho-note'); if(on) on.textContent='n = '+DATA.ortho.n;
+    const os=document.getElementById('ortho-sub'); if(os) os.textContent='FOR-GC-011 · Encuesta ampliada de 14 criterios · '+DATA.ortho.n+' respuesta(s)'+(DATA.ortho.ciudades&&DATA.ortho.ciudades.length?' · '+DATA.ortho.ciudades.join(', '):'');
   }
 }
 render();
