@@ -47,11 +47,13 @@ export const MENU_BASE: MenuGrupoDef[] = [
     { href: "/nomina", label: "👥 Resumen", permiso: "cxp.view" },
     { href: "/nomina/empleados", label: "🧑‍💼 Empleados", permiso: "cxp.view" },
   ] },
+  { id: "asistec", label: "Asistencia Técnica", icon: "🩺", items: [
+    { href: "/asistencia/cirugias", label: "🔪 Cirugías", permiso: "cxp.view" },
+  ] },
   { id: "analisis", label: "Análisis", icon: "📊", items: [
     { href: "/indicadores", label: "📈 Indicadores", permiso: "cxp.view" },
     { href: "/pyg", label: "📄 PyG", permiso: "cxp.view" },
     { href: "/asistencia", label: "🩺 Asistencia Técnica", permiso: "cxp.view" },
-    { href: "/asistencia/cirugias", label: "🔪 Cirugías", permiso: "cxp.view" },
     { href: "/asistencia/pqrs", label: "📣 PQRS", permiso: "cxp.view" },
     { href: "/encuestas", label: "🙂 Encuestas de Satisfacción", permiso: "cxp.view" },
   ] },
