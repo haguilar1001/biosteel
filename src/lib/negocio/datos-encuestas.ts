@@ -32,6 +32,23 @@ export interface DatosEncuestas {
   data: EncuestasData | null;
 }
 
+export interface EvolAnual { anio: number; inst: number | null; ortho: number | null }
+
+/** Promedio general por año y tipo (para el comparativo entre periodos). */
+export async function evolucionAnualEncuestas(): Promise<EvolAnual[]> {
+  const enc = await prisma.encuestaSatisfaccion.findMany({ include: { respuestas: true } });
+  const porAnio = new Map<number, { inst: number[]; ortho: number[] }>();
+  for (const e of enc) {
+    if (!porAnio.has(e.anio)) porAnio.set(e.anio, { inst: [], ortho: [] });
+    const b = porAnio.get(e.anio)!;
+    const arr = e.tipo === "institucional" ? b.inst : b.ortho;
+    for (const r of e.respuestas) arr.push(r.valor);
+  }
+  return [...porAnio.entries()]
+    .sort((a, b) => a[0] - b[0])
+    .map(([anio, b]) => ({ anio, inst: b.inst.length ? avg(b.inst) : null, ortho: b.ortho.length ? avg(b.ortho) : null }));
+}
+
 export async function datosEncuestas(anioSel?: number): Promise<DatosEncuestas> {
   const encuestas = await prisma.encuestaSatisfaccion.findMany({ include: { respuestas: true }, orderBy: { id: "asc" } });
   const anios = [...new Set(encuestas.map((e) => e.anio))].sort((a, b) => b - a);

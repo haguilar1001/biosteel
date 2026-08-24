@@ -6,7 +6,8 @@
 import { requirePermiso } from "@/server/auth-context";
 import { formatNumero } from "@/lib/format";
 import { FiltroAuto } from "../_components/FiltroAuto";
-import { datosEncuestas } from "@/lib/negocio/datos-encuestas";
+import { Medidor } from "../_components/charts/Medidor";
+import { datosEncuestas, evolucionAnualEncuestas, type EvolAnual } from "@/lib/negocio/datos-encuestas";
 import { COMPONENTES, PREGUNTAS_INST } from "@/lib/encuestas/catalogo";
 
 const META = 4.5;
@@ -38,13 +39,51 @@ function BarraNota({ valor, ancho = 190 }: { valor: number; ancho?: number }) {
   );
 }
 
+/** Gauge de nivel de satisfacción (% sobre 5) contra la meta. */
+function GaugeNivel({ score }: { score: number }) {
+  return (
+    <div className="card">
+      <div className="chart-head">Nivel de Satisfacción <span className="hact">meta {nota(META)} (90 %)</span></div>
+      <div className="card-body" style={{ display: "grid", placeItems: "center", paddingTop: 6 }}>
+        <Medidor valor={(score / 5) * 100} color={tono(score)} etiqueta={`${nota(score)} / 5`} size={210} />
+      </div>
+    </div>
+  );
+}
+
+/** Comparativo del promedio general por año (institucional y ortopedistas). */
+function EvolucionAnio({ evol }: { evol: EvolAnual[] }) {
+  return (
+    <div className="card">
+      <div className="chart-head">Evolución por Año <span className="hact">promedio general</span></div>
+      <div style={{ overflowX: "auto" }}>
+        <table>
+          <thead><tr><th>Año</th><th>Institucionales</th><th>Ortopedistas</th></tr></thead>
+          <tbody>
+            {evol.map((e) => (
+              <tr key={e.anio}>
+                <td style={{ fontWeight: 700 }}>{e.anio}</td>
+                <td>{e.inst != null ? <BarraNota valor={e.inst} ancho={130} /> : <span className="flag">—</span>}</td>
+                <td>{e.ortho != null ? <BarraNota valor={e.ortho} ancho={130} /> : <span className="flag">—</span>}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 export default async function EncuestasPage({
   searchParams,
 }: { searchParams: Promise<{ anio?: string; vista?: string }> }) {
   await requirePermiso("cxp.view");
   const sp = await searchParams;
 
-  const { anio, anios, vacio, data } = await datosEncuestas(sp.anio ? Number(sp.anio) : undefined);
+  const [{ anio, anios, vacio, data }, evol] = await Promise.all([
+    datosEncuestas(sp.anio ? Number(sp.anio) : undefined),
+    evolucionAnualEncuestas(),
+  ]);
   if (vacio || !data || anio == null) {
     return (
       <div className="card"><div className="card-body">
@@ -56,6 +95,8 @@ export default async function EncuestasPage({
   const D = data;
   const vista: "inst" | "ortho" = sp.vista === "ortho" ? "ortho" : "inst";
   const base = `/encuestas?anio=${anio}`;
+  const hayEvol = evol.length >= 2;
+  const gridEvol = { display: "grid", gridTemplateColumns: hayEvol ? "minmax(260px, 340px) 1fr" : "1fr", gap: 12, marginBottom: 12, alignItems: "stretch" as const };
 
   // Derivados institucionales
   const best = D.records.length ? D.records.reduce((a, b) => (b.promedio > a.promedio ? b : a)) : undefined;
@@ -129,6 +170,12 @@ export default async function EncuestasPage({
               <div className="kval num" style={{ fontSize: 20, color: tono(compBajo?.promedio ?? 0) }}>{nota(compBajo?.promedio ?? 0)}</div>
               <div className="ksub" style={{ color: "var(--muted)" }}>{compBajo?.nombre ?? "—"}</div>
             </div>
+          </div>
+
+          {/* Nivel de satisfacción (gauge) + evolución por año */}
+          <div className="grid" style={gridEvol}>
+            <GaugeNivel score={D.overall.promedio} />
+            {hayEvol && <EvolucionAnio evol={evol} />}
           </div>
 
           {/* Componentes + distribución */}
@@ -263,6 +310,12 @@ export default async function EncuestasPage({
               <div className="kval num" style={{ color: tono(oWorst?.val ?? 0) }}>{nota(oWorst?.val ?? 0)}</div>
               <div className="ksub" style={{ color: "var(--muted)" }}>{oWorst?.short ?? "—"}</div>
             </div>
+          </div>
+
+          {/* Nivel de satisfacción (gauge) + evolución por año */}
+          <div className="grid" style={gridEvol}>
+            <GaugeNivel score={D.ortho.promedio} />
+            {hayEvol && <EvolucionAnio evol={evol} />}
           </div>
 
           {/* Promedio por criterio */}
