@@ -78,6 +78,7 @@ export const MENU_BASE: MenuGrupoDef[] = [
     { href: "/osteosintesis/valorizado", label: "💰 Valorizado", permiso: "osteo.view", seccion: "Material" },
     { href: "/osteosintesis/movimientos", label: "🔁 Movimientos", permiso: "osteo.view", seccion: "Material" },
     { href: "/osteosintesis/conciliacion", label: "⚖️ Conciliación", permiso: "osteo.view", seccion: "Material" },
+    { href: "/osteosintesis/recepcion", label: "📋 Recepción Técnica", permiso: "recepcion.view", seccion: "Recepción Técnica" },
   ] },
 ];
 

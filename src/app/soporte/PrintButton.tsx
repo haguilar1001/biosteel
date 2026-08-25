@@ -2,7 +2,7 @@
 // Barra de acciones del soporte (no se imprime): volver + Guardar PDF.
 import { useEffect } from "react";
 
-export default function PrintButton({ auto = false, volverHref = "/inventario/novedades" }: { auto?: boolean; volverHref?: string }) {
+export default function PrintButton({ auto = false, volverHref = "/inventario/novedades", volverLabel = "Volver a Novedades" }: { auto?: boolean; volverHref?: string; volverLabel?: string }) {
   // Si se abre con ?auto=1, dispara el diálogo de impresión al cargar.
   useEffect(() => {
     if (auto) {
@@ -13,7 +13,7 @@ export default function PrintButton({ auto = false, volverHref = "/inventario/no
 
   return (
     <div className="sop-toolbar no-print">
-      <a className="sop-back" href={volverHref}>← Volver a Novedades</a>
+      <a className="sop-back" href={volverHref}>← {volverLabel}</a>
       <div className="sop-actions">
         <button className="sop-btn ghost" onClick={() => window.close()}>Cerrar</button>
         <button className="sop-btn" onClick={() => window.print()}>🖨️ Imprimir / Guardar PDF</button>

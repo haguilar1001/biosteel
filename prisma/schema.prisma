@@ -1606,3 +1606,114 @@ model Pedido {
   @@index([bodegaCodigo])
   @@index([linea])
 }
+
+// =============== RECEPCIÓN TÉCNICA (FOR-ALM-005) ===============
+enum TipoRecepcion {
+  importacion
+  nacional
+}
+
+// Verificación documental: Sí / No / N-A.
+enum VerifDoc {
+  si
+  no
+  na
+}
+
+// Resultado de cada criterio de inspección física.
+enum ResultadoInspeccion {
+  conforme
+  no_conforme
+  cuarentena
+}
+
+// Recibo a satisfacción de dispositivos médicos (FOR-ALM-005). Solo registro
+// + soporte PDF (no alimenta el inventario todavía).
+model RecepcionTecnica {
+  id          Int           @id @default(autoincrement())
+  tipo        TipoRecepcion
+  consecutivo String        @unique // RT-IMP-000001 / RT-NAC-000001
+
+  // 1. Datos de recepción y proveedor
+  fechaInspeccion DateTime @db.Date
+  horaRecepcion   String   @default("")
+  odcPedido       String   @default("")
+  proveedorNombre String   @default("")
+  registroInvima  String   @default("")
+  facturaRemision String   @default("")
+  valorFactura    Decimal  @default(0) @db.Decimal(18, 2)
+  guiaTransporte  String   @default("")
+  transportador   String   @default("")
+  loteDespacho    String   @default("")
+  fechaCaducidad  DateTime? @db.Date
+  cantOdc         Int?
+
+  // 2. Verificación documental previa
+  docFacturaComercial VerifDoc @default(na)
+  docPackingList      VerifDoc @default(na)
+  docImportacion      VerifDoc @default(na)
+  docRsInvima         VerifDoc @default(na)
+  docCertCalidad      VerifDoc @default(na)
+  docInstruccionesEsp VerifDoc @default(na)
+  docCertEsterilidad  VerifDoc @default(na)
+  // Condiciones de transporte / embalaje externo
+  transSinDanos       Boolean @default(false)
+  transConDanos       Boolean @default(false)
+  transSelloViolado   Boolean @default(false)
+  transTempAdecuada   Boolean @default(false)
+  transTempNoAdecuada Boolean @default(false)
+  transObservacion    String  @default("")
+
+  // 4. Disposición del lote y decisión final
+  resultado         String @default("")
+  areaDestino       String @default("")
+  decision          String @default("")
+  accionTomar       String @default("")
+  validacionFactura String @default("")
+
+  // Firmas
+  recibidoPor String @default("")
+  revisadoPor String @default("")
+  aprobadoPor String @default("")
+
+  notas     String   @default("")
+  usuarioId Int? // quién lo registró (sin FK: solo trazabilidad)
+  createdAt DateTime @default(now())
+
+  items RecepcionItem[]
+
+  @@index([tipo])
+  @@index([fechaInspeccion])
+}
+
+// Un producto de la inspección física (sección 3).
+model RecepcionItem {
+  id             Int              @id @default(autoincrement())
+  recepcion      RecepcionTecnica @relation(fields: [recepcionId], references: [id], onDelete: Cascade)
+  recepcionId    Int
+  orden          Int              @default(0)
+  codigo         String           @default("")
+  descripcion    String           @default("")
+  especificacion String           @default("")
+  cantPedida     Decimal          @default(0) @db.Decimal(18, 2)
+  cantRecibida   Decimal          @default(0) @db.Decimal(18, 2)
+  lote           String           @default("")
+  fechaCaducidad DateTime?        @db.Date
+  observaciones  String           @default("")
+
+  criterios RecepcionCriterio[]
+
+  @@index([recepcionId])
+}
+
+// Resultado de cada criterio (9 en importación) por ítem.
+model RecepcionCriterio {
+  id        Int                 @id @default(autoincrement())
+  item      RecepcionItem       @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  itemId    Int
+  orden     Int                 @default(0)
+  criterio  String
+  resultado ResultadoInspeccion @default(conforme)
+
+  @@index([itemId])
+}
