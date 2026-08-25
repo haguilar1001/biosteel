@@ -62,11 +62,8 @@ export default function RecepcionDoc({ r }: { r: NonNullable<RecepcionDetalle> }
             <Campo k="Registro INVIMA" v={r.registroInvima || "—"} />
             <Campo k="Factura / Remisión" v={r.facturaRemision || "—"} />
             <Campo k="Valor factura" v={r.valorFactura ? fmtValor(r.valorFactura, r.monedaFactura) : "—"} />
-            <Campo k="Hora recepción" v={r.horaRecepcion || "—"} />
             <Campo k="N° guía transporte" v={r.guiaTransporte || "—"} />
             <Campo k="Transportador" v={r.transportador || "—"} />
-            <Campo k="N° lote despacho" v={r.loteDespacho || "—"} />
-            <Campo k="Fecha caducidad" v={r.fechaCaducidad ? formatFecha(r.fechaCaducidad) : "—"} />
             <Campo k="Cant. ODC" v={r.cantOdc != null ? formatNumero(r.cantOdc) : "—"} />
           </div>
         </div>

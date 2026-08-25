@@ -28,6 +28,8 @@ export default function RecepcionForm({ tipo, consecutivo, proveedores, monedas,
     lote: "", fechaCaducidad: "", observaciones: "", criterios: criterios.map((c) => c.opciones[0] ?? "Conforme"),
   });
   const [items, setItems] = useState<ItemForm[]>([nuevoItem()]);
+  const [docVals, setDocVals] = useState<Record<string, string>>(() => Object.fromEntries(docs.map((d) => [d.campo, "na"])));
+  const setDoc = (campo: string, v: string) => setDocVals((p) => ({ ...p, [campo]: v }));
 
   const setItem = (i: number, k: keyof ItemForm, v: string) =>
     setItems((prev) => prev.map((it, idx) => (idx === i ? { ...it, [k]: v } : it)));
@@ -66,7 +68,6 @@ export default function RecepcionForm({ tipo, consecutivo, proveedores, monedas,
         <div className="card-body">
           <div className="form-grid">
             <div className="field"><label>Fecha inspección *</label><input name="fechaInspeccion" type="date" required /></div>
-            <div className="field"><label>Hora recepción</label><input name="horaRecepcion" type="time" /></div>
             <div className="field"><label>N° ODC / Pedido</label><input name="odcPedido" /></div>
             <div className="field"><label>Proveedor *</label>
               <input name="proveedorNombre" list="proveedores-dl" required placeholder="Nombre del proveedor" />
@@ -82,8 +83,6 @@ export default function RecepcionForm({ tipo, consecutivo, proveedores, monedas,
             </div>
             <div className="field"><label>N° guía transporte</label><input name="guiaTransporte" /></div>
             <div className="field"><label>Transportador</label><input name="transportador" /></div>
-            <div className="field"><label>N° lote despacho</label><input name="loteDespacho" /></div>
-            <div className="field"><label>Fecha caducidad</label><input name="fechaCaducidad" type="date" /></div>
             <div className="field"><label>Cant. ODC</label><input name="cantOdc" type="number" min={0} /></div>
           </div>
         </div>
@@ -94,14 +93,27 @@ export default function RecepcionForm({ tipo, consecutivo, proveedores, monedas,
         <div className="chart-head">2. Verificación documental previa</div>
         <div className="card-body">
           <div className="form-grid">
-            {docs.map((d) => (
-              <div className="field" key={d.campo}>
-                <label>{d.label}</label>
-                <select name={d.campo} defaultValue="na">
-                  {VERIF.map((o) => <option key={o.v} value={o.v}>{o.l}</option>)}
-                </select>
-              </div>
-            ))}
+            {docs.map((d) => {
+              const val = docVals[d.campo] ?? "na";
+              return (
+                <div className="field" key={d.campo}>
+                  <label>{d.label}</label>
+                  <input type="hidden" name={d.campo} value={val} />
+                  <div style={{ display: "inline-flex", gap: 4 }}>
+                    {VERIF.map((o) => {
+                      const sel = val === o.v;
+                      const color = o.v === "si" ? "var(--ok, #2A9D6B)" : o.v === "no" ? "var(--bad, #D64545)" : "var(--muted, #64748b)";
+                      return (
+                        <button type="button" key={o.v} onClick={() => setDoc(d.campo, o.v)} className="btn"
+                          style={{ padding: "5px 16px", background: sel ? color : undefined, color: sel ? "#fff" : undefined, borderColor: sel ? color : undefined, fontWeight: sel ? 700 : 400 }}>
+                          {o.l}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
           </div>
           <div className="subhead" style={{ margin: "10px 0 6px" }}>Condiciones de transporte y embalaje externo</div>
           <div className="toolbar" style={{ gap: 16, flexWrap: "wrap" }}>

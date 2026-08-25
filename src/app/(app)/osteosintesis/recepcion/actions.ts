@@ -34,7 +34,6 @@ const itemSchema = z.object({
 const schema = z.object({
   tipo: z.enum(["importacion", "nacional"]),
   fechaInspeccion: z.string().min(1, "Indica la fecha de inspección."),
-  horaRecepcion: z.string().trim().default(""),
   odcPedido: z.string().trim().default(""),
   proveedorNombre: z.string().trim().min(1, "Indica el proveedor."),
   registroInvima: z.string().trim().default(""),
@@ -43,8 +42,6 @@ const schema = z.object({
   monedaFactura: z.string().trim().default("USD"),
   guiaTransporte: z.string().trim().default(""),
   transportador: z.string().trim().default(""),
-  loteDespacho: z.string().trim().default(""),
-  fechaCaducidad: z.string().trim().optional(),
   cantOdc: z.coerce.number().int().optional(),
   // Documental
   docFacturaComercial: z.enum(VERIF).default("na"),
@@ -88,7 +85,6 @@ export async function crearRecepcionAction(_prev: RecepcionState, fd: FormData):
   const p = schema.safeParse({
     tipo: fd.get("tipo"),
     fechaInspeccion: fd.get("fechaInspeccion"),
-    horaRecepcion: fd.get("horaRecepcion") ?? "",
     odcPedido: fd.get("odcPedido") ?? "",
     proveedorNombre: fd.get("proveedorNombre") ?? "",
     registroInvima: fd.get("registroInvima") ?? "",
@@ -97,8 +93,6 @@ export async function crearRecepcionAction(_prev: RecepcionState, fd: FormData):
     monedaFactura: fd.get("monedaFactura") || "USD",
     guiaTransporte: fd.get("guiaTransporte") ?? "",
     transportador: fd.get("transportador") ?? "",
-    loteDespacho: fd.get("loteDespacho") ?? "",
-    fechaCaducidad: fd.get("fechaCaducidad") || undefined,
     cantOdc: fd.get("cantOdc") || undefined,
     docFacturaComercial: fd.get("docFacturaComercial") ?? "na",
     docPackingList: fd.get("docPackingList") ?? "na",
@@ -123,7 +117,7 @@ export async function crearRecepcionAction(_prev: RecepcionState, fd: FormData):
   const fecha = aFecha(d.fechaInspeccion);
   if (!fecha) return { error: "Fecha de inspección inválida." };
 
-  const { items, fechaInspeccion: _f, fechaCaducidad: _fc, ...cab } = d;
+  const { items, fechaInspeccion: _f, ...cab } = d;
   const consecutivo = await siguienteConsecutivo(d.tipo);
 
   const creada = await prisma.recepcionTecnica.create({
@@ -131,7 +125,6 @@ export async function crearRecepcionAction(_prev: RecepcionState, fd: FormData):
       ...cab,
       consecutivo,
       fechaInspeccion: fecha,
-      fechaCaducidad: aFecha(d.fechaCaducidad),
       usuarioId: usuario.id,
       items: {
         create: items.map((it, i) => ({
