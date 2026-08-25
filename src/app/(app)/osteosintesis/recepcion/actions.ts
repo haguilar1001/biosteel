@@ -23,7 +23,6 @@ function aFecha(s?: string): Date | null {
 const itemSchema = z.object({
   codigo: z.string().trim().default(""),
   descripcion: z.string().trim().min(1, "Cada ítem necesita descripción."),
-  especificacion: z.string().trim().default(""),
   cantPedida: z.coerce.number().min(0).default(0),
   cantRecibida: z.coerce.number().min(0).default(0),
   lote: z.string().trim().default(""),
@@ -135,7 +134,7 @@ export async function crearRecepcionAction(_prev: RecepcionState, fd: FormData):
       items: {
         create: items.map((it, i) => ({
           orden: i,
-          codigo: it.codigo, descripcion: it.descripcion, especificacion: it.especificacion,
+          codigo: it.codigo, descripcion: it.descripcion,
           cantPedida: it.cantPedida, cantRecibida: it.cantRecibida, lote: it.lote,
           fechaCaducidad: aFecha(it.fechaCaducidad), observaciones: it.observaciones,
           criterios: {

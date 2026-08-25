@@ -8,7 +8,7 @@ import { crearRecepcionAction, type RecepcionState } from "../actions";
 
 interface CriterioUI { nombre: string; especificacion: string; opciones: string[] }
 interface ItemForm {
-  codigo: string; descripcion: string; especificacion: string;
+  codigo: string; descripcion: string;
   cantPedida: string; cantRecibida: string; lote: string; fechaCaducidad: string; observaciones: string;
   criterios: string[];
 }
@@ -23,7 +23,7 @@ const RESULTADOS = ["Aceptado", "Aceptado con observaciones", "Cuarentena", "Rec
 export default function RecepcionForm({ tipo, consecutivo, proveedores, criterios, docs }: Props) {
   const [state, action, pending] = useActionState<RecepcionState, FormData>(crearRecepcionAction, {});
   const nuevoItem = (): ItemForm => ({
-    codigo: "", descripcion: "", especificacion: "", cantPedida: "", cantRecibida: "",
+    codigo: "", descripcion: "", cantPedida: "", cantRecibida: "",
     lote: "", fechaCaducidad: "", observaciones: "", criterios: criterios.map((c) => c.opciones[0] ?? "Conforme"),
   });
   const [items, setItems] = useState<ItemForm[]>([nuevoItem()]);
@@ -122,7 +122,6 @@ export default function RecepcionForm({ tipo, consecutivo, proveedores, criterio
               <div className="form-grid">
                 <div className="field"><label>Código</label><input value={it.codigo} onChange={(e) => setItem(i, "codigo", e.target.value)} className="select" /></div>
                 <div className="field" style={{ gridColumn: "span 2" }}><label>Descripción del material *</label><input value={it.descripcion} onChange={(e) => setItem(i, "descripcion", e.target.value)} className="select" /></div>
-                <div className="field"><label>Especificación requerida</label><input value={it.especificacion} onChange={(e) => setItem(i, "especificacion", e.target.value)} className="select" /></div>
                 <div className="field"><label>Cant. pedida</label><input type="number" min={0} value={it.cantPedida} onChange={(e) => setItem(i, "cantPedida", e.target.value)} className="select" /></div>
                 <div className="field"><label>Cant. recibida</label><input type="number" min={0} value={it.cantRecibida} onChange={(e) => setItem(i, "cantRecibida", e.target.value)} className="select" /></div>
                 <div className="field"><label>Lote</label><input value={it.lote} onChange={(e) => setItem(i, "lote", e.target.value)} className="select" /></div>

@@ -90,11 +90,10 @@ export default function RecepcionDoc({ r }: { r: NonNullable<RecepcionDetalle> }
               </div>
               <table className="sop-tabla" style={{ marginBottom: 4 }}>
                 <thead>
-                  <tr><th>Especificación</th><th style={{ textAlign: "right" }}>Cant. pedida</th><th style={{ textAlign: "right" }}>Cant. recibida</th><th>Lote</th><th>Caducidad</th></tr>
+                  <tr><th style={{ textAlign: "right" }}>Cant. pedida</th><th style={{ textAlign: "right" }}>Cant. recibida</th><th>Lote</th><th>Caducidad</th></tr>
                 </thead>
                 <tbody>
                   <tr>
-                    <td>{it.especificacion || "—"}</td>
                     <td className="num">{formatNumero(it.cantPedida)}</td>
                     <td className="num">{formatNumero(it.cantRecibida)}</td>
                     <td>{it.lote || "—"}</td>

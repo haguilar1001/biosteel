@@ -1687,7 +1687,6 @@ model RecepcionItem {
   orden          Int              @default(0)
   codigo         String           @default("")
   descripcion    String           @default("")
-  especificacion String           @default("")
   cantPedida     Decimal          @default(0) @db.Decimal(18, 2)
   cantRecibida   Decimal          @default(0) @db.Decimal(18, 2)
   lote           String           @default("")
