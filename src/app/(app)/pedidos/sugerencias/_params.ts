@@ -1,0 +1,114 @@
+// ==========================================================
+// Resolución de los parámetros de la pantalla de Sugerencias de Compra.
+// Vive aparte para que la ruta de exportación calcule exactamente lo mismo
+// que la vista: un Excel que no coincida con la pantalla que lo generó es
+// peor que no tener Excel.
+// ==========================================================
+import {
+  calcularReposicion, ultimoPeriodoPedidos, modelosDeCompra,
+  PARAMETROS_DEFECTO, ORDEN_ESTADO,
+  type EstadoRepo, type FilaReposicion, type ResultadoReposicion,
+  type ParametrosReposicion, type FiltroReposicion,
+} from "@/lib/negocio/reposicion";
+import { proveedoresConPedidos, marcasConPedidos, lineasConPedidos, ciudadesConPedidos } from "@/lib/negocio/pedidos";
+
+export interface ParamsSugerencias {
+  prov?: string; marca?: string; linea?: string; ciudad?: string;
+  modelo?: string; inst?: string; estado?: string;
+  ventana?: string; lead?: string; seg?: string; cob?: string;
+  /** "1" = mostrar también lo que no hay que comprar. */
+  todo?: string;
+}
+
+/** Opciones ofrecidas en cada selector de parámetro. */
+export const OPCIONES = {
+  ventana: [3, 6, 9, 12],
+  lead: [0.5, 1, 1.5, 2, 3],
+  seguridad: [0, 0.25, 0.5, 1, 1.5],
+  cobertura: [1, 1.5, 2, 3, 4],
+};
+
+export const ESTADOS: EstadoRepo[] = ["Agotado", "Crítico", "Bajo", "OK", "Exceso"];
+
+export interface ContextoSugerencias {
+  resultado: ResultadoReposicion;
+  /** Filas ya recortadas por el filtro de estado y de "solo a comprar". */
+  visibles: FilaReposicion[];
+  parametros: ParametrosReposicion;
+  filtro: FiltroReposicion;
+  estado?: EstadoRepo;
+  soloAComprar: boolean;
+  opciones: {
+    proveedores: string[]; marcas: string[]; lineas: string[];
+    ciudades: string[]; modelos: string[];
+  };
+  /** Querystring vigente, para el enlace de exportación. */
+  query: string;
+}
+
+/** Número del querystring si está entre las opciones; si no, el de defecto. */
+function opcion(valor: string | undefined, permitidas: number[], porDefecto: number): number {
+  const n = Number(valor);
+  return valor != null && permitidas.includes(n) ? n : porDefecto;
+}
+
+/**
+ * Arma el contexto completo. Devuelve null si no hay pedidos cargados: sin
+ * demanda no hay nada que reponer, y una pantalla en ceros no lo explicaría.
+ */
+export async function resolverSugerencias(sp: ParamsSugerencias): Promise<ContextoSugerencias | null> {
+  const hasta = await ultimoPeriodoPedidos();
+  if (!hasta) return null;
+
+  const parametros: ParametrosReposicion = {
+    ventanaMeses: opcion(sp.ventana, OPCIONES.ventana, PARAMETROS_DEFECTO.ventanaMeses),
+    leadTimeMeses: opcion(sp.lead, OPCIONES.lead, PARAMETROS_DEFECTO.leadTimeMeses),
+    seguridadMeses: opcion(sp.seg, OPCIONES.seguridad, PARAMETROS_DEFECTO.seguridadMeses),
+    coberturaMeses: opcion(sp.cob, OPCIONES.cobertura, PARAMETROS_DEFECTO.coberturaMeses),
+  };
+
+  // Las opciones de los selectores salen del año del último pedido: es el
+  // universo con el que se va a trabajar y evita listas de años cerrados.
+  const [proveedores, marcas, lineas, ciudades, modelos] = await Promise.all([
+    proveedoresConPedidos(hasta.anio), marcasConPedidos(hasta.anio),
+    lineasConPedidos(hasta.anio), ciudadesConPedidos(hasta.anio), modelosDeCompra(),
+  ]);
+
+  const filtro: FiltroReposicion = {
+    proveedor: sp.prov && proveedores.includes(sp.prov) ? sp.prov : undefined,
+    marca: sp.marca && marcas.includes(sp.marca) ? sp.marca : undefined,
+    linea: sp.linea && lineas.includes(sp.linea) ? sp.linea : undefined,
+    ciudad: sp.ciudad && ciudades.includes(sp.ciudad) ? sp.ciudad : undefined,
+    modeloCompra: sp.modelo && modelos.includes(sp.modelo) ? sp.modelo : undefined,
+    instalacion: [101, 102, 106].includes(Number(sp.inst)) ? Number(sp.inst) : undefined,
+  };
+
+  const resultado = await calcularReposicion(hasta, parametros, filtro);
+
+  const estado = ESTADOS.includes(sp.estado as EstadoRepo) ? (sp.estado as EstadoRepo) : undefined;
+  const soloAComprar = sp.todo !== "1";
+  const visibles = resultado.filas
+    .filter((f) => (estado ? f.estado === estado : true))
+    .filter((f) => (soloAComprar && !estado ? f.sugerido > 0 : true))
+    .sort((a, b) => ORDEN_ESTADO[a.estado] - ORDEN_ESTADO[b.estado] || b.valorSugerido - a.valorSugerido);
+
+  const qs = new URLSearchParams();
+  if (filtro.proveedor) qs.set("prov", filtro.proveedor);
+  if (filtro.marca) qs.set("marca", filtro.marca);
+  if (filtro.linea) qs.set("linea", filtro.linea);
+  if (filtro.ciudad) qs.set("ciudad", filtro.ciudad);
+  if (filtro.modeloCompra) qs.set("modelo", filtro.modeloCompra);
+  if (filtro.instalacion) qs.set("inst", String(filtro.instalacion));
+  if (estado) qs.set("estado", estado);
+  if (!soloAComprar) qs.set("todo", "1");
+  qs.set("ventana", String(parametros.ventanaMeses));
+  qs.set("lead", String(parametros.leadTimeMeses));
+  qs.set("seg", String(parametros.seguridadMeses));
+  qs.set("cob", String(parametros.coberturaMeses));
+
+  return {
+    resultado, visibles, parametros, filtro, estado, soloAComprar,
+    opciones: { proveedores, marcas, lineas, ciudades, modelos },
+    query: qs.toString(),
+  };
+}

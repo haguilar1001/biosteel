@@ -30,7 +30,8 @@ export const MENU_BASE: MenuGrupoDef[] = [
     { href: "/consultas", label: "🤖 Asistente", permiso: "cxp.view" },
     { href: "/cargar", label: "⬆️ Cargar archivos", permiso: "carga.pendientes",
       permisosOr: ["carga.pendientes", "carga.ventas", "carga.facturacion", "carga.gastos", "carga.anuladas", "carga.pyg", "carga.flujo", "carga.presupuesto",
-        "carga.compras.ordenes", "carga.compras.pendientes", "carga.compras.facturas", "carga.compras.tipos", "carga.compras.entradas"] },
+        "carga.compras.ordenes", "carga.compras.pendientes", "carga.compras.facturas", "carga.compras.tipos", "carga.compras.entradas",
+        "carga.pedidos"] },
   ] },
   { id: "tesoreria", label: "Tesorería", icon: "💰", items: [
     { href: "/flujo", label: "💵 Flujo de Caja", permiso: "cxp.view" },
@@ -63,6 +64,11 @@ export const MENU_BASE: MenuGrupoDef[] = [
     { href: "/compras/pendientes", label: "⏳ Pendientes por Despacho", permiso: "compras.view" },
     { href: "/compras/facturado", label: "🧾 Facturado Proveedor", permiso: "compras.view" },
     { href: "/compras/proveedores", label: "🏭 Por Proveedor × Mes", permiso: "compras.view" },
+  ] },
+  { id: "pedidos", label: "Pedidos", icon: "📝", items: [
+    { href: "/pedidos", label: "📝 Informe de Pedidos", permiso: "pedidos.view" },
+    { href: "/pedidos/sugerencias", label: "🛒 Sugerencias de Compra", permiso: "pedidos.view" },
+    { href: "/pedidos/detalle", label: "🔎 Detalle", permiso: "pedidos.view" },
   ] },
   { id: "inventarios", label: "Inventarios", icon: "📦", items: [
     { href: "/inventario", label: "📦 Resumen", permiso: "inventario.view", seccion: "Equipos" },

@@ -30,18 +30,19 @@ import {
 } from "./importar-compras";
 import { parseInstitucional, parseOrtopedistas, persistirEncuestas } from "./importar-encuestas";
 import { parseCirugias, persistirCirugias } from "./importar-cirugias";
+import { parsePedidos, persistirPedidos } from "./importar-pedidos";
 
 export type CargaClave = DatasetKey | "pyg" | "flujo" | "presupuesto"
   | "inv-bodegas" | "inv-balance" | "inv-movimientos"
   | "compras-tipos" | "compras-ordenes" | "compras-pendientes" | "compras-facturas"
-  | "compras-entradas"
+  | "compras-entradas" | "pedidos"
   | "encuestas-inst" | "encuestas-ortho" | "cirugias";
 
 /** Módulo al que pertenece el archivo; solo sirve para agrupar /cargar. */
-export type GrupoCarga = "Comercial" | "Financiero" | "Inventario" | "Compras" | "Calidad";
+export type GrupoCarga = "Comercial" | "Financiero" | "Inventario" | "Compras" | "Pedidos" | "Calidad";
 
 /** Orden en que se muestran los grupos en la pantalla de carga. */
-export const GRUPOS_CARGA: GrupoCarga[] = ["Comercial", "Financiero", "Inventario", "Compras", "Calidad"];
+export const GRUPOS_CARGA: GrupoCarga[] = ["Comercial", "Financiero", "Inventario", "Compras", "Pedidos", "Calidad"];
 
 export interface CargaDef {
   clave: CargaClave;
@@ -242,6 +243,26 @@ export const CARGAS: CargaDef[] = [
         titulo: "Compras · Pendientes por Despacho", archivo: nombre, hoja: p.hoja,
         filas: p.filas, cargadas, omitidas: p.omitidas,
         estrategia: `reemplaza TODA la foto anterior: ${nf.format(cargadas)} renglones · ${nf.format(ordenes)} órdenes pendientes · ${nf.format(Math.round(total))}`,
+      };
+    },
+  },
+  // --- Pedidos del bloque quirúrgico ---
+  // OJO: no confundir con "Pedidos Pendientes" (grupo Comercial), que es el
+  // reporte de pendientes por facturar y va a otra tabla.
+  {
+    clave: "pedidos", titulo: "Pedidos · Detalle por ítem", grupo: "Pedidos", permiso: "carga.pedidos",
+    archivoSugerido: "PEDIDOS 2026.xlsx",
+    async procesar(buffer, nombre) {
+      const p = parsePedidos(buffer);
+      if (!p.datos.length) throw new Error("El archivo no trae pedidos con fecha válida.");
+      const cargadas = await persistirPedidos(p);
+      const docs = new Set(p.datos.map((d) => d.nroDocumento)).size;
+      const refs = new Set(p.datos.map((d) => d.referencia)).size;
+      const costo = p.datos.reduce((a, d) => a + Number(d.costoProm), 0);
+      return {
+        titulo: "Pedidos · Detalle por ítem", archivo: nombre, hoja: p.hoja,
+        filas: p.filas, cargadas, omitidas: p.omitidas,
+        estrategia: `reemplaza ${p.periodos.length} periodo(s) [${p.periodos[0]} … ${p.periodos[p.periodos.length - 1]}]: ${nf.format(cargadas)} renglones · ${nf.format(docs)} pedidos · ${nf.format(refs)} referencias · costo ${nf.format(Math.round(costo))}`,
       };
     },
   },

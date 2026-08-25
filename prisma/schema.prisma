@@ -1524,3 +1524,85 @@ model Cirugia {
   @@index([ips])
   @@index([sinSoporte])
 }
+
+// ==========================================================
+// PEDIDOS — el renglón del pedido que arma el bloque quirúrgico: qué material
+// se pidió para cada cirugía, de qué bodega, a qué paciente y con qué médico.
+// Es la DEMANDA, y no hay que confundirla con dos vecinas:
+//   · PedidoPendiente → pedidos pendientes por facturar (otro reporte).
+//   · CompraOrden     → lo que BioSteel le ordena al proveedor.
+// El módulo de reposición cruza justamente estas tres con el inventario.
+//
+// El prefijo del documento identifica la sede/bodega que pide (PBQ, PVS,
+// PBR, PBH, PTO, PSF, PJA, PUT, PVN, PVE…).
+//
+// No hay llave natural: un mismo documento repite referencia cuando el pedido
+// trae varios lotes, así que la carga REEMPLAZA LOS MESES presentes en el
+// archivo, igual que las órdenes de compra.
+// ==========================================================
+model Pedido {
+  id           Int      @id @default(autoincrement())
+  nroDocumento String
+  prefijo      String   @default("") // 3 letras del documento (sede que pide)
+  fecha        DateTime @db.Date
+  anio         Int
+  mes          Int // 1–12
+  dia          Int
+  /// Cumplido | Comprometido | Comprometido parcial | Aprobado | En elaboración
+  estado       String   @default("")
+
+  bodegaCodigo    String @default("")
+  bodegaDesc      String @default("")
+  /// 101 propia · 102 consignación · 106 aprovechamiento (sin costo).
+  instalacion     Int?
+  instalacionDesc String @default("")
+
+  referencia String
+  /// "Notas ítem": la descripción del material en el pedido.
+  descItem   String @default("")
+
+  cantPedida Decimal @default(0) @db.Decimal(18, 2)
+  /// Existencia que el reporte trae en el momento de exportar. Es una FOTO y
+  /// varía por bodega dentro del mismo archivo: sirve de referencia, pero el
+  /// inventario bueno para reponer sale de InvBalance.
+  cantExist  Decimal @default(0) @db.Decimal(18, 2)
+  costoProm  Decimal @default(0) @db.Decimal(18, 2)
+  precioUnit Decimal @default(0) @db.Decimal(18, 2)
+  valorBruto Decimal @default(0) @db.Decimal(18, 2)
+  utilidad   Decimal @default(0) @db.Decimal(18, 2)
+
+  marca     String @default("")
+  linea     String @default("")
+  anatomia  String @default("")
+  sistema   String @default("")
+  categoria String @default("")
+
+  procedimiento String    @default("")
+  paciente      String    @default("")
+  medico        String    @default("")
+  fechaCx       DateTime? @db.Date
+
+  cliente       String @default("") // razón social del cliente a facturar
+  lista         String @default("") // código de la lista de precios
+  listaDesc     String @default("")
+  tipoCliente   String @default("")
+  ciudad        String @default("") // "Desc. ciudad"
+  condicionPago String @default("")
+
+  /// Proveedor del ítem ("Item desc. proveedor"): es la razón social real, no
+  /// la marca. Es lo que permite agrupar la sugerencia de compra por a quién
+  /// hay que comprarle.
+  proveedor    String @default("")
+  nitProveedor String @default("")
+
+  @@index([anio, mes])
+  @@index([fecha])
+  @@index([nroDocumento])
+  @@index([referencia])
+  @@index([marca])
+  @@index([proveedor])
+  @@index([estado])
+  @@index([ciudad])
+  @@index([bodegaCodigo])
+  @@index([linea])
+}
