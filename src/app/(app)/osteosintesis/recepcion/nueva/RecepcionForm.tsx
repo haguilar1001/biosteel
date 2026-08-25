@@ -39,6 +39,7 @@ export default function RecepcionForm({ tipo, consecutivo, proveedores, monedas,
   const setDoc = (campo: string, v: string) => setDocVals((p) => ({ ...p, [campo]: v }));
   const [trans, setTrans] = useState<Record<string, boolean>>(() => Object.fromEntries(COND_TRANS.map((c) => [c.campo, false])));
   const toggleTrans = (campo: string) => setTrans((p) => ({ ...p, [campo]: !p[campo] }));
+  const [resultado, setResultado] = useState("");
 
   const setItem = (i: number, k: keyof ItemForm, v: string) =>
     setItems((prev) => prev.map((it, idx) => (idx === i ? { ...it, [k]: v } : it)));
@@ -199,11 +200,20 @@ export default function RecepcionForm({ tipo, consecutivo, proveedores, monedas,
         <div className="chart-head">4. Disposición del lote y decisión final</div>
         <div className="card-body">
           <div className="form-grid">
-            <div className="field"><label>Resultado</label>
-              <select name="resultado" defaultValue="">
-                <option value="">—</option>
-                {RESULTADOS.map((r) => <option key={r} value={r}>{r}</option>)}
-              </select>
+            <div className="field" style={{ gridColumn: "1 / -1" }}><label>Resultado</label>
+              <input type="hidden" name="resultado" value={resultado} />
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+                {RESULTADOS.map((r) => {
+                  const sel = resultado === r;
+                  const color = r === "Aceptado" ? "var(--ok, #2A9D6B)" : r === "Rechazado" ? "var(--bad, #D64545)" : "var(--w1, #E0A400)";
+                  return (
+                    <button type="button" key={r} onClick={() => setResultado(sel ? "" : r)} className="btn"
+                      style={{ padding: "5px 16px", background: sel ? color : undefined, color: sel ? "#fff" : undefined, borderColor: sel ? color : undefined, fontWeight: sel ? 700 : 400 }}>
+                      {r}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
             <div className="field"><label>Área de destino</label><input name="areaDestino" /></div>
             <div className="field"><label>Decisión</label><input name="decision" /></div>
