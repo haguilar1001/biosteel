@@ -19,6 +19,13 @@ interface Props {
 }
 
 const VERIF = [{ v: "si", l: "Sí" }, { v: "no", l: "No" }, { v: "na", l: "N/A" }];
+const COND_TRANS = [
+  { campo: "transSinDanos", label: "Sin daños", bueno: true },
+  { campo: "transConDanos", label: "Con daños", bueno: false },
+  { campo: "transSelloViolado", label: "Sello violado", bueno: false },
+  { campo: "transTempAdecuada", label: "Temp. adecuada", bueno: true },
+  { campo: "transTempNoAdecuada", label: "Temp. no adecuada", bueno: false },
+];
 const RESULTADOS = ["Aceptado", "Aceptado con observaciones", "Cuarentena", "Rechazado"];
 
 export default function RecepcionForm({ tipo, consecutivo, proveedores, monedas, criterios, docs }: Props) {
@@ -30,6 +37,8 @@ export default function RecepcionForm({ tipo, consecutivo, proveedores, monedas,
   const [items, setItems] = useState<ItemForm[]>([nuevoItem()]);
   const [docVals, setDocVals] = useState<Record<string, string>>(() => Object.fromEntries(docs.map((d) => [d.campo, "na"])));
   const setDoc = (campo: string, v: string) => setDocVals((p) => ({ ...p, [campo]: v }));
+  const [trans, setTrans] = useState<Record<string, boolean>>(() => Object.fromEntries(COND_TRANS.map((c) => [c.campo, false])));
+  const toggleTrans = (campo: string) => setTrans((p) => ({ ...p, [campo]: !p[campo] }));
 
   const setItem = (i: number, k: keyof ItemForm, v: string) =>
     setItems((prev) => prev.map((it, idx) => (idx === i ? { ...it, [k]: v } : it)));
@@ -116,12 +125,20 @@ export default function RecepcionForm({ tipo, consecutivo, proveedores, monedas,
             })}
           </div>
           <div className="subhead" style={{ margin: "10px 0 6px" }}>Condiciones de transporte y embalaje externo</div>
-          <div className="toolbar" style={{ gap: 16, flexWrap: "wrap" }}>
-            <label className="flag"><input type="checkbox" name="transSinDanos" /> Sin daños</label>
-            <label className="flag"><input type="checkbox" name="transConDanos" /> Con daños</label>
-            <label className="flag"><input type="checkbox" name="transSelloViolado" /> Sello violado</label>
-            <label className="flag"><input type="checkbox" name="transTempAdecuada" /> Temp. adecuada</label>
-            <label className="flag"><input type="checkbox" name="transTempNoAdecuada" /> Temp. no adecuada</label>
+          <div className="toolbar" style={{ gap: 8, flexWrap: "wrap" }}>
+            {COND_TRANS.map((c) => {
+              const sel = trans[c.campo];
+              const color = c.bueno ? "var(--ok, #2A9D6B)" : "var(--bad, #D64545)";
+              return (
+                <span key={c.campo}>
+                  <input type="hidden" name={c.campo} value={sel ? "true" : ""} />
+                  <button type="button" onClick={() => toggleTrans(c.campo)} className="btn"
+                    style={{ padding: "5px 16px", background: sel ? color : undefined, color: sel ? "#fff" : undefined, borderColor: sel ? color : undefined, fontWeight: sel ? 700 : 400 }}>
+                    {c.label}
+                  </button>
+                </span>
+              );
+            })}
           </div>
           <div className="field" style={{ marginTop: 8 }}><label>Observación transporte</label><input name="transObservacion" /></div>
         </div>
