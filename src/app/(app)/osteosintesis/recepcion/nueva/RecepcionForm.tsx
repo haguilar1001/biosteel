@@ -164,19 +164,29 @@ export default function RecepcionForm({ tipo, consecutivo, proveedores, monedas,
                 <div className="field" style={{ gridColumn: "span 2" }}><label>Observaciones</label><input value={it.observaciones} onChange={(e) => setItem(i, "observaciones", e.target.value)} className="select" /></div>
               </div>
               <div className="subhead" style={{ margin: "10px 0 6px" }}>Criterios de inspección</div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                {criterios.map((c, k) => (
-                  <div key={k} style={{ display: "grid", gridTemplateColumns: "1fr 230px", gap: 10, alignItems: "start", borderTop: k ? "1px dotted var(--line)" : undefined, paddingTop: k ? 8 : 0 }}>
-                    <div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {criterios.map((c, k) => {
+                  const val = it.criterios[k] ?? c.opciones[0] ?? "Conforme";
+                  return (
+                    <div key={k} style={{ borderTop: k ? "1px dotted var(--line)" : undefined, paddingTop: k ? 8 : 0 }}>
                       <div style={{ fontSize: 12.5, fontWeight: 600 }}>C{k + 1}. {c.nombre}</div>
-                      <div className="flag" style={{ fontSize: 11, marginTop: 2 }}>{c.especificacion}</div>
+                      <div className="flag" style={{ fontSize: 11, margin: "2px 0 6px" }}>{c.especificacion}</div>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+                        {c.opciones.map((o) => {
+                          const sel = val === o;
+                          const ol = o.trim().toLowerCase();
+                          const color = ol === "conforme" ? "var(--ok, #2A9D6B)" : ol === "no aplica" ? "var(--muted, #64748b)" : "var(--bad, #D64545)";
+                          return (
+                            <button type="button" key={o} onClick={() => setCrit(i, k, o)} className="btn"
+                              style={{ padding: "4px 12px", fontSize: 12, background: sel ? color : undefined, color: sel ? "#fff" : undefined, borderColor: sel ? color : undefined, fontWeight: sel ? 700 : 400 }}>
+                              {o}
+                            </button>
+                          );
+                        })}
+                      </div>
                     </div>
-                    <select value={it.criterios[k] ?? c.opciones[0]} onChange={(e) => setCrit(i, k, e.target.value)} className="select"
-                      style={{ borderColor: (it.criterios[k] ?? "Conforme") === "Conforme" ? undefined : "var(--w1, #E0A400)" }}>
-                      {c.opciones.map((o) => <option key={o} value={o}>{o}</option>)}
-                    </select>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           ))}
