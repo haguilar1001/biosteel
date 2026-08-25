@@ -14,7 +14,8 @@ import { FiltroAuto } from "../../_components/FiltroAuto";
 import {
   aniosConMovimientos, mesesConMovimientos, bodegas, marcasConMovimientos,
   resumenMovimientos, movimientosPorTipo, movimientosPorBodegaFiltrado, detalleMovimientos,
-  saldoDelPeriodo, NOMBRE_INSTALACION, MES_CORTO, type FiltroMovimientos,
+  saldoDelPeriodo, mesesConBodega, bodegasConSaldo,
+  NOMBRE_INSTALACION, MES_CORTO, type FiltroMovimientos,
 } from "@/lib/negocio/inventario-osteo";
 
 const MES_LARGO = ["", "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
@@ -54,6 +55,22 @@ export default async function MovimientosPage({
     detalleMovimientos(filtro, LIMITE),
     saldoDelPeriodo(filtro),
   ]);
+
+  // Saldo por bodega: solo existe en los meses cargados con el export nuevo
+  // (el viejo llegaba hasta instalación). Se toma el mes filtrado si tiene
+  // detalle, y si no el último del año que sí lo tenga, diciéndolo en pantalla.
+  // El NETO en cambio siempre se puede: sale del propio movimiento.
+  const mesesBodega = await mesesConBodega(anio);
+  const mesSaldo = mes && mesesBodega.includes(mes)
+    ? mes
+    : (!mes ? mesesBodega[mesesBodega.length - 1] : undefined);
+  const saldoBodega = new Map<string, number>();
+  if (mesSaldo) {
+    for (const b of await bodegasConSaldo(anio, mesSaldo)) {
+      if (instalacion && b.instalacion !== instalacion) continue;
+      saldoBodega.set(b.codigo, b.valor);
+    }
+  }
 
   const bodegaSel = bodega ? catalogo.find((b) => b.codigo === bodega) : undefined;
   const etiqueta = mes ? `${MES_LARGO[mes]} ${anio}` : `${anio}`;
@@ -211,28 +228,66 @@ export default async function MovimientosPage({
         </div>
 
         <div className="card">
-          <div className="chart-head">Por Bodega <span className="hact">{etiqueta} · {porBodega.length} bodega(s)</span></div>
+          <div className="chart-head">
+            Por Bodega
+            <span className="hact">
+              {etiqueta} · {porBodega.length} bodega(s)
+              {mesSaldo ? " · saldo a " + MES_CORTO[mesSaldo] : ""}
+            </span>
+          </div>
           <div style={{ overflowX: "auto", maxHeight: 420, overflowY: "auto" }}>
             <table>
               <thead>
-                <tr><th>Bodega</th><th>Ciudad</th><th className="r">Movtos.</th><th className="r">Entradas</th><th className="r">Salidas</th></tr>
+                <tr>
+                  <th>Bodega</th><th>Ciudad</th><th className="r">Movtos.</th>
+                  <th className="r">Entradas</th><th className="r">Salidas</th>
+                  <th className="r">Neto</th>
+                  {mesSaldo ? <th className="r">Saldo</th> : null}
+                </tr>
               </thead>
               <tbody>
-                {porBodega.length === 0 && <tr><td colSpan={5}><div className="empty">Sin movimientos con estos filtros.</div></td></tr>}
-                {porBodega.map((b) => (
-                  <tr key={b.codigo}>
-                    <td style={{ whiteSpace: "normal" }}>
-                      <b>{b.codigo}</b> · {b.descripcion}
-                      {b.inferida && <span className="tag t-w1" style={{ marginLeft: 6 }} title="No venía en el catálogo">inferida</span>}
-                    </td>
-                    <td>{b.ciudad || "—"}</td>
-                    <td className="r num">{formatNumero(b.movimientos)}</td>
-                    <td className="r num"><Monto value={b.entradas} /></td>
-                    <td className="r num"><Monto value={b.salidas} /></td>
-                  </tr>
-                ))}
+                {porBodega.length === 0 && <tr><td colSpan={mesSaldo ? 7 : 6}><div className="empty">Sin movimientos con estos filtros.</div></td></tr>}
+                {porBodega.map((b) => {
+                  const neto = b.entradas - b.salidas;
+                  const saldo = saldoBodega.get(b.codigo);
+                  return (
+                    <tr key={b.codigo}>
+                      <td style={{ whiteSpace: "normal" }}>
+                        <b>{b.codigo}</b> · {b.descripcion}
+                        {b.inferida && <span className="tag t-w1" style={{ marginLeft: 6 }} title="No venía en el catálogo">inferida</span>}
+                      </td>
+                      <td>{b.ciudad || "—"}</td>
+                      <td className="r num">{formatNumero(b.movimientos)}</td>
+                      <td className="r num"><Monto value={b.entradas} /></td>
+                      <td className="r num"><Monto value={b.salidas} /></td>
+                      <td className="r num" style={{ fontWeight: 600, color: neto < 0 ? "var(--bad)" : "var(--ok)" }}>
+                        {neto < 0 ? "▼ " : "▲ "}<Monto value={Math.abs(neto)} />
+                      </td>
+                      {mesSaldo ? (
+                        <td className="r num" style={{ fontWeight: 600 }}>
+                          {saldo == null
+                            ? <span className="flag" title="La bodega no tiene saldo en el balance de ese mes">—</span>
+                            : <Monto value={saldo} />}
+                        </td>
+                      ) : null}
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
+          </div>
+          {/* Decir de qué corte es el saldo evita leerlo como si fuera del
+              mismo periodo que los movimientos, que casi nunca coinciden. */}
+          <div className="card-body" style={{ padding: "8px 14px", fontSize: 12, color: "var(--muted)" }}>
+            {mesSaldo ? (
+              <>El <b>Neto</b> es entradas − salidas del periodo filtrado. El <b>Saldo</b> es el
+                valorizado del balance al cierre de <b>{MES_CORTO[mesSaldo]} {anio}</b>, el último
+                mes con detalle por bodega — no del periodo mostrado.</>
+            ) : (
+              <>El <b>Neto</b> es entradas − salidas del periodo filtrado. El saldo por bodega no se
+                puede mostrar: el balance de {mes ? MES_CORTO[mes] + " " : ""}{anio} se cargó con el
+                export viejo, que solo llega hasta instalación.</>
+            )}
           </div>
         </div>
       </div>
