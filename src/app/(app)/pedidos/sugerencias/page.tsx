@@ -89,6 +89,11 @@ export default async function SugerenciasPage({ searchParams }: { searchParams: 
   const pctPorProcedimiento = r.resumen.valorSugerido > 0
     ? (valorPorProcedimiento / r.resumen.valorSugerido) * 100 : 0;
 
+  // Enlace para quitar el filtro por defecto. El modelo vacío viaja explícito
+  // para que no se vuelva a activar solo al recargar.
+  const verTodos = new URLSearchParams(c.query);
+  verTodos.set("modelo", "");
+
   return (
     <>
       {/* ---------- Parámetros ---------- */}
@@ -192,9 +197,24 @@ export default async function SugerenciasPage({ searchParams }: { searchParams: 
         </div>
       </div>
 
+      {/* La pantalla arranca filtrada. Decirlo es obligatorio: una cifra de
+          compra que parece el total y no lo es se convierte en una decisión
+          equivocada, y el camino de vuelta tiene que estar a un clic. */}
+      {c.modeloPorDefecto ? (
+        <div className="card" style={{ marginBottom: 12 }}>
+          <div className="card-body" style={{ padding: "10px 14px", fontSize: 12.5, color: "var(--muted)" }}>
+            📌 Estás viendo solo <b>MAYORITARIO</b>, que es el material que sí se mantiene en bodega
+            y donde el punto de reorden produce una orden de compra que se puede firmar. En PXP y
+            consignación se compra por procedimiento: ahí una referencia en cero es lo normal, no una
+            alarma. <a href={`/pedidos/sugerencias?${verTodos.toString()}`}>Ver todos los modelos</a>{" "}
+            para la proyección completa de consumo.
+          </div>
+        </div>
+      ) : null}
+
       {/* Advertencia de lectura: el modelo de compra cambia qué significa
           "agotado", y callarlo haría que la cifra grande se lea mal. */}
-      {pctPorProcedimiento > 20 ? (
+      {!c.modeloPorDefecto && pctPorProcedimiento > 20 ? (
         <div className="card" style={{ marginBottom: 12 }}>
           <div className="card-body" style={{ padding: "10px 14px", fontSize: 12.5, color: "var(--muted)" }}>
             ⚠️ <b>Cómo leer esta cifra.</b> El {pctPorProcedimiento.toFixed(0)} % de lo sugerido

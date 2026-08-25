@@ -30,6 +30,19 @@ export const OPCIONES = {
 
 export const ESTADOS: EstadoRepo[] = ["Agotado", "Crítico", "Bajo", "OK", "Exceso"];
 
+/**
+ * Modelo con el que arranca la pantalla. MAYORITARIO es el material que sí se
+ * mantiene en bodega, o sea el único donde el punto de reorden produce una
+ * orden de compra que se puede firmar; en PXP y consignación se compra por
+ * procedimiento y una referencia en cero es lo normal.
+ *
+ * Es un valor por DEFECTO, no un recorte fijo: "Todos" llega como cadena
+ * vacía en el querystring, y por eso se distingue de la primera visita, que
+ * no trae el parámetro. Sin esa distinción no habría forma de quitar el
+ * filtro: el selector volvería solo a MAYORITARIO.
+ */
+export const MODELO_DEFECTO = "MAYORITARIO";
+
 export interface ContextoSugerencias {
   resultado: ResultadoReposicion;
   /** Filas ya recortadas por el filtro de estado y de "solo a comprar". */
@@ -38,6 +51,8 @@ export interface ContextoSugerencias {
   filtro: FiltroReposicion;
   estado?: EstadoRepo;
   soloAComprar: boolean;
+  /** true si el modelo vigente es el de defecto y el usuario no lo eligió. */
+  modeloPorDefecto: boolean;
   opciones: {
     proveedores: string[]; marcas: string[]; lineas: string[];
     ciudades: string[]; modelos: string[];
@@ -74,12 +89,19 @@ export async function resolverSugerencias(sp: ParamsSugerencias): Promise<Contex
     lineasConPedidos(hasta.anio), ciudadesConPedidos(hasta.anio), modelosDeCompra(),
   ]);
 
+  // Primera visita (sin el parámetro) → MAYORITARIO. Cadena vacía → "Todos",
+  // que es una elección explícita del usuario y hay que respetarla.
+  const modeloPorDefecto = sp.modelo === undefined && modelos.includes(MODELO_DEFECTO);
+  const modeloCompra = modeloPorDefecto
+    ? MODELO_DEFECTO
+    : sp.modelo && modelos.includes(sp.modelo) ? sp.modelo : undefined;
+
   const filtro: FiltroReposicion = {
     proveedor: sp.prov && proveedores.includes(sp.prov) ? sp.prov : undefined,
     marca: sp.marca && marcas.includes(sp.marca) ? sp.marca : undefined,
     linea: sp.linea && lineas.includes(sp.linea) ? sp.linea : undefined,
     ciudad: sp.ciudad && ciudades.includes(sp.ciudad) ? sp.ciudad : undefined,
-    modeloCompra: sp.modelo && modelos.includes(sp.modelo) ? sp.modelo : undefined,
+    modeloCompra,
     instalacion: [101, 102, 106].includes(Number(sp.inst)) ? Number(sp.inst) : undefined,
   };
 
@@ -97,7 +119,10 @@ export async function resolverSugerencias(sp: ParamsSugerencias): Promise<Contex
   if (filtro.marca) qs.set("marca", filtro.marca);
   if (filtro.linea) qs.set("linea", filtro.linea);
   if (filtro.ciudad) qs.set("ciudad", filtro.ciudad);
-  if (filtro.modeloCompra) qs.set("modelo", filtro.modeloCompra);
+  // El modelo va SIEMPRE, incluso vacío: si no, el enlace de exportación y
+  // cualquier vuelta a la pantalla reactivarían el defecto y el Excel no
+  // coincidiría con lo que se está viendo.
+  qs.set("modelo", filtro.modeloCompra ?? "");
   if (filtro.instalacion) qs.set("inst", String(filtro.instalacion));
   if (estado) qs.set("estado", estado);
   if (!soloAComprar) qs.set("todo", "1");
@@ -107,7 +132,7 @@ export async function resolverSugerencias(sp: ParamsSugerencias): Promise<Contex
   qs.set("cob", String(parametros.coberturaMeses));
 
   return {
-    resultado, visibles, parametros, filtro, estado, soloAComprar,
+    resultado, visibles, parametros, filtro, estado, soloAComprar, modeloPorDefecto,
     opciones: { proveedores, marcas, lineas, ciudades, modelos },
     query: qs.toString(),
   };
