@@ -24,7 +24,7 @@ import { LineasMensuales } from "../_components/charts/LineasMensuales";
 import { TopRanking } from "../_components/charts/TopRanking";
 import {
   resumenPedidos, costoPorLinea, pedidosPorMarca, pedidosPorCiudad,
-  pedidosPorAnatomia, pedidosPorModeloCompra, pedidosPorMes,
+  pedidosPorAnatomia, pedidosPorModeloCompra, pedidosPorMarcaYModelo, pedidosPorMes,
   SIN_MODELO, MES_CORTO,
 } from "@/lib/negocio/pedidos";
 import { resolverFiltro, resumenFiltros, type ParamsPedidos } from "./_filtro";
@@ -58,10 +58,21 @@ export default async function PedidosPage({ searchParams }: { searchParams: Prom
   }
 
   const f = c.filtro;
-  const [kpi, lineas, marcas, ciudades, anatomias, modelos, meses] = await Promise.all([
+  const [kpi, lineas, marcas, ciudades, anatomias, modelos, cruceModelo, meses] = await Promise.all([
     resumenPedidos(f), costoPorLinea(f), pedidosPorMarca(f), pedidosPorCiudad(f),
-    pedidosPorAnatomia(f), pedidosPorModeloCompra(f), pedidosPorMes(f),
+    pedidosPorAnatomia(f), pedidosPorModeloCompra(f), pedidosPorMarcaYModelo(f), pedidosPorMes(f),
   ]);
+
+  // Un color por modelo de compra, compartido por el anillo, las columnas de
+  // la tabla de proveedores y las barras de reparto: el mismo concepto no
+  // puede cambiar de color según dónde se mire.
+  const colorModelo = new Map(modelos.map((m, i) =>
+    [m.label, m.label === SIN_MODELO ? "var(--muted)" : CATS[i % CATS.length]!] as const));
+  // El anillo conserva todos los modelos (APROVECHAMIENTO en $0 es información:
+  // hay material, no hay valor), pero la tabla se queda solo con los que
+  // mueven plata: una columna entera de guiones no dice nada y roba ancho.
+  const modelosTabla = modelos.filter((m) => m.costo > 0);
+  const nombresModelo = modelosTabla.map((m) => m.label);
 
   const margen = kpi.venta > 0 ? (kpi.utilidad / kpi.venta) * 100 : 0;
   const costoUnitario = kpi.cantidad > 0 ? kpi.costo / kpi.cantidad : 0;
@@ -195,9 +206,8 @@ export default async function PedidosPage({ searchParams }: { searchParams: Prom
             {modelos.length ? (
               <Donut
                 size={260}
-                data={modelos.map((m, i) => ({
-                  label: m.label, valor: m.costo,
-                  color: m.label === SIN_MODELO ? "var(--muted)" : CATS[i % CATS.length]!,
+                data={modelos.map((m) => ({
+                  label: m.label, valor: m.costo, color: colorModelo.get(m.label)!,
                 }))}
                 centro={{
                   valor: formatCOP(kpi.costo),
@@ -286,7 +296,9 @@ export default async function PedidosPage({ searchParams }: { searchParams: Prom
         </div>
       </div>
 
-      {/* Pedidos por proveedor (MARCA), como en el tablero. */}
+      {/* Pedidos por proveedor (MARCA), abierto por modelo de compra: es lo que
+          dice si lo de esa marca se puede reponer a stock o se compra cirugía
+          a cirugía. La barra de reparto va partida con los mismos colores. */}
       <div className="card">
         <div className="chart-head">
           Pedidos por Proveedor (marca)
@@ -299,7 +311,13 @@ export default async function PedidosPage({ searchParams }: { searchParams: Prom
                 <th>Marca</th>
                 <th className="r">$ Pedidos (costo)</th>
                 <th className="r">% del total</th>
-                <th>Reparto</th>
+                <th>Reparto por modelo de compra</th>
+                {nombresModelo.map((mod) => (
+                  <th key={mod} className="r" title={`$ y % de la marca que sale de bodegas ${mod}`}>
+                    <i style={{ display: "inline-block", width: 9, height: 9, borderRadius: 3, background: colorModelo.get(mod), marginRight: 6 }} />
+                    {mod}
+                  </th>
+                ))}
                 <th className="r">Cant. pedida</th>
                 <th className="r">Pedidos</th>
                 <th className="r">Venta</th>
@@ -308,14 +326,48 @@ export default async function PedidosPage({ searchParams }: { searchParams: Prom
             <tbody>
               {marcas.map((m) => {
                 const pct = kpi.costo > 0 ? (m.costo / kpi.costo) * 100 : 0;
+                const desglose = cruceModelo.get(m.label);
                 return (
                   <tr key={m.label}>
                     <td style={{ fontWeight: 600 }}>{m.label}</td>
                     <td className="r num"><Monto value={m.costo} /></td>
                     <td className="r num" style={{ fontWeight: 700 }}>{formatPorcentaje(pct)}</td>
-                    <td style={{ minWidth: 140 }}>
-                      <div className="rank-bar"><div style={{ width: `${Math.max(pct, 0)}%`, background: "var(--az-2)" }} /></div>
+                    <td style={{ minWidth: 150 }}>
+                      {/* El ancho total sigue siendo el peso de la marca sobre
+                          el periodo; los tramos, su mezcla de modelos. */}
+                      <div className="rank-bar">
+                        <div style={{ width: `${Math.max(pct, 0)}%`, display: "flex", height: "100%", overflow: "hidden" }}>
+                          {nombresModelo.map((mod) => {
+                            const v = desglose?.get(mod) ?? 0;
+                            if (v <= 0) return null;
+                            const parte = m.costo > 0 ? (v / m.costo) * 100 : 0;
+                            return (
+                              <span
+                                key={mod}
+                                title={`${mod}: ${formatCOP(v)} · ${formatPorcentaje(parte)} de ${m.label}`}
+                                style={{ width: `${parte}%`, background: colorModelo.get(mod) }}
+                              />
+                            );
+                          })}
+                        </div>
+                      </div>
                     </td>
+                    {nombresModelo.map((mod) => {
+                      const v = desglose?.get(mod) ?? 0;
+                      const parte = m.costo > 0 ? (v / m.costo) * 100 : 0;
+                      return (
+                        <td key={mod} className="r num" data-orden={v}>
+                          {v > 0 ? (
+                            <>
+                              <Monto value={v} />
+                              <div className="flag" style={{ color: colorModelo.get(mod), fontWeight: 700 }}>
+                                {formatPorcentaje(parte)}
+                              </div>
+                            </>
+                          ) : "—"}
+                        </td>
+                      );
+                    })}
                     <td className="r num flag">{formatNumero(m.cantidad)}</td>
                     <td className="r num flag">{formatNumero(m.documentos)}</td>
                     <td className="r num flag"><Monto value={m.venta} /></td>
@@ -323,13 +375,21 @@ export default async function PedidosPage({ searchParams }: { searchParams: Prom
                 );
               })}
               {marcas.length === 0 ? (
-                <tr><td colSpan={7}><div className="empty">Sin pedidos en el periodo.</div></td></tr>
+                <tr><td colSpan={7 + nombresModelo.length}><div className="empty">Sin pedidos en el periodo.</div></td></tr>
               ) : (
                 <tr className="fila-total">
                   <td style={{ fontWeight: 800 }}>Total</td>
                   <td className="r num" style={{ fontWeight: 800 }}><Monto value={kpi.costo} /></td>
                   <td className="r num" style={{ fontWeight: 800 }}>100,0 %</td>
                   <td />
+                  {modelosTabla.map((mod) => (
+                    <td key={mod.label} className="r num" style={{ fontWeight: 800 }}>
+                      <Monto value={mod.costo} />
+                      <div className="flag" style={{ color: colorModelo.get(mod.label), fontWeight: 700 }}>
+                        {formatPorcentaje(kpi.costo > 0 ? (mod.costo / kpi.costo) * 100 : 0)}
+                      </div>
+                    </td>
+                  ))}
                   <td className="r num" style={{ fontWeight: 800 }}>{formatNumero(kpi.cantidad)}</td>
                   <td className="r num" style={{ fontWeight: 800 }}>{formatNumero(kpi.documentos)}</td>
                   <td className="r num" style={{ fontWeight: 800 }}><Monto value={kpi.venta} /></td>
@@ -337,6 +397,12 @@ export default async function PedidosPage({ searchParams }: { searchParams: Prom
               )}
             </tbody>
           </table>
+        </div>
+        <div className="card-body" style={{ padding: "8px 14px", fontSize: 12, color: "var(--muted)" }}>
+          El <b>%</b> bajo cada modelo es sobre el total de esa marca, no sobre el periodo: dice qué
+          parte de lo que se le pide a ese proveedor sale de bodega propia (<b>MAYORITARIO</b>, lo
+          reponible) y qué parte se compra por procedimiento (<b>PXP</b>, <b>consignación</b>). Es la
+          misma partición que usan las <a href="/pedidos/sugerencias">Sugerencias de Compra</a>.
         </div>
       </div>
     </>

@@ -253,6 +253,38 @@ export async function pedidosPorModeloCompra(f: FiltroPedidos): Promise<FilaCort
   return [...mapa.values()].sort((a, b) => b.costo - a.costo);
 }
 
+/**
+ * Cruce marca × modelo de compra, en $ costo. Responde a "de lo que le pido a
+ * SAMPEDRO, ¿cuánto es material a stock y cuánto por procedimiento?", que es
+ * lo que decide si esa marca se puede reponer o se compra cirugía a cirugía.
+ *
+ * El modelo no está en el pedido: sale del catálogo de bodegas, igual que en
+ * pedidosPorModeloCompra. Se agrupa por bodega y se traduce en memoria porque
+ * el catálogo son 84 filas y no vale la pena un JOIN.
+ */
+export async function pedidosPorMarcaYModelo(f: FiltroPedidos): Promise<Map<string, Map<string, number>>> {
+  const [filas, bodegas] = await Promise.all([
+    prisma.$queryRaw<{ marca: string; bodega: string; costo: unknown }[]>`
+      SELECT m."marca" AS marca, m."bodegaCodigo" AS bodega,
+             COALESCE(SUM(m."costoProm"), 0) AS costo
+      FROM "Pedido" m WHERE ${where(f)}
+      GROUP BY 1, 2`,
+    prisma.invBodega.findMany({ select: { codigo: true, modeloCompra: true } }),
+  ]);
+  const catalogo = new Map(bodegas.map((b) => [b.codigo, b.modeloCompra]));
+  const out = new Map<string, Map<string, number>>();
+  for (const r of filas) {
+    // La misma etiqueta que usa pedidosPorMarca, para que las dos tablas
+    // hablen de la misma fila.
+    const marca = r.marca || "(sin marca)";
+    const modelo = catalogo.get(r.bodega) || SIN_MODELO;
+    const porModelo = out.get(marca) ?? new Map<string, number>();
+    porModelo.set(modelo, (porModelo.get(modelo) ?? 0) + n(r.costo));
+    out.set(marca, porModelo);
+  }
+  return out;
+}
+
 /** Evolución mensual del año filtrado (12 posiciones, 1–12). */
 export async function pedidosPorMes(f: FiltroPedidos): Promise<{ mes: number; costo: number; venta: number; cantidad: number }[]> {
   const filas = await prisma.$queryRaw<{ mes: number; costo: unknown; venta: unknown; cant: unknown }[]>`
