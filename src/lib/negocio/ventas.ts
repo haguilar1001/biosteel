@@ -272,7 +272,15 @@ export function ciudadesDeIps(ips: OpcionIps[]): { ciudad: string; ips: number; 
   return [...map.values()].sort((a, b) => b.valor - a.valor);
 }
 
-export interface FiltroConsumo { anio: number; meses?: number[]; ips?: string; ciudad?: string; lista?: string }
+export interface FiltroConsumo {
+  anio: number;
+  meses?: number[];
+  ips?: string;
+  ciudad?: string;
+  lista?: string;
+  /** Proveedor (columna MARCA del renglón). Acota TODO el informe a uno solo. */
+  marca?: string;
+}
 
 /** Etiqueta de los renglones cuyo archivo de origen no traía lista de precios. */
 export const SIN_LISTA = "(sin lista)";
@@ -303,6 +311,7 @@ export async function utilidadPorLista(f: FiltroConsumo, opciones: OpcionIps[]):
       anio: f.anio,
       ...(f.meses && f.meses.length ? { mes: { in: f.meses } } : {}),
       ...(ips ? { ips: { in: ips } } : {}),
+      ...soloMarca(f),
     },
     _sum: { valor: true, costo: true },
   });
@@ -327,6 +336,7 @@ export async function ipsPorLista(f: FiltroConsumo, opciones: OpcionIps[]): Prom
       anio: f.anio,
       ...(f.meses && f.meses.length ? { mes: { in: f.meses } } : {}),
       ...(ips ? { ips: { in: ips } } : {}),
+      ...soloMarca(f),
     },
     _sum: { valor: true, costo: true },
   });
@@ -352,6 +362,7 @@ export async function itemsPorListaIps(f: FiltroConsumo, opciones: OpcionIps[]):
       anio: f.anio,
       ...(f.meses && f.meses.length ? { mes: { in: f.meses } } : {}),
       ...(ips ? { ips: { in: ips } } : {}),
+      ...soloMarca(f),
     },
     _sum: { valor: true, costo: true, cantidad: true },
   });
@@ -380,6 +391,30 @@ function soloLista(f: FiltroConsumo) {
   return { lista: f.lista === SIN_LISTA ? "" : f.lista };
 }
 
+/**
+ * Recorte por proveedor (MARCA). Se aplica a TODAS las consultas del informe,
+ * incluido el desglose por lista de precios: el sentido del filtro es ver la
+ * utilidad de un solo proveedor de punta a punta, no solo en una tabla.
+ */
+function soloMarca(f: FiltroConsumo) {
+  return f.marca ? { marca: f.marca } : {};
+}
+
+/**
+ * Proveedores (MARCA) con venta en el periodo. Alimenta el selector, y se pide
+ * SIN el filtro de marca para que el selector no se vacíe a sí mismo al elegir
+ * uno (mismo criterio que las IPS y las listas de precios).
+ */
+export async function marcasConVenta(anio: number, meses?: number[]): Promise<string[]> {
+  const filas = await prisma.ventaItemIps.findMany({
+    where: { anio, ...(meses && meses.length ? { mes: { in: meses } } : {}), marca: { not: "" } },
+    distinct: ["marca"],
+    select: { marca: true },
+    orderBy: { marca: "asc" },
+  });
+  return filas.map((f) => f.marca);
+}
+
 /** Nombres de IPS que caen dentro del filtro (una sola, una ciudad, o todas). */
 function ipsDelFiltro(opciones: OpcionIps[], f: FiltroConsumo): string[] | undefined {
   if (f.ips) return [f.ips];
@@ -395,6 +430,7 @@ export async function marcasFiltradas(f: FiltroConsumo, opciones: OpcionIps[]): 
     ...(f.meses && f.meses.length ? { mes: { in: f.meses } } : {}),
     ...(lista ? { ips: { in: lista } } : {}),
     ...soloLista(f),
+    ...soloMarca(f),
   };
   const grupos = await prisma.ventaItemIps.groupBy({ by: ["marca"], where, _sum: { valor: true, costo: true } });
   return grupos
@@ -410,6 +446,7 @@ export async function ipsPorMarcaFiltrado(f: FiltroConsumo, opciones: OpcionIps[
     ...(f.meses && f.meses.length ? { mes: { in: f.meses } } : {}),
     ...(lista ? { ips: { in: lista } } : {}),
     ...soloLista(f),
+    ...soloMarca(f),
   };
   const grupos = await prisma.ventaItemIps.groupBy({ by: ["marca", "ips"], where, _sum: { valor: true, costo: true } });
   const map = new Map<string, MarcaConIps["ips"]>();
@@ -430,6 +467,7 @@ export async function itemsPorMarcaFiltrado(f: FiltroConsumo, opciones: OpcionIp
     ...(f.meses && f.meses.length ? { mes: { in: f.meses } } : {}),
     ...(lista ? { ips: { in: lista } } : {}),
     ...soloLista(f),
+    ...soloMarca(f),
   };
   const grupos = await prisma.ventaItemIps.groupBy({
     by: ["marca", "referencia", "descripcion"], where,

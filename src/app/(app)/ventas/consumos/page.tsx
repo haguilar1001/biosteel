@@ -9,7 +9,8 @@ import { Monto } from "../../_components/Monto";
 import {
   aniosConVenta, mesesConVenta, ipsConVenta, ciudadesDeIps,
   marcasFiltradas, ipsPorMarcaFiltrado, itemsPorMarcaFiltrado,
-  listasConVenta, utilidadPorLista, ipsPorLista, itemsPorListaIps, SIN_LISTA, type FiltroConsumo,
+  listasConVenta, utilidadPorLista, ipsPorLista, itemsPorListaIps, marcasConVenta,
+  SIN_LISTA, type FiltroConsumo,
 } from "@/lib/negocio/ventas";
 import { FiltroAuto } from "../../_components/FiltroAuto";
 import { nombreLista } from "@/lib/negocio/listas-precio";
@@ -19,7 +20,7 @@ const margen = (venta: number, costo: number) => (venta > 0 ? ((venta - costo) /
 
 type OrdenCol = "marca" | "venta" | "costo" | "utilidad" | "margen";
 
-export default async function ConsumosPage({ searchParams }: { searchParams: Promise<{ anio?: string; mes?: string; orden?: string; dir?: string; vista?: string; ips?: string; ciudad?: string; lista?: string }> }) {
+export default async function ConsumosPage({ searchParams }: { searchParams: Promise<{ anio?: string; mes?: string; orden?: string; dir?: string; vista?: string; ips?: string; ciudad?: string; lista?: string; marca?: string }> }) {
   await requirePermiso("cxp.view");
   const sp = await searchParams;
 
@@ -42,7 +43,11 @@ export default async function ConsumosPage({ searchParams }: { searchParams: Pro
   // que el selector no se vacíe a sí mismo al escoger una.
   const listasDisp = await listasConVenta(anio);
   const listaSel = sp.lista && (listasDisp.includes(sp.lista) || sp.lista === SIN_LISTA) ? sp.lista : undefined;
-  const filtro: FiltroConsumo = { anio, meses, ips: ipsSel, ciudad: ciudadSel, lista: listaSel };
+  // Proveedores del periodo: también se ofrecen sin filtrar, para que elegir
+  // uno no deje el selector con una sola opción y sin manera de volver.
+  const marcasDisp = await marcasConVenta(anio, meses);
+  const marcaSel = sp.marca && marcasDisp.includes(sp.marca) ? sp.marca : undefined;
+  const filtro: FiltroConsumo = { anio, meses, ips: ipsSel, ciudad: ciudadSel, lista: listaSel, marca: marcaSel };
 
   const [marcasBase, ipsMap, itemsMap, porLista, ipsListaMap, itemsListaMap] = await Promise.all([
     marcasFiltradas(filtro, opcionesIps),
@@ -87,7 +92,9 @@ export default async function ConsumosPage({ searchParams }: { searchParams: Pro
   });
   // Vista: desglose por IPS o por Ítem (toggle al nivel de los filtros). Por defecto Ítem.
   const vista: "ips" | "item" = sp.vista === "ips" ? "ips" : "item";
-  const filtroQS = `${ipsSel ? `&ips=${encodeURIComponent(ipsSel)}` : ""}${ciudadSel ? `&ciudad=${encodeURIComponent(ciudadSel)}` : ""}`;
+  // Todo lo que filtra viaja en los enlaces de orden y de vista: cambiar de
+  // columna o de desglose no puede borrar el filtro que el usuario puso.
+  const filtroQS = `${ipsSel ? `&ips=${encodeURIComponent(ipsSel)}` : ""}${ciudadSel ? `&ciudad=${encodeURIComponent(ciudadSel)}` : ""}${listaSel ? `&lista=${encodeURIComponent(listaSel)}` : ""}${marcaSel ? `&marca=${encodeURIComponent(marcaSel)}` : ""}`;
   const base = `/ventas/consumos?anio=${anio}${mesSel ? `&mes=${mesSel}` : ""}${filtroQS}`;
   const ordenBase = `${base}&vista=${vista}`;
   const linkVista = (v: "ips" | "item") => `${base}&orden=${orden}&dir=${dir}&vista=${v}`;
@@ -108,6 +115,7 @@ export default async function ConsumosPage({ searchParams }: { searchParams: Pro
           <div>
             <div className="eyebrow" style={{ fontSize: 15 }}>Informe de Consumos · {periodo} · {marcas.length} proveedores</div>
             <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 3 }}>
+              {marcaSel ? <>Solo <b>{marcaSel}</b> · </> : null}
               {ipsSel ? <>Solo <b>{ipsSel}</b></>
                 : ciudadSel ? <>Solo <b>{ciudadSel}</b> · {ciudades.find((c) => c.ciudad === ciudadSel)?.ips ?? 0} IPS</>
                 : <>Todas las IPS</>}
@@ -146,6 +154,13 @@ export default async function ConsumosPage({ searchParams }: { searchParams: Pro
                 </select>
               </>
             ) : null}
+            {/* Proveedor (MARCA): deja el informe entero —KPIs, tabla y listas—
+                en un solo proveedor, para leer su utilidad al detalle. */}
+            <label className="flag" style={{ alignSelf: "center" }}>Proveedor:</label>
+            <select name="marca" defaultValue={marcaSel ?? ""} className="select" style={{ maxWidth: 280 }}>
+              <option value="">Todos</option>
+              {marcasDisp.map((m) => <option key={m} value={m}>{m}</option>)}
+            </select>
             <label className="flag" style={{ alignSelf: "center" }}>Ciudad:</label>
             <select name="ciudad" defaultValue={ciudadSel ?? ""} className="select">
               <option value="">Todas</option>
@@ -165,7 +180,7 @@ export default async function ConsumosPage({ searchParams }: { searchParams: Pro
                 </optgroup>
               )}
             </select>
-            {(mesSel || ipsSel || ciudadSel || listaSel)
+            {(mesSel || ipsSel || ciudadSel || listaSel || marcaSel)
               ? <a href={`/ventas/consumos?anio=${anio}&orden=${orden}&dir=${dir}&vista=${vista}`} className="btn">Limpiar filtros</a>
               : null}
           </FiltroAuto>
