@@ -1635,6 +1635,7 @@ model RecepcionTecnica {
   registroInvima  String   @default("")
   facturaRemision String   @default("")
   valorFactura    Decimal  @default(0) @db.Decimal(18, 2)
+  monedaFactura   String   @default("USD") // código de moneda (COP/USD/EUR…)
   guiaTransporte  String   @default("")
   transportador   String   @default("")
   loteDespacho    String   @default("")

@@ -1,7 +1,10 @@
 // ==========================================================
 // Recibo a Satisfacción de Dispositivos Médicos (FOR-ALM-005) — hoja imprimible.
 // ==========================================================
-import { formatFecha, formatFechaHoraSeg, formatCOP, formatNumero } from "@/lib/format";
+import { formatFecha, formatFechaHoraSeg, formatNumero } from "@/lib/format";
+
+const fmtValor = (v: number, moneda: string) =>
+  `${moneda} ${new Intl.NumberFormat("es-CO", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v)}`;
 import {
   DOCS_IMPORTACION, verifDocLabel, claseOpcion, tipoRecepcionLabel,
   type RecepcionDetalle,
@@ -58,7 +61,7 @@ export default function RecepcionDoc({ r }: { r: NonNullable<RecepcionDetalle> }
             <Campo k="N° ODC / Pedido" v={r.odcPedido || "—"} />
             <Campo k="Registro INVIMA" v={r.registroInvima || "—"} />
             <Campo k="Factura / Remisión" v={r.facturaRemision || "—"} />
-            <Campo k="Valor factura" v={r.valorFactura ? formatCOP(r.valorFactura) : "—"} />
+            <Campo k="Valor factura" v={r.valorFactura ? fmtValor(r.valorFactura, r.monedaFactura) : "—"} />
             <Campo k="Hora recepción" v={r.horaRecepcion || "—"} />
             <Campo k="N° guía transporte" v={r.guiaTransporte || "—"} />
             <Campo k="Transportador" v={r.transportador || "—"} />

@@ -110,6 +110,11 @@ export async function proveedoresSugeridos(): Promise<string[]> {
   return t.map((x) => x.nombre);
 }
 
+/** Catálogo de monedas para el selector (COP/USD/EUR…). */
+export async function monedas(): Promise<{ codigo: string; nombre: string; simbolo: string }[]> {
+  return prisma.moneda.findMany({ select: { codigo: true, nombre: true, simbolo: true }, orderBy: { codigo: "asc" } });
+}
+
 // --- Listado ---
 export interface FiltroRecepcion { tipo?: TipoRecepcion; q?: string }
 export interface FilaRecepcion {
@@ -122,6 +127,7 @@ export interface FilaRecepcion {
   odcPedido: string;
   resultado: string;
   valorFactura: number;
+  monedaFactura: string;
   items: number;
 }
 
@@ -143,14 +149,15 @@ export async function listarRecepciones(f: FiltroRecepcion = {}): Promise<FilaRe
     take: 300,
     select: {
       id: true, consecutivo: true, tipo: true, fechaInspeccion: true, proveedorNombre: true,
-      facturaRemision: true, odcPedido: true, resultado: true, valorFactura: true,
+      facturaRemision: true, odcPedido: true, resultado: true, valorFactura: true, monedaFactura: true,
       _count: { select: { items: true } },
     },
   });
   return filas.map((r) => ({
     id: r.id, consecutivo: r.consecutivo, tipo: r.tipo, fechaInspeccion: r.fechaInspeccion,
     proveedorNombre: r.proveedorNombre, facturaRemision: r.facturaRemision, odcPedido: r.odcPedido,
-    resultado: r.resultado, valorFactura: r.valorFactura.toNumber(), items: r._count.items,
+    resultado: r.resultado, valorFactura: r.valorFactura.toNumber(), monedaFactura: r.monedaFactura,
+    items: r._count.items,
   }));
 }
 

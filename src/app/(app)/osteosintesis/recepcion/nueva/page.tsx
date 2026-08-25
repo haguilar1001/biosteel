@@ -1,6 +1,6 @@
 // Formulario de nueva Recepción Técnica (FOR-ALM-005).
 import { requirePermiso } from "@/server/auth-context";
-import { proveedoresSugeridos, siguienteConsecutivo, CRITERIOS_IMPORTACION, DOCS_IMPORTACION, tipoRecepcionLabel } from "@/lib/negocio/recepcion";
+import { proveedoresSugeridos, siguienteConsecutivo, monedas, CRITERIOS_IMPORTACION, DOCS_IMPORTACION, tipoRecepcionLabel } from "@/lib/negocio/recepcion";
 import type { TipoRecepcion } from "@prisma/client";
 import RecepcionForm from "./RecepcionForm";
 
@@ -12,7 +12,7 @@ export default async function NuevaRecepcionPage({
   await requirePermiso("recepcion.manage");
   const sp = await searchParams;
   const tipo: TipoRecepcion = sp.tipo === "nacional" ? "nacional" : "importacion";
-  const [proveedores, consecutivo] = await Promise.all([proveedoresSugeridos(), siguienteConsecutivo(tipo)]);
+  const [proveedores, consecutivo, monedasCat] = await Promise.all([proveedoresSugeridos(), siguienteConsecutivo(tipo), monedas()]);
 
   return (
     <>
@@ -28,6 +28,7 @@ export default async function NuevaRecepcionPage({
         tipo={tipo}
         consecutivo={consecutivo}
         proveedores={proveedores}
+        monedas={monedasCat}
         criterios={CRITERIOS_IMPORTACION.map((c) => ({ nombre: c.nombre, especificacion: c.especificacion, opciones: c.opciones }))}
         docs={DOCS_IMPORTACION.map((d) => ({ campo: d.campo, label: d.label }))}
       />

@@ -14,13 +14,14 @@ interface ItemForm {
 }
 interface Props {
   tipo: string; consecutivo: string; proveedores: string[];
+  monedas: { codigo: string; nombre: string; simbolo: string }[];
   criterios: CriterioUI[]; docs: { campo: string; label: string }[];
 }
 
 const VERIF = [{ v: "si", l: "Sí" }, { v: "no", l: "No" }, { v: "na", l: "N/A" }];
 const RESULTADOS = ["Aceptado", "Aceptado con observaciones", "Cuarentena", "Rechazado"];
 
-export default function RecepcionForm({ tipo, consecutivo, proveedores, criterios, docs }: Props) {
+export default function RecepcionForm({ tipo, consecutivo, proveedores, monedas, criterios, docs }: Props) {
   const [state, action, pending] = useActionState<RecepcionState, FormData>(crearRecepcionAction, {});
   const nuevoItem = (): ItemForm => ({
     codigo: "", descripcion: "", cantPedida: "", cantRecibida: "",
@@ -74,6 +75,11 @@ export default function RecepcionForm({ tipo, consecutivo, proveedores, criterio
             <div className="field"><label>Registro INVIMA</label><input name="registroInvima" /></div>
             <div className="field"><label>Factura / Remisión</label><input name="facturaRemision" /></div>
             <div className="field"><label>Valor factura</label><input name="valorFactura" type="number" min={0} step="0.01" /></div>
+            <div className="field"><label>Moneda</label>
+              <select name="monedaFactura" defaultValue="USD">
+                {monedas.map((m) => <option key={m.codigo} value={m.codigo}>{m.codigo} · {m.nombre}</option>)}
+              </select>
+            </div>
             <div className="field"><label>N° guía transporte</label><input name="guiaTransporte" /></div>
             <div className="field"><label>Transportador</label><input name="transportador" /></div>
             <div className="field"><label>N° lote despacho</label><input name="loteDespacho" /></div>

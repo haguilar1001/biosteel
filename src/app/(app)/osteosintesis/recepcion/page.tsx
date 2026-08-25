@@ -3,9 +3,12 @@
 // ==========================================================
 import { requirePermiso } from "@/server/auth-context";
 import { puede } from "@/lib/rbac/authorize";
-import { formatCOP, formatFecha, formatNumero } from "@/lib/format";
+import { formatFecha, formatNumero } from "@/lib/format";
 import { listarRecepciones, tipoRecepcionLabel } from "@/lib/negocio/recepcion";
 import type { TipoRecepcion } from "@prisma/client";
+
+const fmtValor = (v: number, moneda: string) =>
+  `${moneda} ${new Intl.NumberFormat("es-CO", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v)}`;
 
 export const metadata = { title: "Recepción Técnica · BioSteel" };
 
@@ -78,7 +81,7 @@ export default async function RecepcionPage({
                     <td className="flag">{r.odcPedido || "—"}</td>
                     <td className="flag">{r.resultado || "—"}</td>
                     <td className="r num">{formatNumero(r.items)}</td>
-                    <td className="r num">{r.valorFactura ? formatCOP(r.valorFactura) : "—"}</td>
+                    <td className="r num">{r.valorFactura ? fmtValor(r.valorFactura, r.monedaFactura) : "—"}</td>
                     <td>
                       <a className="tag t-blue" style={{ textDecoration: "none" }}
                          href={`/soporte/recepcion/${r.id}`} target="_blank" rel="noopener"
