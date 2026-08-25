@@ -28,7 +28,7 @@ export default async function NuevaRecepcionPage({
         tipo={tipo}
         consecutivo={consecutivo}
         proveedores={proveedores}
-        criterios={[...CRITERIOS_IMPORTACION]}
+        criterios={CRITERIOS_IMPORTACION.map((c) => ({ nombre: c.nombre, especificacion: c.especificacion, opciones: c.opciones }))}
         docs={DOCS_IMPORTACION.map((d) => ({ campo: d.campo, label: d.label }))}
       />
     </>

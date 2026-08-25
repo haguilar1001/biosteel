@@ -13,7 +13,6 @@ import { siguienteConsecutivo, CRITERIOS_IMPORTACION } from "@/lib/negocio/recep
 export interface RecepcionState { ok?: boolean; error?: string; id?: number; consecutivo?: string }
 
 const VERIF = ["si", "no", "na"] as const;
-const RESULT = ["conforme", "no_conforme", "cuarentena"] as const;
 
 /** "YYYY-MM-DD" → Date (mediodía local para evitar corrimiento de zona). */
 function aFecha(s?: string): Date | null {
@@ -30,7 +29,7 @@ const itemSchema = z.object({
   lote: z.string().trim().default(""),
   fechaCaducidad: z.string().trim().optional(),
   observaciones: z.string().trim().default(""),
-  criterios: z.array(z.enum(RESULT)).length(CRITERIOS_IMPORTACION.length),
+  criterios: z.array(z.string().trim().min(1)).length(CRITERIOS_IMPORTACION.length),
 });
 
 const schema = z.object({
@@ -141,7 +140,10 @@ export async function crearRecepcionAction(_prev: RecepcionState, fd: FormData):
           fechaCaducidad: aFecha(it.fechaCaducidad), observaciones: it.observaciones,
           criterios: {
             create: it.criterios.map((res, k) => ({
-              orden: k, criterio: CRITERIOS_IMPORTACION[k] ?? `Criterio ${k + 1}`, resultado: res,
+              orden: k,
+              criterio: CRITERIOS_IMPORTACION[k]?.nombre ?? `Criterio ${k + 1}`,
+              especificacion: CRITERIOS_IMPORTACION[k]?.especificacion ?? "",
+              resultado: res,
             })),
           },
         })),

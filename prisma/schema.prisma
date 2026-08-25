@@ -1620,13 +1620,6 @@ enum VerifDoc {
   na
 }
 
-// Resultado de cada criterio de inspección física.
-enum ResultadoInspeccion {
-  conforme
-  no_conforme
-  cuarentena
-}
-
 // Recibo a satisfacción de dispositivos médicos (FOR-ALM-005). Solo registro
 // + soporte PDF (no alimenta el inventario todavía).
 model RecepcionTecnica {
@@ -1706,14 +1699,17 @@ model RecepcionItem {
   @@index([recepcionId])
 }
 
-// Resultado de cada criterio (9 en importación) por ítem.
+// Resultado de cada criterio (C1–C8 en importación) por ítem.
+// `resultado` = la opción elegida del desplegable del criterio ("Conforme" o
+// una causal de no conformidad). `especificacion` se guarda con el registro.
 model RecepcionCriterio {
-  id        Int                 @id @default(autoincrement())
-  item      RecepcionItem       @relation(fields: [itemId], references: [id], onDelete: Cascade)
-  itemId    Int
-  orden     Int                 @default(0)
-  criterio  String
-  resultado ResultadoInspeccion @default(conforme)
+  id             Int           @id @default(autoincrement())
+  item           RecepcionItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  itemId         Int
+  orden          Int           @default(0)
+  criterio       String
+  especificacion String        @default("")
+  resultado      String        @default("Conforme")
 
   @@index([itemId])
 }

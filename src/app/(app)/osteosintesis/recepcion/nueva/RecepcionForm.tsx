@@ -6,20 +6,17 @@
 import { useState, useActionState } from "react";
 import { crearRecepcionAction, type RecepcionState } from "../actions";
 
-type Result = "conforme" | "no_conforme" | "cuarentena";
+interface CriterioUI { nombre: string; especificacion: string; opciones: string[] }
 interface ItemForm {
   codigo: string; descripcion: string; especificacion: string;
   cantPedida: string; cantRecibida: string; lote: string; fechaCaducidad: string; observaciones: string;
-  criterios: Result[];
+  criterios: string[];
 }
 interface Props {
   tipo: string; consecutivo: string; proveedores: string[];
-  criterios: string[]; docs: { campo: string; label: string }[];
+  criterios: CriterioUI[]; docs: { campo: string; label: string }[];
 }
 
-const RES: { v: Result; l: string }[] = [
-  { v: "conforme", l: "Conforme" }, { v: "no_conforme", l: "No conforme" }, { v: "cuarentena", l: "Cuarentena" },
-];
 const VERIF = [{ v: "si", l: "Sí" }, { v: "no", l: "No" }, { v: "na", l: "N/A" }];
 const RESULTADOS = ["Aceptado", "Aceptado con observaciones", "Cuarentena", "Rechazado"];
 
@@ -27,13 +24,13 @@ export default function RecepcionForm({ tipo, consecutivo, proveedores, criterio
   const [state, action, pending] = useActionState<RecepcionState, FormData>(crearRecepcionAction, {});
   const nuevoItem = (): ItemForm => ({
     codigo: "", descripcion: "", especificacion: "", cantPedida: "", cantRecibida: "",
-    lote: "", fechaCaducidad: "", observaciones: "", criterios: criterios.map(() => "conforme"),
+    lote: "", fechaCaducidad: "", observaciones: "", criterios: criterios.map((c) => c.opciones[0] ?? "Conforme"),
   });
   const [items, setItems] = useState<ItemForm[]>([nuevoItem()]);
 
   const setItem = (i: number, k: keyof ItemForm, v: string) =>
     setItems((prev) => prev.map((it, idx) => (idx === i ? { ...it, [k]: v } : it)));
-  const setCrit = (i: number, c: number, v: Result) =>
+  const setCrit = (i: number, c: number, v: string) =>
     setItems((prev) => prev.map((it, idx) => (idx === i ? { ...it, criterios: it.criterios.map((x, k) => (k === c ? v : x)) } : it)));
   const addItem = () => setItems((p) => [...p, nuevoItem()]);
   const delItem = (i: number) => setItems((p) => (p.length > 1 ? p.filter((_, idx) => idx !== i) : p));
@@ -133,12 +130,16 @@ export default function RecepcionForm({ tipo, consecutivo, proveedores, criterio
                 <div className="field" style={{ gridColumn: "span 2" }}><label>Observaciones</label><input value={it.observaciones} onChange={(e) => setItem(i, "observaciones", e.target.value)} className="select" /></div>
               </div>
               <div className="subhead" style={{ margin: "10px 0 6px" }}>Criterios de inspección</div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: "4px 12px", alignItems: "center" }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 {criterios.map((c, k) => (
-                  <div key={k} style={{ display: "contents" }}>
-                    <span style={{ fontSize: 12.5 }}>{k + 1}. {c}</span>
-                    <select value={it.criterios[k]} onChange={(e) => setCrit(i, k, e.target.value as Result)} className="select" style={{ maxWidth: 160 }}>
-                      {RES.map((o) => <option key={o.v} value={o.v}>{o.l}</option>)}
+                  <div key={k} style={{ display: "grid", gridTemplateColumns: "1fr 230px", gap: 10, alignItems: "start", borderTop: k ? "1px dotted var(--line)" : undefined, paddingTop: k ? 8 : 0 }}>
+                    <div>
+                      <div style={{ fontSize: 12.5, fontWeight: 600 }}>C{k + 1}. {c.nombre}</div>
+                      <div className="flag" style={{ fontSize: 11, marginTop: 2 }}>{c.especificacion}</div>
+                    </div>
+                    <select value={it.criterios[k] ?? c.opciones[0]} onChange={(e) => setCrit(i, k, e.target.value)} className="select"
+                      style={{ borderColor: (it.criterios[k] ?? "Conforme") === "Conforme" ? undefined : "var(--w1, #E0A400)" }}>
+                      {c.opciones.map((o) => <option key={o} value={o}>{o}</option>)}
                     </select>
                   </div>
                 ))}

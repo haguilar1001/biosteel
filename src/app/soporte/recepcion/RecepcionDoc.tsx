@@ -3,9 +3,11 @@
 // ==========================================================
 import { formatFecha, formatFechaHoraSeg, formatCOP, formatNumero } from "@/lib/format";
 import {
-  DOCS_IMPORTACION, verifDocLabel, resultadoInspLabel, resultadoInspClase, tipoRecepcionLabel,
+  DOCS_IMPORTACION, verifDocLabel, claseOpcion, tipoRecepcionLabel,
   type RecepcionDetalle,
 } from "@/lib/negocio/recepcion";
+
+const BADGE: Record<string, string> = { "t-ok": "activo", "t-bad": "de_baja", "t-blue": "pendiente" };
 
 const NIT = "900.230.040-6";
 const EMPRESA = "BioSteel de Colombia S.A.S";
@@ -101,15 +103,16 @@ export default function RecepcionDoc({ r }: { r: NonNullable<RecepcionDetalle> }
                 </tbody>
               </table>
               <table className="sop-tabla">
-                <thead><tr><th>Criterio de inspección</th><th>Resultado</th></tr></thead>
+                <thead><tr><th style={{ width: "26%" }}>Criterio</th><th>Especificación requerida</th><th style={{ width: "22%" }}>Resultado</th></tr></thead>
                 <tbody>
-                  {it.criterios.map((c) => (
+                  {it.criterios.map((c, k) => (
                     <tr key={c.id}>
-                      <td>{c.criterio}</td>
-                      <td><span className={`sop-badge ${resultadoInspClase(c.resultado) === "t-ok" ? "activo" : resultadoInspClase(c.resultado) === "t-bad" ? "de_baja" : "en_reparacion"}`}>{resultadoInspLabel(c.resultado)}</span></td>
+                      <td><b>C{k + 1}.</b> {c.criterio}</td>
+                      <td style={{ fontSize: 10.5 }}>{c.especificacion}</td>
+                      <td><span className={`sop-badge ${BADGE[claseOpcion(c.resultado)] ?? "pendiente"}`}>{c.resultado}</span></td>
                     </tr>
                   ))}
-                  {it.criterios.length === 0 && <tr><td colSpan={2}>Sin criterios registrados.</td></tr>}
+                  {it.criterios.length === 0 && <tr><td colSpan={3}>Sin criterios registrados.</td></tr>}
                 </tbody>
               </table>
               {it.observaciones && <div className="flag" style={{ fontSize: 11, marginTop: 3 }}>Obs.: {it.observaciones}</div>}

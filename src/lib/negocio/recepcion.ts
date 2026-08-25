@@ -4,22 +4,64 @@
 // ==========================================================
 import "server-only";
 import { prisma } from "@/lib/db";
-import type { TipoRecepcion, VerifDoc, ResultadoInspeccion } from "@prisma/client";
+import type { TipoRecepcion, VerifDoc } from "@prisma/client";
 
 // --- Constantes del formato (importación) ---
 
-/** Los 9 criterios de inspección física por ítem (sección 3). */
-export const CRITERIOS_IMPORTACION = [
-  "Integridad embalaje externo",
-  "Integridad empaque primario/secundario",
-  "Etiquetado (idioma, datos mínimos)",
-  "Fecha de vencimiento (mín. 6 meses)",
-  "Número de lote legible / coincide con documentos",
-  "Referencia/modelo = ODC y RS INVIMA",
-  "Condiciones especiales almacenamiento",
-  "Esterilidad (indicadores externos, si aplica)",
-  "Especificación técnica del producto",
-] as const;
+export interface CriterioDef {
+  nombre: string;
+  /** Texto de referencia "Especificación requerida" (columna del formato). */
+  especificacion: string;
+  /** Opciones del desplegable: "Conforme" + causales de no conformidad. */
+  opciones: string[];
+}
+
+/**
+ * Los 8 criterios de inspección física (C1–C8), con su especificación
+ * requerida y su propia lista desplegable de resultados.
+ */
+export const CRITERIOS_IMPORTACION: CriterioDef[] = [
+  {
+    nombre: "Integridad embalaje externo",
+    especificacion: "Sin golpes, humedad ni rasgaduras. Sin signos de manipulación indebida.",
+    opciones: ["Conforme", "Golpes / deformación", "Humedad / mojado", "Rasgadura / rotura", "Signos de manipulación indebida"],
+  },
+  {
+    nombre: "Integridad empaque primario / secundario",
+    especificacion: "Sellado íntegro, sin perforaciones ni apertura previa. Barrera estéril intacta.",
+    opciones: ["Conforme", "Sellado abierto o roto", "Perforación en empaque", "Empaque sin sellar", "Barrera estéril comprometida"],
+  },
+  {
+    nombre: "Etiquetado (idioma / datos mínimos)",
+    especificacion: "Datos mínimos disponibles en español (etiqueta original o complementaria): nombre, referencia, lote, fecha de vencimiento, fabricante, importador, RS INVIMA, condiciones de almacenamiento.",
+    opciones: ["Conforme", "Información mínima no disponible en español", "Falta nombre del producto", "Falta número de lote", "Falta fecha de vencimiento", "Falta datos del fabricante", "Falta RS INVIMA", "Falta nombre del importador", "Etiqueta ilegible o deteriorada"],
+  },
+  {
+    nombre: "Fecha de vencimiento (mín. 6 meses)",
+    especificacion: "Vigente al momento de la recepción. Se rechaza si vence en menos de 6 meses, salvo acuerdo escrito con el Director Técnico.",
+    opciones: ["Conforme", "Producto vencido", "Vence en menos de 6 meses", "Fecha ilegible", "Sin fecha de vencimiento", "No Aplica"],
+  },
+  {
+    nombre: "N° de lote legible / coincide con documentos",
+    especificacion: "Número de lote legible en el empaque. Coincide exactamente con el packing list y el certificado de calidad del fabricante.",
+    opciones: ["Conforme", "Lote ilegible", "Lote no coincide con packing list", "Sin número de lote", "Lote diferente al certificado del fabricante"],
+  },
+  {
+    nombre: "Referencia = ODC y RS INVIMA",
+    especificacion: "La referencia y modelo recibidos coinciden con la orden de compra y con el Registro Sanitario INVIMA vigente.",
+    opciones: ["Conforme", "Referencia no coincide con ODC", "Referencia no está en el RS INVIMA", "Modelo diferente al autorizado", "Referencia no solicitada"],
+  },
+  {
+    nombre: "Condiciones especiales de almacenamiento",
+    especificacion: "Condiciones de transporte (T°, humedad) compatibles con las del fabricante. Para implantes ortopédicos: temperatura ambiente, sin cadena de frío.",
+    opciones: ["Conforme", "Temperatura fuera de rango en transporte", "Sin evidencia de control de temperatura", "Humedad fuera de especificación"],
+  },
+  {
+    nombre: "Especificación técnica (Ø y longitud)",
+    especificacion: "El diámetro y la longitud del implante coinciden con la referencia indicada en la factura comercial y en el RS INVIMA.",
+    opciones: ["Conforme", "Diámetro no coincide con referencia", "Longitud no coincide con referencia", "Producto diferente al solicitado", "Sin especificación técnica visible"],
+  },
+];
 
 /** Documentos de la verificación documental previa (sección 2). */
 export const DOCS_IMPORTACION = [
@@ -40,11 +82,12 @@ export function tipoRecepcionLabel(t: TipoRecepcion): string {
 export function verifDocLabel(v: VerifDoc): string {
   return { si: "Sí", no: "No", na: "N/A" }[v];
 }
-export function resultadoInspLabel(r: ResultadoInspeccion): string {
-  return { conforme: "Conforme", no_conforme: "No conforme", cuarentena: "Cuarentena" }[r];
-}
-export function resultadoInspClase(r: ResultadoInspeccion): string {
-  return { conforme: "t-ok", no_conforme: "t-bad", cuarentena: "t-w1" }[r];
+/** Clase de badge según la opción elegida en un criterio. */
+export function claseOpcion(opcion: string): string {
+  const o = opcion.trim().toLowerCase();
+  if (o === "conforme") return "t-ok";
+  if (o === "no aplica" || o === "n/a") return "t-blue";
+  return "t-bad";
 }
 
 /** Siguiente consecutivo por tipo (RT-IMP-000001 / RT-NAC-000001). */
