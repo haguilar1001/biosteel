@@ -50,6 +50,17 @@ export default async function ComprasPage({ searchParams }: { searchParams: Prom
 
   const ignorados = filtrosIgnorados(f);
 
+  // Antigüedad de la foto de pendientes. Es una FOTO: si no se vuelve a subir
+  // el archivo, el KPI se queda quieto y parece un dato al día. Pasó en
+  // producción —cinco días congelado mientras se subía, sin saberlo, el
+  // archivo de "Pedidos Pendientes" del módulo Comercial, que es otro
+  // reporte— y nadie lo notó porque la fecha del corte iba en letra chica.
+  const DIAS_TOLERANCIA = 2;
+  const diasCorte = corte
+    ? Math.floor((Date.now() - corte.getTime()) / 86_400_000)
+    : null;
+  const corteViejo = diasCorte != null && diasCorte > DIAS_TOLERANCIA;
+
   // Entradas vs Pendientes: cuánto de lo comprado ya entró y cuánto sigue
   // faltando. Es el anillo de la derecha del tablero.
   const totalEntPen = kpi.entradas + kpi.pendiente;
@@ -126,6 +137,25 @@ export default async function ComprasPage({ searchParams }: { searchParams: Prom
           <div className="ksub flag">{formatNumero(kpi.facturadoCant)} FPP</div>
         </div>
       </div>
+
+      {/* Un KPI congelado no se distingue de uno al día: hay que decirlo donde
+          se está mirando la cifra, no en la letra chica del encabezado. */}
+      {corteViejo && (
+        <div className="card" style={{ marginBottom: 12, borderLeft: "3px solid var(--w1)" }}>
+          <div className="card-body" style={{ padding: "10px 14px", fontSize: 12.5 }}>
+            ⏳ <b>Pendiente por Despacho está desactualizado.</b> La última foto se subió
+            hace <b>{diasCorte} días</b> ({formatFecha(corte!)}), así que ese KPI y todo lo que
+            dependa de él muestran esa fecha, no hoy.
+            <div style={{ color: "var(--muted)", marginTop: 4 }}>
+              Se actualiza subiendo <b>PENDIENTES POR DESPACHO.xlsx</b> en{" "}
+              <a href="/cargar">Cargar archivos</a>, en la casilla{" "}
+              <b>Compras · Pendientes por Despacho del Proveedor</b>. Ojo: no es la misma que
+              &quot;Pedidos Pendientes por Facturar&quot; del grupo Comercial — ese es otro
+              reporte y no toca esta cifra.
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Una cifra estimada o un filtro que no aplica cambiarían la lectura
           del KPI sin avisar; mejor decirlo que dejar comparar peras con

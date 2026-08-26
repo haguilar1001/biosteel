@@ -65,9 +65,14 @@ async function procesarSiesa(clave: DatasetKey, titulo: string, buffer: Buffer, 
 
 export const CARGAS: CargaDef[] = [
   {
-    clave: "pendientes", titulo: "Pedidos Pendientes", grupo: "Comercial", permiso: "carga.pendientes",
+    // El nombre lleva "por Facturar" y el módulo entre paréntesis a propósito:
+    // se confundió en producción con "Pendientes por Despacho" del módulo de
+    // Compras y se estuvo subiendo este archivo creyendo que actualizaba aquel,
+    // con el informe de compras cinco días desactualizado sin que nadie lo
+    // notara. Son dos reportes distintos y dos tablas distintas.
+    clave: "pendientes", titulo: "Pedidos Pendientes por Facturar (Comercial)", grupo: "Comercial", permiso: "carga.pendientes",
     archivoSugerido: "PEDIDOS PENDIENTES ACUMULADOS.xlsx",
-    procesar: (b, n, ip) => procesarSiesa("pendientes", "Pedidos Pendientes", b, n, ip),
+    procesar: (b, n, ip) => procesarSiesa("pendientes", "Pedidos Pendientes por Facturar", b, n, ip),
   },
   {
     clave: "ventas", titulo: "Ventas x Item", grupo: "Comercial", permiso: "carga.ventas",
@@ -231,7 +236,7 @@ export const CARGAS: CargaDef[] = [
     },
   },
   {
-    clave: "compras-pendientes", titulo: "Compras · Pendientes por Despacho", grupo: "Compras", permiso: "carga.compras.pendientes",
+    clave: "compras-pendientes", titulo: "Compras · Pendientes por Despacho del Proveedor", grupo: "Compras", permiso: "carga.compras.pendientes",
     archivoSugerido: "PENDIENTES POR DESPACHO.xlsx",
     async procesar(buffer, nombre) {
       const p = parsePendientesDespacho(buffer);
@@ -240,7 +245,7 @@ export const CARGAS: CargaDef[] = [
       const ordenes = new Set(p.datos.map((d) => d.nroOrden)).size;
       const total = p.datos.reduce((a, d) => a + Number(d.valorPendiente), 0);
       return {
-        titulo: "Compras · Pendientes por Despacho", archivo: nombre, hoja: p.hoja,
+        titulo: "Compras · Pendientes por Despacho del Proveedor", archivo: nombre, hoja: p.hoja,
         filas: p.filas, cargadas, omitidas: p.omitidas,
         estrategia: `reemplaza TODA la foto anterior: ${nf.format(cargadas)} renglones · ${nf.format(ordenes)} órdenes pendientes · ${nf.format(Math.round(total))}`,
       };
