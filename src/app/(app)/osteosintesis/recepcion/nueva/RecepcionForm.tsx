@@ -28,6 +28,58 @@ const COND_TRANS = [
 ];
 const RESULTADOS = ["Aceptado", "Aceptado con observaciones", "Cuarentena", "Rechazado"];
 
+// --- Disposición del lote (PRO-DT-005 §7.4) ---
+// El procedimiento define tres filas —CONFORME, CUARENTENA y NO CONFORME— y
+// para cada una fija a dónde va el lote, qué se decide, qué se hace y si la
+// factura se valida. Aquí se guardan tal cual, y escoger el resultado llena
+// las cuatro casillas de una vez.
+//
+// El formulario tiene CUATRO resultados y el procedimiento tres: "Aceptado con
+// observaciones" sigue siendo un lote conforme —se libera y se almacena
+// aprobado— así que comparte la fila de CONFORME. Lo que cambia es que la
+// observación queda escrita en el ítem, no la disposición del lote.
+//
+// Las casillas quedan editables a propósito: el preestablecido es la vía
+// normal, no una camisa de fuerza, y si alguien se aparta el formulario lo
+// dice en vez de impedirlo.
+type ClaveDisp = "areaDestino" | "decision" | "accionTomar" | "validacionFactura";
+type Disposicion = Record<ClaveDisp, string>;
+const CLAVES_DISP: ClaveDisp[] = ["areaDestino", "decision", "accionTomar", "validacionFactura"];
+
+const CONFORME: Disposicion = {
+  areaDestino: "Almacenamiento APROBADO",
+  decision: "Liberar lote",
+  accionTomar: "Registrar con firma DT / Coord. Calidad",
+  validacionFactura: "SI",
+};
+const DISPOSICION: Record<string, Disposicion> = {
+  "Aceptado": CONFORME,
+  "Aceptado con observaciones": CONFORME,
+  "Cuarentena": {
+    areaDestino: "Área de cuarentena",
+    decision: "Aislar lote",
+    accionTomar: "Iniciar investigación. Notificar DT.",
+    validacionFactura: "NO",
+  },
+  "Rechazado": {
+    areaDestino: "Área de rechazados",
+    decision: "Rechazar lote",
+    accionTomar: "Notificar proveedor. Abrir FOR-DT-005-03.",
+    validacionFactura: "NO",
+  },
+};
+
+/** Opciones de una casilla: las del procedimiento, sin repetir y en su orden. */
+const opcionesDisp = (k: ClaveDisp): string[] =>
+  [...new Set(RESULTADOS.map((r) => DISPOSICION[r]![k]))];
+
+const CAMPOS_DISP: { campo: ClaveDisp; label: string }[] = [
+  { campo: "areaDestino", label: "Área de destino" },
+  { campo: "decision", label: "Decisión" },
+  { campo: "accionTomar", label: "Acción a tomar" },
+];
+const VALIDA_FACTURA = ["SI", "NO"];
+
 export default function RecepcionForm({ tipo, consecutivo, proveedores, monedas, criterios, docs }: Props) {
   const [state, action, pending] = useActionState<RecepcionState, FormData>(crearRecepcionAction, {});
   const nuevoItem = (): ItemForm => ({
@@ -40,6 +92,32 @@ export default function RecepcionForm({ tipo, consecutivo, proveedores, monedas,
   const [trans, setTrans] = useState<Record<string, boolean>>(() => Object.fromEntries(COND_TRANS.map((c) => [c.campo, false])));
   const toggleTrans = (campo: string) => setTrans((p) => ({ ...p, [campo]: !p[campo] }));
   const [resultado, setResultado] = useState("");
+  const [disp, setDisp] = useState<Disposicion>({ areaDestino: "", decision: "", accionTomar: "", validacionFactura: "" });
+  const setDispCampo = (campo: ClaveDisp, v: string) => setDisp((p) => ({ ...p, [campo]: v }));
+
+  /** Escoger un resultado llena las cuatro casillas; quitarlo las devuelve. */
+  const elegirResultado = (r: string) => {
+    const quitando = resultado === r;
+    const preset = DISPOSICION[r]!;
+    setResultado(quitando ? "" : r);
+    setDisp((prev) => {
+      if (!quitando) return { ...preset };
+      // Al deseleccionar solo se borra lo que seguía siendo el preestablecido:
+      // si alguien lo cambió a mano, esa decisión no se le pisa.
+      const limpio = { ...prev };
+      for (const k of CLAVES_DISP) if (prev[k] === preset[k]) limpio[k] = "";
+      return limpio;
+    });
+  };
+
+  // Si el resultado está marcado y alguna casilla no coincide con la fila del
+  // procedimiento, se avisa. Es un formulario de calidad: apartarse puede
+  // estar bien, pero tiene que ser visible y deliberado.
+  const presetActual = resultado ? DISPOSICION[resultado] : undefined;
+  const desviaciones = presetActual
+    ? CAMPOS_DISP.filter((c) => disp[c.campo] && disp[c.campo] !== presetActual[c.campo]).map((c) => c.label)
+      .concat(disp.validacionFactura && disp.validacionFactura !== presetActual.validacionFactura ? ["Validación factura"] : [])
+    : [];
 
   const setItem = (i: number, k: keyof ItemForm, v: string) =>
     setItems((prev) => prev.map((it, idx) => (idx === i ? { ...it, [k]: v } : it)));
@@ -197,7 +275,10 @@ export default function RecepcionForm({ tipo, consecutivo, proveedores, monedas,
 
       {/* 4. Disposición final */}
       <div className="card" style={{ marginBottom: 12 }}>
-        <div className="chart-head">4. Disposición del lote y decisión final</div>
+        <div className="chart-head">
+          4. Disposición del lote y decisión final
+          <span className="hact">PRO-DT-005 §7.4</span>
+        </div>
         <div className="card-body">
           <div className="form-grid">
             <div className="field" style={{ gridColumn: "1 / -1" }}><label>Resultado</label>
@@ -207,19 +288,53 @@ export default function RecepcionForm({ tipo, consecutivo, proveedores, monedas,
                   const sel = resultado === r;
                   const color = r === "Aceptado" ? "var(--ok, #2A9D6B)" : r === "Rechazado" ? "var(--bad, #D64545)" : "var(--w1, #E0A400)";
                   return (
-                    <button type="button" key={r} onClick={() => setResultado(sel ? "" : r)} className="btn"
+                    <button type="button" key={r} onClick={() => elegirResultado(r)} className="btn"
                       style={{ padding: "5px 16px", background: sel ? color : undefined, color: sel ? "#fff" : undefined, borderColor: sel ? color : undefined, fontWeight: sel ? 700 : 400 }}>
                       {r}
                     </button>
                   );
                 })}
               </div>
+              <div className="flag" style={{ fontSize: 11, marginTop: 4 }}>
+                Al marcar el resultado se llenan solas las casillas de abajo con lo que indica el
+                procedimiento. Se pueden cambiar.
+              </div>
             </div>
-            <div className="field"><label>Área de destino</label><input name="areaDestino" /></div>
-            <div className="field"><label>Decisión</label><input name="decision" /></div>
-            <div className="field"><label>Acción a tomar</label><input name="accionTomar" /></div>
-            <div className="field"><label>Validación factura</label><input name="validacionFactura" /></div>
+
+            {CAMPOS_DISP.map((c) => (
+              <div className="field" key={c.campo}>
+                <label>{c.label}</label>
+                <select name={c.campo} className="select" value={disp[c.campo]} onChange={(e) => setDispCampo(c.campo, e.target.value)}>
+                  <option value="">—</option>
+                  {opcionesDisp(c.campo).map((o) => <option key={o} value={o}>{o}</option>)}
+                </select>
+              </div>
+            ))}
+
+            {/* Binaria y corta: va en cuadros, como en el formato impreso. */}
+            <div className="field"><label>Validación factura</label>
+              <input type="hidden" name="validacionFactura" value={disp.validacionFactura} />
+              <div style={{ display: "inline-flex", gap: 4 }}>
+                {VALIDA_FACTURA.map((o) => {
+                  const sel = disp.validacionFactura === o;
+                  const color = o === "SI" ? "var(--ok, #2A9D6B)" : "var(--bad, #D64545)";
+                  return (
+                    <button type="button" key={o} onClick={() => setDispCampo("validacionFactura", sel ? "" : o)} className="btn"
+                      style={{ padding: "5px 16px", background: sel ? color : undefined, color: sel ? "#fff" : undefined, borderColor: sel ? color : undefined, fontWeight: sel ? 700 : 400 }}>
+                      {o}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
           </div>
+
+          {desviaciones.length > 0 && (
+            <p className="alert" style={{ color: "var(--w1, #E0A400)", fontSize: 12.5, marginTop: 8 }}>
+              ⚠️ Para <b>{resultado}</b>, el PRO-DT-005 §7.4 indica otra cosa en{" "}
+              <b>{desviaciones.join(", ")}</b>. Puedes guardarlo así, pero deja la razón en las notas.
+            </p>
+          )}
           <div className="subhead" style={{ margin: "10px 0 6px" }}>Firmas / responsables</div>
           <div className="form-grid">
             <div className="field"><label>Recibido por</label><input name="recibidoPor" /></div>
