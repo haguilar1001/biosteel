@@ -1710,3 +1710,63 @@ model RecepcionCriterio {
 
   @@index([itemId])
 }
+
+// ==========================================================
+// INDICADORES DE COMPRAS (FOR-GC-011) — dos indicadores de calidad que hoy
+// viven en Excel y los lleva el Líder de Compras:
+//   1. % de órdenes de compra recibidas completas (meta > 85 %)
+//   2. Evaluación de proveedores sobre 5,0 puntos en seis criterios
+//
+// No salen de SIESA ni se pueden derivar de CompraOrden: son un conteo y una
+// calificación hechos a mano, mes a mes, en el formato de calidad. Por eso
+// tienen tabla propia y se cargan desde su Excel.
+// ==========================================================
+
+// Un mes del indicador "% de órdenes de compra recibidas completas".
+model IndicadorCompraMes {
+  id                Int @id @default(autoincrement())
+  anio              Int
+  mes               Int // 1–12
+  ordenesCompletas  Int @default(0)
+  ordenesTotales    Int @default(0)
+
+  @@unique([anio, mes])
+  @@index([anio])
+}
+
+// Catálogo de proveedores activos (hoja "PROVEEDORES ACTIVOS"). Las tres
+// columnas del formato son marcas de "tiene el documento al día".
+model ProveedorActivo {
+  razonSocial       String  @id
+  fichaTecnica      Boolean @default(false)
+  evaluacionInicial Boolean @default(false)
+  seguimiento       Boolean @default(false)
+}
+
+// Calificación de un proveedor en un mes. Los seis criterios se guardan
+// sueltos para poder ver en cuál se está fallando, no solo el total.
+//
+// `pct` NO se copia del Excel: se calcula como total / 5. La hoja trae varias
+// celdas con 10 en vez de 1,0 y algún porcentaje que quedó desactualizado
+// frente a su propio total; el importador las cuenta y las reporta.
+model EvaluacionProveedor {
+  id        Int    @id @default(autoincrement())
+  anio      Int
+  mes       Int // 1–12
+  proveedor String
+
+  calidad      Decimal @default(0) @db.Decimal(6, 2)
+  tiempos      Decimal @default(0) @db.Decimal(6, 2)
+  cantidad     Decimal @default(0) @db.Decimal(6, 2)
+  precio       Decimal @default(0) @db.Decimal(6, 2)
+  postventa    Decimal @default(0) @db.Decimal(6, 2)
+  seguimiento  Decimal @default(0) @db.Decimal(6, 2)
+  /// Total del formato (sobre 5,0).
+  total        Decimal @default(0) @db.Decimal(6, 2)
+  /// total / 5, en porcentaje (0–100). Calculado, no copiado.
+  pct          Decimal @default(0) @db.Decimal(6, 2)
+
+  @@unique([anio, mes, proveedor])
+  @@index([anio, mes])
+  @@index([proveedor])
+}

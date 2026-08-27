@@ -75,13 +75,14 @@ export default async function IndicadoresPage({
 
   return (
     <>
-      {/* Título y Período lado a lado para ganar espacio vertical. */}
+      {/* Resumen y Período lado a lado para ganar espacio vertical. El título
+          del módulo lo pone el layout, que es el que lleva las pestañas. */}
       <div style={{ display: "flex", gap: 12, alignItems: "stretch", flexWrap: "wrap", marginBottom: 12 }}>
-        <div className="page-head" style={{ marginBottom: 0, flex: "1 1 260px" }}>
-          <div>
-            <div className="eyebrow">Contabilidad</div>
-            <h1>Indicadores Financieros</h1>
-            <p>{formatNumero(cumplen)} de {formatNumero(conDato)} indicadores en meta · corte {ANIO_LABEL()}</p>
+        <div className="card" style={{ marginBottom: 0, flex: "1 1 260px" }}>
+          <div className="chart-head">Indicadores Financieros</div>
+          <div className="card-body">
+            <div className="num kpi-val">{formatNumero(cumplen)} / {formatNumero(conDato)}</div>
+            <div className="flag" style={{ marginTop: 2 }}>en meta · corte {ANIO_LABEL()}</div>
           </div>
         </div>
 

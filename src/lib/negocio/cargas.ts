@@ -31,11 +31,16 @@ import {
 import { parseInstitucional, parseOrtopedistas, persistirEncuestas } from "./importar-encuestas";
 import { parseCirugias, persistirCirugias } from "./importar-cirugias";
 import { parsePedidos, persistirPedidos } from "./importar-pedidos";
+import {
+  parseIndicadorCompras, persistirIndicadorCompras,
+  parseEvaluacionProveedores, persistirEvaluacionProveedores,
+} from "./importar-indicador-compras";
 
 export type CargaClave = DatasetKey | "pyg" | "flujo" | "presupuesto"
   | "inv-bodegas" | "inv-balance" | "inv-movimientos"
   | "compras-tipos" | "compras-ordenes" | "compras-pendientes" | "compras-facturas"
   | "compras-entradas" | "pedidos"
+  | "ind-compras" | "ind-proveedores"
   | "encuestas-inst" | "encuestas-ortho" | "cirugias";
 
 /** Módulo al que pertenece el archivo; solo sirve para agrupar /cargar. */
@@ -268,6 +273,46 @@ export const CARGAS: CargaDef[] = [
         titulo: "Pedidos · Detalle por ítem", archivo: nombre, hoja: p.hoja,
         filas: p.filas, cargadas, omitidas: p.omitidas,
         estrategia: `reemplaza ${p.periodos.length} periodo(s) [${p.periodos[0]} … ${p.periodos[p.periodos.length - 1]}]: ${nf.format(cargadas)} renglones · ${nf.format(docs)} pedidos · ${nf.format(refs)} referencias · costo ${nf.format(Math.round(costo))}`,
+      };
+    },
+  },
+  // --- Indicadores de calidad de Compras (FOR-GC-011) ---
+  // Los lleva a mano el Líder de Compras; no salen de SIESA.
+  {
+    clave: "ind-compras", titulo: "Indicadores · Órdenes recibidas completas", grupo: "Compras", permiso: "carga.indicador.compras",
+    archivoSugerido: "indicador de compra.xlsx",
+    async procesar(buffer, nombre) {
+      const p = parseIndicadorCompras(buffer);
+      if (!p.datos.length) throw new Error("El archivo no trae ningún mes con órdenes totales.");
+      const cargadas = await persistirIndicadorCompras(p);
+      const completas = p.datos.reduce((a, d) => a + d.ordenesCompletas, 0);
+      const totales = p.datos.reduce((a, d) => a + d.ordenesTotales, 0);
+      const pct = totales > 0 ? (completas / totales) * 100 : 0;
+      const sinDato = p.omitidas ? ` · ${p.omitidas} mes(es) todavía sin diligenciar` : "";
+      return {
+        titulo: "Indicadores · Órdenes recibidas completas", archivo: nombre, hoja: p.hoja,
+        filas: p.filas, cargadas, omitidas: p.omitidas,
+        estrategia: `upsert ${p.anio}: ${cargadas} mes(es) · ${nf.format(completas)} de ${nf.format(totales)} órdenes completas (${pct.toFixed(1)} %)${sinDato}`,
+      };
+    },
+  },
+  {
+    clave: "ind-proveedores", titulo: "Indicadores · Evaluación de Proveedores", grupo: "Compras", permiso: "carga.indicador.compras",
+    archivoSugerido: "RELACION PROVEEDORES.xlsx",
+    async procesar(buffer, nombre) {
+      const p = parseEvaluacionProveedores(buffer);
+      if (!p.evaluaciones.length) throw new Error("El archivo no trae ninguna hoja-mes con calificaciones.");
+      const cargadas = await persistirEvaluacionProveedores(p);
+      // Los avisos van en la misma línea del resultado, no en un log que nadie
+      // lee: son errores del archivo que alguien tiene que corregir en la fuente.
+      const avisos: string[] = [];
+      if (p.pctCorregidos.length) avisos.push(`${p.pctCorregidos.length} % recalculado(s) porque no era total/5 [${p.pctCorregidos.slice(0, 3).join("; ")}${p.pctCorregidos.length > 3 ? "; …" : ""}]`);
+      if (p.totalesRaros.length) avisos.push(`OJO: ${p.totalesRaros.length} TOTAL que no es la suma de sus criterios [${p.totalesRaros.slice(0, 3).join("; ")}]`);
+      if (p.fueraDeCatalogo.length) avisos.push(`${p.fueraDeCatalogo.length} proveedor(es) evaluados que no están en PROVEEDORES ACTIVOS: ${p.fueraDeCatalogo.join(", ")}`);
+      return {
+        titulo: "Indicadores · Evaluación de Proveedores", archivo: nombre, hoja: "PROVEEDORES ACTIVOS + hojas-mes",
+        filas: p.evaluaciones.length, cargadas, omitidas: 0,
+        estrategia: `reemplaza ${p.anio} meses [${p.meses.join(", ")}]: ${nf.format(cargadas)} calificaciones · ${p.activos.length} proveedores en el catálogo${avisos.length ? ` · ${avisos.join(" · ")}` : ""}`,
       };
     },
   },

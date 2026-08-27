@@ -31,7 +31,7 @@ export const MENU_BASE: MenuGrupoDef[] = [
     { href: "/cargar", label: "⬆️ Cargar archivos", permiso: "carga.pendientes",
       permisosOr: ["carga.pendientes", "carga.ventas", "carga.facturacion", "carga.gastos", "carga.anuladas", "carga.pyg", "carga.flujo", "carga.presupuesto",
         "carga.compras.ordenes", "carga.compras.pendientes", "carga.compras.facturas", "carga.compras.tipos", "carga.compras.entradas",
-        "carga.pedidos"] },
+        "carga.pedidos", "carga.indicador.compras"] },
   ] },
   { id: "tesoreria", label: "Tesorería", icon: "💰", items: [
     { href: "/flujo", label: "💵 Flujo de Caja", permiso: "cxp.view" },
@@ -52,7 +52,8 @@ export const MENU_BASE: MenuGrupoDef[] = [
     { href: "/asistencia/cirugias", label: "🔪 Cirugías", permiso: "cxp.view" },
   ] },
   { id: "analisis", label: "Análisis", icon: "📊", items: [
-    { href: "/indicadores", label: "📈 Indicadores", permiso: "cxp.view" },
+    { href: "/indicadores", label: "📈 Indicadores Financieros", permiso: "cxp.view" },
+    { href: "/indicadores/compras", label: "📐 Indicadores de Compras", permiso: "cxp.view" },
     { href: "/pyg", label: "📄 PyG", permiso: "cxp.view" },
     { href: "/asistencia", label: "🩺 Asistencia Técnica", permiso: "cxp.view" },
     { href: "/asistencia/pqrs", label: "📣 PQRS", permiso: "cxp.view" },

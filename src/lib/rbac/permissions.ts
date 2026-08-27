@@ -54,6 +54,7 @@ export const PERMISOS = [
   { clave: "carga.compras.tipos", modulo: "Cargas", descripcion: "Cargar Tipos de proveedores (tipo de compra)" },
   { clave: "carga.compras.entradas", modulo: "Cargas", descripcion: "Cargar Entradas por compra (documento → proveedor)" },
   { clave: "carga.pedidos", modulo: "Cargas", descripcion: "Cargar Pedidos (detalle por ítem del bloque quirúrgico)" },
+  { clave: "carga.indicador.compras", modulo: "Cargas", descripcion: "Cargar los indicadores de calidad de Compras (FOR-GC-011)" },
   { clave: "carga.encuestas", modulo: "Cargas", descripcion: "Cargar Encuestas de Satisfacción (institucional y ortopedistas)" },
   { clave: "carga.cirugias", modulo: "Cargas", descripcion: "Cargar Consulta de Cirugía Diaria" },
 ] as const satisfies readonly PermisoDef[];
@@ -87,6 +88,7 @@ export const MATRIZ_ROLES: Record<RolNombre, Partial<Record<PermisoClave, Alcanc
     "compras.view": T, "pedidos.view": T,
     "carga.compras.ordenes": T, "carga.compras.pendientes": T, "carga.compras.facturas": T,
     "carga.compras.tipos": T, "carga.compras.entradas": T, "carga.pedidos": T,
+    "carga.indicador.compras": T,
     "usuario.manage": T, "rol.manage": T, "parametro.manage": T, "auditoria.view": T,
     "carga.pendientes": T, "carga.ventas": T, "carga.facturacion": T, "carga.gastos": T,
     "carga.anuladas": T, "carga.pyg": T, "carga.flujo": T, "carga.presupuesto": T,

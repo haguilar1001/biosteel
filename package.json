@@ -44,7 +44,8 @@
     "db:asistencia": "tsx prisma/set-asistencia.ts",
     "db:ventas-recalcular": "node --max-old-space-size=8192 node_modules/tsx/dist/cli.mjs prisma/set-ventas-recalcular.ts",
     "db:compras": "node --max-old-space-size=8192 --import tsx --conditions=react-server prisma/set-compras.ts",
-    "db:pedidos": "node --max-old-space-size=8192 --import tsx --conditions=react-server prisma/set-pedidos.ts"
+    "db:pedidos": "node --max-old-space-size=8192 --import tsx --conditions=react-server prisma/set-pedidos.ts",
+    "db:ind-compras": "node --import tsx --conditions=react-server prisma/set-indicador-compras.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
