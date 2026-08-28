@@ -75,7 +75,7 @@ export const CARGAS: CargaDef[] = [
     // Compras y se estuvo subiendo este archivo creyendo que actualizaba aquel,
     // con el informe de compras cinco días desactualizado sin que nadie lo
     // notara. Son dos reportes distintos y dos tablas distintas.
-    clave: "pendientes", titulo: "Pedidos Pendientes por Facturar (Comercial)", grupo: "Comercial", permiso: "carga.pendientes",
+    clave: "pendientes", titulo: "🧾 Pedidos pendientes por FACTURAR · Comercial (NO es despacho)", grupo: "Comercial", permiso: "carga.pendientes",
     archivoSugerido: "PEDIDOS PENDIENTES ACUMULADOS.xlsx",
     procesar: (b, n, ip) => procesarSiesa("pendientes", "Pedidos Pendientes por Facturar", b, n, ip),
   },
@@ -241,7 +241,7 @@ export const CARGAS: CargaDef[] = [
     },
   },
   {
-    clave: "compras-pendientes", titulo: "Compras · Pendientes por Despacho del Proveedor", grupo: "Compras", permiso: "carga.compras.pendientes",
+    clave: "compras-pendientes", titulo: "🚚 Pendientes por DESPACHO del proveedor · Compras (NO es facturación)", grupo: "Compras", permiso: "carga.compras.pendientes",
     archivoSugerido: "PENDIENTES POR DESPACHO.xlsx",
     async procesar(buffer, nombre) {
       const p = parsePendientesDespacho(buffer);
