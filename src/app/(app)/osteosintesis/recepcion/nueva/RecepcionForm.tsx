@@ -3,8 +3,61 @@
 // Formulario del FOR-ALM-005. Secciones 1–4 + ítems con sus 9 criterios.
 // Al guardar, ofrece abrir el PDF del recibo a satisfacción.
 // ==========================================================
-import { useState, useActionState } from "react";
+import { useState, useActionState, useRef } from "react";
+import * as XLSX from "xlsx";
 import { crearRecepcionAction, type RecepcionState } from "../actions";
+
+// --- Carga masiva de ítems desde Excel ---------------------------------------
+// La sección 3 se llena a mano, ítem por ítem. Para recepciones grandes (70+
+// líneas) eso es inviable, así que se ofrece una plantilla .xlsx y un importador
+// que la lee en el navegador y rellena los ítems de una vez. Los criterios de
+// inspección y la disposición del lote (secciones 3-criterios y 4) se dejan en
+// su valor por defecto y se revisan después: el Excel solo trae los datos del
+// material, que es lo que se digita en volumen.
+const COLS_PLANTILLA = ["Código", "Descripción del material", "Cant. pedida", "Cant. recibida", "Lote", "Fecha caducidad", "Observaciones"];
+const EJEMPLO_PLANTILLA = [
+  ["1362", "PARAFUSO CORTICAL AUTORROSQUEANTE Ø 3,5×12mm", 20, 20, "25I000666", "2035-10-31", ""],
+  ["", "(borra esta fila de ejemplo y pega tus ítems; solo la descripción es obligatoria)", "", "", "", "", ""],
+];
+/** Normaliza un encabezado: sin tildes, sin puntos, minúsculas, espacios simples. */
+const normCol = (s: unknown) =>
+  String(s ?? "").trim().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/\./g, " ").replace(/\s+/g, " ").trim();
+const ALIAS: Record<string, string[]> = {
+  codigo: ["codigo", "cod", "referencia", "ref"],
+  descripcion: ["descripcion del material", "descripcion", "material", "descripcion material", "nombre"],
+  cantPedida: ["cant pedida", "cantidad pedida", "pedida", "cant pedido"],
+  cantRecibida: ["cant recibida", "cantidad recibida", "recibida"],
+  lote: ["lote", "lote no", "numero de lote"],
+  fechaCaducidad: ["fecha caducidad", "fecha de caducidad", "caducidad", "vencimiento", "fecha vencimiento", "fecha de vencimiento", "vence"],
+  observaciones: ["observaciones", "observacion", "obs", "notas"],
+};
+/** Serial de fecha de Excel → aaaa-mm-dd, con UTC (independiente de la zona
+ *  horaria). Epoch de Excel = 1899-12-30 (serial 0); 25569 días hasta 1970. */
+function serialAISO(serial: number): string {
+  if (!Number.isFinite(serial) || serial < 1) return "";
+  const dosd = (n: number) => String(n).padStart(2, "0");
+  const d = new Date(Math.round(serial - 25569) * 86400000);
+  return `${d.getUTCFullYear()}-${dosd(d.getUTCMonth() + 1)}-${dosd(d.getUTCDate())}`;
+}
+/** Cualquier fecha (Date de Excel, serial, o texto dd/mm/aaaa) → "aaaa-mm-dd". */
+function aISO(v: unknown): string {
+  if (v == null || v === "") return "";
+  const dosd = (n: number) => String(n).padStart(2, "0");
+  if (v instanceof Date && !isNaN(v.getTime())) return `${v.getFullYear()}-${dosd(v.getMonth() + 1)}-${dosd(v.getDate())}`;
+  if (typeof v === "number") return serialAISO(v);
+  const s = String(v).trim();
+  let m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (m) return `${m[1]}-${dosd(+m[2]!)}-${dosd(+m[3]!)}`;
+  m = s.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})/); // dd/mm/aaaa (formato Colombia)
+  if (m) { const a = m[3]!.length === 2 ? `20${m[3]}` : m[3]!; return `${a}-${dosd(+m[2]!)}-${dosd(+m[1]!)}`; }
+  return "";
+}
+/** Cantidad de una celda (número o texto) → entero como string, o "". */
+const aCant = (v: unknown) => {
+  if (v == null || v === "") return "";
+  const n = Number(String(v).replace(/[^\d.-]/g, ""));
+  return Number.isFinite(n) ? String(Math.round(n)) : "";
+};
 
 interface CriterioUI { nombre: string; especificacion: string; opciones: string[] }
 interface ItemForm {
@@ -126,6 +179,69 @@ export default function RecepcionForm({ tipo, consecutivo, proveedores, monedas,
   const addItem = () => setItems((p) => [...p, nuevoItem()]);
   const delItem = (i: number) => setItems((p) => (p.length > 1 ? p.filter((_, idx) => idx !== i) : p));
 
+  // --- Carga masiva de ítems ---
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [importMsg, setImportMsg] = useState<{ tipo: "ok" | "err"; texto: string } | null>(null);
+
+  /** Descarga una plantilla .xlsx con los encabezados y una fila de ejemplo. */
+  const descargarPlantilla = () => {
+    const ws = XLSX.utils.aoa_to_sheet([COLS_PLANTILLA, ...EJEMPLO_PLANTILLA]);
+    ws["!cols"] = [{ wch: 12 }, { wch: 48 }, { wch: 12 }, { wch: 13 }, { wch: 14 }, { wch: 16 }, { wch: 30 }];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Ítems");
+    XLSX.writeFile(wb, "plantilla-recepcion-tecnica.xlsx");
+  };
+
+  /** Lee el Excel elegido y reemplaza los ítems con lo que trae. */
+  const importarExcel = async (file: File) => {
+    setImportMsg(null);
+    try {
+      const buf = await file.arrayBuffer();
+      // Sin cellDates a propósito: las fechas llegan como serial de Excel y las
+      // convierte XLSX.SSF (independiente de zona horaria). Con cellDates, xlsx
+      // reconstruye un Date que se corre un día según el huso (UTC-5 en Colombia).
+      const wb = XLSX.read(buf, { type: "array" });
+      const ws = wb.Sheets[wb.SheetNames[0]!];
+      if (!ws) { setImportMsg({ tipo: "err", texto: "El archivo no tiene hojas." }); return; }
+      const filas = XLSX.utils.sheet_to_json<unknown[]>(ws, { header: 1, raw: true, blankrows: false });
+      if (filas.length < 2) { setImportMsg({ tipo: "err", texto: "El archivo no tiene datos debajo de los encabezados." }); return; }
+
+      // Mapea cada campo a su columna por el nombre del encabezado (fila 1).
+      const encabezados = (filas[0] as unknown[]).map(normCol);
+      const idx: Record<string, number> = {};
+      for (const [campo, alias] of Object.entries(ALIAS)) {
+        idx[campo] = encabezados.findIndex((h) => alias.includes(h));
+      }
+      if (idx.descripcion === -1) {
+        setImportMsg({ tipo: "err", texto: "No encontré la columna \"Descripción del material\". Usa la plantilla para no cambiar los encabezados." });
+        return;
+      }
+      const cel = (fila: unknown[], campo: string) => (idx[campo]! >= 0 ? fila[idx[campo]!] : undefined);
+
+      const nuevos: ItemForm[] = [];
+      let saltadas = 0;
+      for (const fila of filas.slice(1) as unknown[][]) {
+        const descripcion = String(cel(fila, "descripcion") ?? "").trim();
+        if (!descripcion) { saltadas++; continue; } // sin descripción no es un ítem válido
+        nuevos.push({
+          codigo: String(cel(fila, "codigo") ?? "").trim(),
+          descripcion,
+          cantPedida: aCant(cel(fila, "cantPedida")),
+          cantRecibida: aCant(cel(fila, "cantRecibida")),
+          lote: String(cel(fila, "lote") ?? "").trim(),
+          fechaCaducidad: aISO(cel(fila, "fechaCaducidad")),
+          observaciones: String(cel(fila, "observaciones") ?? "").trim(),
+          criterios: criterios.map((c) => c.opciones[0] ?? "Conforme"),
+        });
+      }
+      if (!nuevos.length) { setImportMsg({ tipo: "err", texto: "No encontré filas con descripción para importar." }); return; }
+      setItems(nuevos);
+      setImportMsg({ tipo: "ok", texto: `✅ ${nuevos.length} ítem(s) importados${saltadas ? ` · ${saltadas} fila(s) sin descripción omitidas` : ""}. Revisa criterios y disposición antes de guardar.` });
+    } catch {
+      setImportMsg({ tipo: "err", texto: "No pude leer el archivo. Debe ser un Excel (.xlsx) o CSV." });
+    }
+  };
+
   const invalidItems = items.some((it) => !it.descripcion.trim());
 
   if (state.ok) {
@@ -227,6 +343,23 @@ export default function RecepcionForm({ tipo, consecutivo, proveedores, monedas,
       <div className="card" style={{ marginBottom: 12 }}>
         <div className="chart-head">3. Inspección física de los dispositivos</div>
         <div className="card-body" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          {/* Carga masiva: plantilla + importación de Excel para recepciones grandes */}
+          <div style={{ border: "1px dashed var(--line)", borderRadius: 8, padding: "10px 12px", background: "var(--brand-tint)" }}>
+            <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+              <b style={{ fontSize: 13 }}>Carga masiva de ítems</b>
+              <span className="flag" style={{ fontSize: 11.5 }}>¿Muchas líneas? Descarga la plantilla, pégalas y súbela.</span>
+              <span style={{ flex: 1 }} />
+              <button type="button" className="btn" onClick={descargarPlantilla}>⬇️ Descargar plantilla</button>
+              <button type="button" className="btn primary" onClick={() => fileRef.current?.click()}>⬆️ Importar Excel</button>
+              <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" style={{ display: "none" }}
+                onChange={(e) => { const f = e.target.files?.[0]; if (f) importarExcel(f); e.target.value = ""; }} />
+            </div>
+            {importMsg && (
+              <p className="alert" style={{ margin: "8px 0 0", fontSize: 12.5, color: importMsg.tipo === "ok" ? "var(--ok, #2A9D6B)" : "var(--bad, #D64545)" }}>
+                {importMsg.texto}
+              </p>
+            )}
+          </div>
           {items.map((it, i) => (
             <div key={i} style={{ border: "1px solid var(--line)", borderRadius: 8, padding: 12 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
