@@ -6,7 +6,7 @@
 import { requirePermiso } from "@/server/auth-context";
 import { formatCOP, formatPorcentaje } from "@/lib/format";
 import { Monto } from "../_components/Monto";
-import { resumenAnual, ventaMensualDetalle, ventaPorCiudad, aniosConVenta, ventaNetaPorDia } from "@/lib/negocio/ventas";
+import { resumenAnual, ventaMensualDetalle, ventaPorCiudad, aniosConVenta, ventaNetaPorDia, clientesConVenta, resumenAnualCliente, ventaMensualDetalleCliente } from "@/lib/negocio/ventas";
 import { MapaCartera } from "../_components/charts/MapaCartera";
 import { LineasMensuales } from "../_components/charts/LineasMensuales";
 import { FiltroAuto } from "../_components/FiltroAuto";
@@ -15,7 +15,7 @@ const MESES = ["", "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio
 const MES_ABBR = ["", "Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
 const CATS = ["var(--cat-1)", "var(--cat-2)", "var(--cat-3)", "var(--cat-4)", "var(--cat-5)", "var(--cat-6)", "var(--cat-7)", "var(--cat-8)"];
 
-export default async function VentasPage({ searchParams }: { searchParams: Promise<{ anio?: string; mes?: string }> }) {
+export default async function VentasPage({ searchParams }: { searchParams: Promise<{ anio?: string; mes?: string; cliente?: string }> }) {
   await requirePermiso("cxp.view");
   const sp = await searchParams;
 
@@ -30,11 +30,15 @@ export default async function VentasPage({ searchParams }: { searchParams: Promi
   const mesSel = mesNum >= 1 && mesNum <= 12 ? mesNum : null;
   const mesesFiltro = mesSel ? [mesSel] : undefined;
 
+  // Cliente seleccionado (o null = todos). El filtro afecta KPIs, tabla, líneas y mapa.
+  const clientes = await clientesConVenta(anio);
+  const cliSel = sp.cliente && clientes.includes(sp.cliente) ? sp.cliente : null;
+
   const [kpi, mesesAct, mesesAnt, ciudades] = await Promise.all([
-    resumenAnual(anio, mesesFiltro),
-    ventaMensualDetalle(anio),
-    ventaMensualDetalle(anio - 1),
-    ventaPorCiudad(anio, mesesFiltro),
+    cliSel ? resumenAnualCliente(anio, cliSel, mesesFiltro) : resumenAnual(anio, mesesFiltro),
+    cliSel ? ventaMensualDetalleCliente(anio, cliSel) : ventaMensualDetalle(anio),
+    cliSel ? ventaMensualDetalleCliente(anio - 1, cliSel) : ventaMensualDetalle(anio - 1),
+    ventaPorCiudad(anio, mesesFiltro, cliSel ?? undefined),
   ]);
 
   // Meses con venta cargada (para el selector de mes).
@@ -50,8 +54,9 @@ export default async function VentasPage({ searchParams }: { searchParams: Promi
   const parcial = mesActual >= 1 && mesActual < 12; // año en curso
 
   // Venta neta por día del mes actual (o del mes filtrado), desde VentaDia.
+  // No aplica al filtrar por cliente (VentaDia no tiene desglose por cliente).
   const mesDia = mesSel ?? (mesActual >= 1 ? mesActual : 12);
-  const ventaDiaRaw = await ventaNetaPorDia(anio, mesDia);
+  const ventaDiaRaw = cliSel ? [] : await ventaNetaPorDia(anio, mesDia);
   let accDia = 0;
   const ventaDia = ventaDiaRaw.map((d) => { accDia += d.valor; return { dia: d.dia, venta: d.valor, acumulado: accDia }; });
   const totalDia = accDia;
@@ -107,7 +112,7 @@ export default async function VentasPage({ searchParams }: { searchParams: Promi
     <>
       <div className="card" style={{ marginBottom: 12 }}>
         <div className="card-body" style={{ paddingBottom: 12, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
-          <div className="eyebrow" style={{ fontSize: 15 }}>Informe de Ventas · {mesSel ? `${MESES[mesSel]} ` : ""}{anio}</div>
+          <div className="eyebrow" style={{ fontSize: 15 }}>Informe de Ventas · {mesSel ? `${MESES[mesSel]} ` : ""}{anio}{cliSel ? ` · ${cliSel}` : ""}</div>
           <FiltroAuto className="toolbar">
             <label className="flag" style={{ alignSelf: "center" }}>Año:</label>
             <select name="anio" defaultValue={anio} className="select">
@@ -117,6 +122,11 @@ export default async function VentasPage({ searchParams }: { searchParams: Promi
             <select name="mes" defaultValue={mesSel ?? ""} className="select">
               <option value="">Todos</option>
               {mesesDisponibles.map((m) => <option key={m} value={m}>{MESES[m]}</option>)}
+            </select>
+            <label className="flag" style={{ alignSelf: "center" }}>Cliente:</label>
+            <select name="cliente" defaultValue={cliSel ?? ""} className="select" style={{ maxWidth: 240 }}>
+              <option value="">Todos</option>
+              {clientes.map((c) => <option key={c} value={c}>{c}</option>)}
             </select>
             <a href={`/ventas/export?anio=${anio}`} className="btn" title="Descargar ventas por mes en Excel">⬇️ Excel</a>
           </FiltroAuto>
@@ -131,7 +141,7 @@ export default async function VentasPage({ searchParams }: { searchParams: Promi
         <div className="kpi kc k-w"><div className="klabel">% Utilidad</div><div className="kval num">{formatPorcentaje(kpi.margen)}</div></div>
       </div>
 
-      <div className="grid two" style={{ marginBottom: 12, alignItems: "stretch" }}>
+      <div className={cliSel ? "grid" : "grid two"} style={{ marginBottom: 12, alignItems: "stretch" }}>
         {/* Tabla Mes vs Año Anterior */}
         <div className="card">
           <div className="chart-head">Ventas · Mes vs Año Anterior <span className="hact">{anio} vs {anio - 1}</span></div>
@@ -193,7 +203,8 @@ export default async function VentasPage({ searchParams }: { searchParams: Promi
           )}
         </div>
 
-        {/* Venta por día del mes actual (o filtrado) */}
+        {/* Venta por día del mes actual — no aplica al filtrar por cliente */}
+        {!cliSel && (
         <div className="card">
           <div className="chart-head">Venta por día <span className="hact">{MESES[mesDia]} {anio}</span></div>
           <div className="tbl-wrap" style={{ maxHeight: 520, overflowY: "auto" }}>
@@ -223,6 +234,7 @@ export default async function VentasPage({ searchParams }: { searchParams: Promi
           </div>
           <p className="flag" style={{ padding: "8px 14px", margin: 0 }}>Venta neta por día (con nota crédito). Cuadra con la venta del mes.</p>
         </div>
+        )}
       </div>
 
       {/* Venta neta por mes (líneas, más angosta) + Venta por ciudad (mapa) */}

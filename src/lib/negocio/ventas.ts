@@ -64,6 +64,33 @@ export async function resumenAnual(anio: number, meses?: number[]): Promise<Resu
   return { venta, costo, utilidad, margen: venta > 0 ? (utilidad / venta) * 100 : 0 };
 }
 
+/** Clientes con venta en el año (para el selector), asc. */
+export async function clientesConVenta(anio: number): Promise<string[]> {
+  const g = await prisma.ventaCliente.groupBy({ by: ["clienteNombre"], where: { anio }, _sum: { valor: true } });
+  return g.filter((x) => (x._sum.valor?.toNumber() ?? 0) !== 0).map((x) => x.clienteNombre).sort((a, b) => a.localeCompare(b, "es"));
+}
+
+/** KPIs de un cliente (desde VentaCliente), opcionalmente por meses. */
+export async function resumenAnualCliente(anio: number, cliente: string, meses?: number[]): Promise<ResumenAnual> {
+  const where: Prisma.VentaClienteWhereInput = { anio, clienteNombre: cliente, ...(meses && meses.length ? { mes: { in: meses } } : {}) };
+  const agg = await prisma.ventaCliente.aggregate({ where, _sum: { valor: true, costo: true } });
+  const venta = agg._sum.valor?.toNumber() ?? 0;
+  const costo = agg._sum.costo?.toNumber() ?? 0;
+  const utilidad = venta - costo;
+  return { venta, costo, utilidad, margen: venta > 0 ? (utilidad / venta) * 100 : 0 };
+}
+
+/** Venta neta y costo por mes (1–12) de un cliente. Rellena meses sin datos con 0. */
+export async function ventaMensualDetalleCliente(anio: number, cliente: string): Promise<MesVenta[]> {
+  const g = await prisma.ventaCliente.groupBy({ by: ["mes"], where: { anio, clienteNombre: cliente }, _sum: { valor: true, costo: true } });
+  const map = new Map(g.map((x) => [x.mes, { venta: x._sum.valor?.toNumber() ?? 0, costo: x._sum.costo?.toNumber() ?? 0 }]));
+  return Array.from({ length: 12 }, (_, i) => {
+    const mes = i + 1;
+    const e = map.get(mes) ?? { venta: 0, costo: 0 };
+    return { mes, venta: e.venta, costo: e.costo };
+  });
+}
+
 export interface FilaMarcaVenta { marca: string; valor: number; costo: number }
 
 /** Venta neta y costo por MARCA (proveedor), opcionalmente por meses, desc. */
@@ -201,8 +228,8 @@ export interface FilaCiudadVenta { ciudad: string; valor: number; clientes: numb
  * ciudad caen en "Sin ciudad". Incluye a todos (también las IPS internas).
  * Devuelve además el desglose de IPS por ciudad (para el tooltip).
  */
-export async function ventaPorCiudad(anio: number, meses?: number[]): Promise<FilaCiudadVenta[]> {
-  const where: Prisma.VentaClienteWhereInput = { anio, ...(meses && meses.length ? { mes: { in: meses } } : {}) };
+export async function ventaPorCiudad(anio: number, meses?: number[], cliente?: string): Promise<FilaCiudadVenta[]> {
+  const where: Prisma.VentaClienteWhereInput = { anio, ...(meses && meses.length ? { mes: { in: meses } } : {}), ...(cliente ? { clienteNombre: cliente } : {}) };
   const grupos = await prisma.ventaCliente.groupBy({ by: ["clienteNombre", "nit"], where, _sum: { valor: true } });
 
   // Mapa NIT -> ciudad desde Terceros.
