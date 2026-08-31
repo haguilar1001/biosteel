@@ -8,7 +8,7 @@ import "server-only";
 import { prisma } from "@/lib/db";
 import type { Prisma } from "@prisma/client";
 
-export interface FiltroCx { anio: number; mes?: number; ciudad?: string; grupo?: string; asesor?: string }
+export interface FiltroCx { anio: number; mes?: number; dia?: number; ciudad?: string; grupo?: string; asesor?: string }
 
 export const MES_CORTO = ["", "Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
 export const MES_LARGO = ["", "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
@@ -17,6 +17,7 @@ function where(f: FiltroCx): Prisma.CirugiaWhereInput {
   return {
     anio: f.anio,
     ...(f.mes ? { mes: f.mes } : {}),
+    ...(f.mes && f.dia ? { dia: f.dia } : {}),
     ...(f.ciudad ? { ciudad: f.ciudad } : {}),
     ...(f.grupo ? { grupo: f.grupo } : {}),
     ...(f.asesor ? { asesor: f.asesor } : {}),
@@ -30,6 +31,10 @@ export async function aniosConCirugias(): Promise<number[]> {
 export async function mesesConCirugias(anio: number): Promise<number[]> {
   const g = await prisma.cirugia.groupBy({ by: ["mes"], where: { anio }, orderBy: { mes: "asc" } });
   return g.map((x) => x.mes);
+}
+export async function diasConCirugias(anio: number, mes: number): Promise<number[]> {
+  const g = await prisma.cirugia.groupBy({ by: ["dia"], where: { anio, mes }, orderBy: { dia: "asc" } });
+  return g.map((x) => x.dia);
 }
 
 export interface ResumenCx {
@@ -57,7 +62,7 @@ export async function resumenCx(f: FiltroCx): Promise<ResumenCx> {
 
 export interface FilaMes { mes: number; total: number; conAsesor: number; sinSoporte: number }
 export async function cirugiasPorMes(f: FiltroCx): Promise<FilaMes[]> {
-  const w = where({ ...f, mes: undefined });
+  const w = where({ ...f, mes: undefined, dia: undefined });
   const [tot, sin] = await Promise.all([
     prisma.cirugia.groupBy({ by: ["mes"], where: w, _count: { _all: true } }),
     prisma.cirugia.groupBy({ by: ["mes"], where: { ...w, sinSoporte: true }, _count: { _all: true } }),

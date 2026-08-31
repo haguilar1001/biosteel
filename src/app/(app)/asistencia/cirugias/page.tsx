@@ -8,7 +8,7 @@ import { formatNumero } from "@/lib/format";
 import { FiltroAuto } from "../../_components/FiltroAuto";
 import { LineasMensuales } from "../../_components/charts/LineasMensuales";
 import {
-  aniosConCirugias, mesesConCirugias, catalogosCx,
+  aniosConCirugias, mesesConCirugias, diasConCirugias, catalogosCx,
   resumenCx, cirugiasPorMes, cirugiasPorAsesor, promedioDiaAsesor, cirugiasPorMedico,
   cirugiasPorIps, cirugiasPorCiudad, cirugiasPorGrupo,
   MES_CORTO, MES_LARGO, type FiltroCx,
@@ -40,7 +40,7 @@ function Ranking({ filas, tope = 15, color = "var(--brand)", formato = nInt }: {
 
 export default async function CirugiasPage({
   searchParams,
-}: { searchParams: Promise<{ anio?: string; mes?: string; ciudad?: string; grupo?: string; asesor?: string }> }) {
+}: { searchParams: Promise<{ anio?: string; mes?: string; dia?: string; ciudad?: string; grupo?: string; asesor?: string }> }) {
   await requirePermiso("cxp.view");
   const sp = await searchParams;
 
@@ -55,19 +55,21 @@ export default async function CirugiasPage({
   const anio = sp.anio && anios.includes(Number(sp.anio)) ? Number(sp.anio) : anios[anios.length - 1]!;
   const mesesDisp = await mesesConCirugias(anio);
   const mes = sp.mes && mesesDisp.includes(Number(sp.mes)) ? Number(sp.mes) : undefined;
+  const diasDisp = mes ? await diasConCirugias(anio, mes) : [];
+  const dia = mes && sp.dia && diasDisp.includes(Number(sp.dia)) ? Number(sp.dia) : undefined;
 
   const cat = await catalogosCx(anio);
   const ciudad = sp.ciudad && cat.ciudades.includes(sp.ciudad) ? sp.ciudad : undefined;
   const grupo = sp.grupo && cat.grupos.includes(sp.grupo) ? sp.grupo : undefined;
   const asesor = sp.asesor && cat.asesores.includes(sp.asesor) ? sp.asesor : undefined;
-  const f: FiltroCx = { anio, mes, ciudad, grupo, asesor };
+  const f: FiltroCx = { anio, mes, dia, ciudad, grupo, asesor };
 
   const [resumen, porMes, porAsesor, promAsesor, porIps, porCiudad, porGrupo, porMedico] = await Promise.all([
     resumenCx(f), cirugiasPorMes(f), cirugiasPorAsesor(f), promedioDiaAsesor(f), cirugiasPorIps(f),
     cirugiasPorCiudad(f), cirugiasPorGrupo(f), cirugiasPorMedico(f),
   ]);
 
-  const etiqueta = mes ? `${MES_LARGO[mes]} ${anio}` : `${anio}`;
+  const etiqueta = mes ? `${dia ? `${dia} de ` : ""}${MES_LARGO[mes]} ${anio}` : `${anio}`;
   const cobColor = resumen.coberturaPct >= 0.7 ? "var(--ok)" : resumen.coberturaPct >= 0.5 ? "var(--w1)" : "var(--bad)";
 
   return (
@@ -90,6 +92,11 @@ export default async function CirugiasPage({
             <select name="mes" defaultValue={mes ?? ""} className="select">
               <option value="">Todo el año</option>
               {mesesDisp.map((m) => <option key={m} value={m}>{MES_LARGO[m]}</option>)}
+            </select>
+            <label className="flag" style={{ alignSelf: "center" }}>Día:</label>
+            <select name="dia" defaultValue={dia ?? ""} className="select" disabled={!mes} title={mes ? undefined : "Elige un mes primero"}>
+              <option value="">{mes ? "Todo el mes" : "—"}</option>
+              {diasDisp.map((d) => <option key={d} value={d}>{d}</option>)}
             </select>
             <label className="flag" style={{ alignSelf: "center" }}>Ciudad:</label>
             <select name="ciudad" defaultValue={ciudad ?? ""} className="select">
