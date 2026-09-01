@@ -141,9 +141,16 @@
 
 /* Tabla de ítems */
 .sop-tabla { width: 100%; border-collapse: collapse; font-size: 13px; }
-.sop-tabla th, .sop-tabla td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--linea); }
+.sop-tabla th, .sop-tabla td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--linea); vertical-align: top; }
 .sop-tabla th { background: var(--azul-muy); color: var(--azul); font-size: 11px; text-transform: uppercase; letter-spacing: .3px; }
 .sop-tabla td.num { text-align: right; font-variant-numeric: tabular-nums; }
+/* El global `tbody td` de la app fuerza white-space:nowrap (recorta los textos
+   largos de "Especificación requerida") y `tbody tr:hover` los pinta con los
+   colores del tema oscuro. En esta hoja imprimible ambos estorban: aquí los
+   textos deben ajustarse en varias líneas y no debe haber efecto hover. */
+.sop-tabla td { white-space: normal; overflow-wrap: break-word; }
+.sop-tabla th { white-space: normal; }
+.sop-tabla tbody tr:hover { background: transparent; }
 
 /* Firmas */
 .sop-firmas {
