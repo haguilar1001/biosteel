@@ -4,7 +4,7 @@
 // ==========================================================
 import { requirePermiso } from "@/server/auth-context";
 import { prisma } from "@/lib/db";
-import { formatFecha } from "@/lib/format";
+import { formatFechaSello } from "@/lib/format";
 import { agregarExclusion, quitarExclusion } from "./actions";
 
 export default async function ExclusionesPage() {
@@ -40,7 +40,7 @@ export default async function ExclusionesPage() {
                   <tr key={e.id}>
                     <td style={{ fontWeight: 600 }}>{e.nroDocumento}</td>
                     <td className="flag">{e.motivo ?? "—"}</td>
-                    <td className="flag">{formatFecha(e.createdAt)}</td>
+                    <td className="flag">{formatFechaSello(e.createdAt)}</td>
                     <td className="r">
                       <form action={quitarExclusion} style={{ margin: 0 }}>
                         <input type="hidden" name="id" value={e.id} />

@@ -5,7 +5,7 @@
 // ==========================================================
 import { requirePermiso, requireUsuario } from "@/server/auth-context";
 import { puede } from "@/lib/rbac/authorize";
-import { formatNumero, formatFecha } from "@/lib/format";
+import { formatNumero, formatFechaSello } from "@/lib/format";
 import {
   listarNovedades, listarEquipos, catalogos, novedadLabel, novedadIcono, estadoLabel, estadoClase, esHoy,
 } from "@/lib/negocio/inventario";
@@ -88,7 +88,7 @@ export default async function NovedadesPage() {
               {novedades.map((n) => (
                 <tr key={n.id}>
                   <td className="num flag">
-                    {formatFecha(n.fecha)}
+                    {formatFechaSello(n.fecha)}
                     {esHoy(n.fecha) && <span className="tag t-ok" style={{ marginLeft: 6 }}>Hoy</span>}
                   </td>
                   <td><span className={`tag ${TIPO_TAG[n.tipo]}`}>{novedadIcono(n.tipo)} {novedadLabel(n.tipo)}</span></td>

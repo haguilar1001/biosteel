@@ -14,10 +14,14 @@ export interface RecepcionState { ok?: boolean; error?: string; id?: number; con
 
 const VERIF = ["si", "no", "na"] as const;
 
-/** "YYYY-MM-DD" → Date (mediodía local para evitar corrimiento de zona). */
+/**
+ * "YYYY-MM-DD" → Date a medianoche UTC.
+ * Las columnas son `@db.Date` (un día del calendario, no un instante): se
+ * guardan y se leen en UTC, y así se muestran con formatFecha sin corrimiento.
+ */
 function aFecha(s?: string): Date | null {
   if (!s || !/^\d{4}-\d{2}-\d{2}$/.test(s)) return null;
-  return new Date(`${s}T12:00:00`);
+  return new Date(`${s}T00:00:00.000Z`);
 }
 
 const itemSchema = z.object({

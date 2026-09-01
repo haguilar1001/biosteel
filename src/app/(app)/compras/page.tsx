@@ -13,7 +13,7 @@
 // NO tienen por qué sumar entre sí ni coincidir en el mismo día.
 // ==========================================================
 import { requirePermiso } from "@/server/auth-context";
-import { formatCOP, formatCOPCorto, formatNumero, formatFecha } from "@/lib/format";
+import { formatCOP, formatCOPCorto, formatNumero, formatFechaSello } from "@/lib/format";
 import { Monto } from "../_components/Monto";
 import { Donut } from "../_components/charts/Donut";
 import { LineasMensuales } from "../_components/charts/LineasMensuales";
@@ -105,7 +105,7 @@ export default async function ComprasPage({ searchParams }: { searchParams: Prom
               {f.proveedor ?? "Todos los proveedores"}
               {f.linea ? ` · ${f.linea}` : ""}
               {f.tipoCompra ? ` · ${f.tipoCompra}` : ""}
-              {corte ? ` · pendientes al ${formatFecha(corte)}` : ""}
+              {corte ? ` · pendientes al ${formatFechaSello(corte)}` : ""}
             </div>
           </div>
           <BarraFiltros c={c} />
@@ -144,7 +144,7 @@ export default async function ComprasPage({ searchParams }: { searchParams: Prom
         <div className="card" style={{ marginBottom: 12, borderLeft: "3px solid var(--w1)" }}>
           <div className="card-body" style={{ padding: "10px 14px", fontSize: 12.5 }}>
             ⏳ <b>Pendiente por Despacho está desactualizado.</b> La última foto se subió
-            hace <b>{diasCorte} días</b> ({formatFecha(corte!)}), así que ese KPI y todo lo que
+            hace <b>{diasCorte} días</b> ({formatFechaSello(corte!)}), así que ese KPI y todo lo que
             dependa de él muestran esa fecha, no hoy.
             <div style={{ color: "var(--muted)", marginTop: 4 }}>
               Se actualiza subiendo <b>PENDIENTES POR DESPACHO.xlsx</b> en{" "}

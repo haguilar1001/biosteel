@@ -4,7 +4,7 @@
 // ==========================================================
 import { requirePermiso } from "@/server/auth-context";
 import { prisma } from "@/lib/db";
-import { formatFecha } from "@/lib/format";
+import { formatFechaSello } from "@/lib/format";
 import { Monto } from "../../../_components/Monto";
 import { agregarAjuste, quitarAjuste } from "./actions";
 
@@ -52,7 +52,7 @@ export default async function AjustesPage() {
                     <td className="r num" style={{ fontWeight: 700, color: a.valor.toNumber() < 0 ? "var(--bad)" : "var(--ok)" }}>
                       {a.valor.toNumber() >= 0 ? "+" : "−"}<Monto value={Math.abs(a.valor.toNumber())} />
                     </td>
-                    <td className="flag">{formatFecha(a.createdAt)}</td>
+                    <td className="flag">{formatFechaSello(a.createdAt)}</td>
                     <td className="r">
                       <form action={quitarAjuste} style={{ margin: 0 }}>
                         <input type="hidden" name="id" value={a.id} />

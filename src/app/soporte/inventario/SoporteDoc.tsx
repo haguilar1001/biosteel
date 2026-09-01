@@ -2,7 +2,7 @@
 // Hoja de un soporte de novedad de inventario (marca BioSteel).
 // Server component puro: recibe los datos ya resueltos.
 // ==========================================================
-import { formatFecha, formatFechaHoraSeg, formatNumero } from "@/lib/format";
+import { formatFechaHoraSeg, formatNumero, formatFechaSello } from "@/lib/format";
 import {
   novedadLabel, novedadIcono, estadoLabel, tipoLabel, type SoporteNovedad, type ItemSoporte,
 } from "@/lib/negocio/inventario";
@@ -74,7 +74,7 @@ export default function SoporteDoc({ s }: { s: SoporteNovedad }) {
         <span className="ico">{novedadIcono(s.tipo)}</span>
         <span className="lbl">{novedadLabel(s.tipo)}</span>
         <span className="meta">
-          Fecha de la novedad<br /><b>{formatFecha(s.fecha)}</b>
+          Fecha de la novedad<br /><b>{formatFechaSello(s.fecha)}</b>
         </span>
       </div>
 
@@ -84,7 +84,7 @@ export default function SoporteDoc({ s }: { s: SoporteNovedad }) {
           <h3>Datos de la novedad</h3>
           <div className="sop-grid">
             <Campo k="Tipo de novedad" v={`${novedadIcono(s.tipo)} ${novedadLabel(s.tipo)}`} big />
-            <Campo k="Fecha de la novedad" v={formatFecha(s.fecha)} big />
+            <Campo k="Fecha de la novedad" v={formatFechaSello(s.fecha)} big />
             {cambiaEstado && (
               <Campo
                 k="Cambio de estado"

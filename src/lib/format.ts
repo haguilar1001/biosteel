@@ -57,9 +57,18 @@ export function formatMoneda(v: Numerico, simbolo: string): string {
 
 // ==========================================================
 // Fechas — formato institucional DD/MM/AAAA (Día/Mes/Año).
-// SIEMPRE en hora de Colombia (America/Bogota), sin importar la zona del
-// servidor. En Railway el proceso corre en UTC; usar getHours()/getDate()
-// mostraba la hora en UTC (+5 h), por eso los sellos salían adelantados.
+//
+// Hay DOS clases de fecha en la app y NO se formatean igual:
+//
+//   1. Fechas SOLAS (columnas `@db.Date`: vencimiento, caducidad, fecha de
+//      inspección, fecha del movimiento…). No son un instante: son un día del
+//      calendario. Postgres las devuelve como medianoche UTC, así que se leen
+//      en UTC. Pasarlas a hora de Colombia (−5 h) las corre al día ANTERIOR.
+//      → formatFecha()
+//   2. INSTANTES (`createdAt`, `cargadoEn`, `new Date()`): ocurrieron en un
+//      momento concreto y se muestran en hora de Colombia, no en la del
+//      servidor (en Railway el proceso corre en UTC y salían +5 h).
+//      → formatFechaSello(), formatFechaHora(), formatFechaHoraSeg()
 // ==========================================================
 const TZ = "America/Bogota";
 
@@ -73,8 +82,18 @@ function partesBogota(d: Date): { d: string; m: string; y: string; H: string; Mi
   return { d: g("day"), m: g("month"), y: g("year"), H: g("hour"), Min: g("minute"), S: g("second") };
 }
 
-/** Fecha DD/MM/AAAA (p. ej. 13/08/2026) en hora de Colombia. */
+/**
+ * Fecha SOLA DD/MM/AAAA (p. ej. 13/08/2026), leída en UTC.
+ * Es la de las columnas `@db.Date`: si se guardó el 31/10/2035, muestra el 31.
+ * Para un instante (createdAt, ahora) usa formatFechaSello.
+ */
 export function formatFecha(d: Date): string {
+  const dosd = (n: number) => String(n).padStart(2, "0");
+  return `${dosd(d.getUTCDate())}/${dosd(d.getUTCMonth() + 1)}/${d.getUTCFullYear()}`;
+}
+
+/** Fecha DD/MM/AAAA de un INSTANTE (createdAt, ahora), en hora de Colombia. */
+export function formatFechaSello(d: Date): string {
   const { d: dd, m, y } = partesBogota(d);
   return `${dd}/${m}/${y}`;
 }

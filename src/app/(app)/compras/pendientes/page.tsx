@@ -7,7 +7,7 @@
 // que es lo que permite ver el atraso: días vencidos = hoy − fecha de entrega.
 // ==========================================================
 import { requirePermiso } from "@/server/auth-context";
-import { formatNumero, formatFecha } from "@/lib/format";
+import { formatNumero, formatFecha, formatFechaSello } from "@/lib/format";
 import { Monto } from "../../_components/Monto";
 import { resumenCompras, detallePendientes, corteDePendientes } from "@/lib/negocio/compras";
 import { resolverFiltro, type ParamsCompras } from "../_filtro";
@@ -53,7 +53,7 @@ export default async function PendientesPage({ searchParams }: { searchParams: P
           <div style={{ marginBottom: 10 }}>
             <div className="eyebrow" style={{ fontSize: 15 }}>Pendientes por Despacho · {c.etiqueta}</div>
             <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 3 }}>
-              Foto del inventario pendiente{corte ? ` · cargada el ${formatFecha(corte)}` : ""} ·
+              Foto del inventario pendiente{corte ? ` · cargada el ${formatFechaSello(corte)}` : ""} ·
               el periodo filtra por fecha de entrega pactada
             </div>
           </div>

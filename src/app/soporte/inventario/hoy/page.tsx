@@ -5,7 +5,7 @@
 // ==========================================================
 import { requirePermiso } from "@/server/auth-context";
 import { soportesDeHoy } from "@/lib/negocio/inventario";
-import { formatFecha } from "@/lib/format";
+import { formatFechaSello } from "@/lib/format";
 import PrintButton from "../../PrintButton";
 import SoporteDoc from "../SoporteDoc";
 
@@ -25,7 +25,7 @@ export default async function SoportesHoyPage({
       <PrintButton auto={auto === "1" && soportes.length > 0} />
       {soportes.length === 0 ? (
         <div className="sop-vacio no-print">
-          No hay novedades registradas hoy ({formatFecha(new Date())}).
+          No hay novedades registradas hoy ({formatFechaSello(new Date())}).
         </div>
       ) : (
         soportes.map((s) => <SoporteDoc key={s.id} s={s} />)
