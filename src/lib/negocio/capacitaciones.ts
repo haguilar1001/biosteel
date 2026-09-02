@@ -208,3 +208,52 @@ export async function ejecucion(anio: number, rs: Registro[]): Promise<FilaEjecu
     };
   });
 }
+
+// ---------- Plan de formación (el denominador del indicador A) ----------
+
+export interface FilaPlan {
+  mes: number;
+  /** null = el mes no tiene plan cargado. Distinto de 0 (se planeó nada). */
+  planeadas: number | null;
+  /** Capacitaciones distintas que sí se dictaron ese mes, según el consolidado. */
+  ejecutadas: number;
+}
+
+/** Los doce meses del año con su plan y lo que ya se ejecutó. */
+export async function planDelAnio(anio: number): Promise<FilaPlan[]> {
+  const [plan, rs] = await Promise.all([
+    prisma.capacitacionPlan.findMany({ where: { anio } }),
+    registros(anio),
+  ]);
+  const planeadasPorMes = new Map(plan.map((f) => [f.mes, f.planeadas]));
+  const ejecutadasPorMes = new Map(porMes(rs).map((m) => [m.mes, m.capacitaciones]));
+  return Array.from({ length: 12 }, (_, i) => ({
+    mes: i + 1,
+    planeadas: planeadasPorMes.get(i + 1) ?? null,
+    ejecutadas: ejecutadasPorMes.get(i + 1) ?? 0,
+  }));
+}
+
+/**
+ * Reemplaza el plan del año. Un mes en null se BORRA en vez de guardarse como
+ * cero: no es lo mismo "no se planeó nada" que "todavía no hay plan", y el
+ * indicador de ejecución muestra cosas distintas en cada caso.
+ */
+export async function guardarPlan(anio: number, planeadas: Record<number, number | null>): Promise<{ guardados: number; borrados: number }> {
+  let guardados = 0, borrados = 0;
+  for (let mes = 1; mes <= 12; mes++) {
+    const valor = planeadas[mes];
+    if (valor == null) {
+      const { count } = await prisma.capacitacionPlan.deleteMany({ where: { anio, mes } });
+      borrados += count;
+      continue;
+    }
+    await prisma.capacitacionPlan.upsert({
+      where: { anio_mes: { anio, mes } },
+      update: { planeadas: valor },
+      create: { anio, mes, planeadas: valor },
+    });
+    guardados++;
+  }
+  return { guardados, borrados };
+}

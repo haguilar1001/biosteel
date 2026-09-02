@@ -187,7 +187,9 @@ export default async function CapacitacionesPage({ searchParams }: { searchParam
       <div className="card" style={{ marginBottom: 12 }}>
         <div className="chart-head">
           Indicador A · Ejecución del programa de capacitación
-          <span className="hact">meta &gt; {META_EJECUCION} %</span>
+          <span className="hact">
+            <a href={`/nomina/capacitaciones/plan?anio=${anio}`}>✏️ Editar plan</a> · meta &gt; {META_EJECUCION} %
+          </span>
         </div>
         <div className="card-body">
           <p className="flag" style={{ marginTop: 0, fontSize: 12.5 }}>
@@ -218,7 +220,8 @@ export default async function CapacitacionesPage({ searchParams }: { searchParam
           {filasEjecucion.some((f) => f.planeadas == null) && (
             <p className="alert" style={{ fontSize: 12.5, color: "var(--w1, #E0A400)", marginBottom: 0 }}>
               ⚠️ Hay meses sin plan de formación cargado. Sin planeadas no hay contra qué medir lo ejecutado,
-              así que esos meses quedan sin resultado en vez de dar 100 % por defecto.
+              así que esos meses quedan sin resultado en vez de dar 100 % por defecto.{" "}
+              <a href={`/nomina/capacitaciones/plan?anio=${anio}`}>Cargar el plan</a>.
             </p>
           )}
         </div>

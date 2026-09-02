@@ -32,6 +32,7 @@ export const PERMISOS = [
   { clave: "pedidos.view", modulo: "Pedidos", descripcion: "Consultar el informe de pedidos y las sugerencias de compra" },
   { clave: "asistencia.manage", modulo: "Análisis", descripcion: "Registrar PQRS de Asistencia Técnica" },
   { clave: "capacitaciones.view", modulo: "Nómina", descripcion: "Consultar el indicador de capacitaciones (plan de formación)" },
+  { clave: "capacitaciones.manage", modulo: "Nómina", descripcion: "Editar el plan de formación (capacitaciones planeadas por mes)" },
   { clave: "tercero.manage", modulo: "Administración", descripcion: "Crear y editar terceros" },
   { clave: "usuario.manage", modulo: "Administración", descripcion: "Gestionar usuarios" },
   { clave: "rol.manage", modulo: "Administración", descripcion: "Gestionar roles y permisos" },
@@ -96,7 +97,7 @@ export const MATRIZ_ROLES: Record<RolNombre, Partial<Record<PermisoClave, Alcanc
     "carga.anuladas": T, "carga.pyg": T, "carga.flujo": T, "carga.presupuesto": T,
     "carga.inv.bodegas": T, "carga.inv.balance": T, "carga.inv.movimientos": T,
     "carga.encuestas": T, "carga.cirugias": T, "carga.capacitaciones": T,
-    "asistencia.manage": T, "capacitaciones.view": T,
+    "asistencia.manage": T, "capacitaciones.view": T, "capacitaciones.manage": T,
   },
   Gerente: {
     "dashboard.view": T, "cartera.view": T, "recaudo.create": N, "cxp.view": T,
@@ -104,7 +105,7 @@ export const MATRIZ_ROLES: Record<RolNombre, Partial<Record<PermisoClave, Alcanc
     "inventario.view": T, "inventario.manage": N, "osteo.view": T, "ventas.manage": T,
     "recepcion.view": T, "recepcion.manage": N,
     "compras.view": T, "pedidos.view": T,
-    "asistencia.manage": T, "capacitaciones.view": T,
+    "asistencia.manage": T, "capacitaciones.view": T, "capacitaciones.manage": T,
     "usuario.manage": N, "rol.manage": N, "parametro.manage": N, "auditoria.view": T,
   },
   "Tesorería / Cartera": {
