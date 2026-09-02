@@ -37,6 +37,27 @@ export function limpiarMonto(v: unknown): number {
   return esPorcentaje ? n / 100 : n;
 }
 
+/**
+ * Detector de la columna Cantidad multiplicada por cien.
+ *
+ * Las cantidades reales son 1, 2, 6, 14 unidades: que TODAS sean múltiplos
+ * exactos de 100 no pasa por azar. Cuando la columna sale del Excel con
+ * formato de porcentaje, la cifra se infla ×100 y un tornillo aparece como
+ * 100 — pasó con los archivos del 29, 30 y 31 de julio, el 31 de agosto y el
+ * 1 de septiembre de 2026, y cada vez se descubrió semanas después, mirando
+ * un informe que ya nadie creía.
+ *
+ * Devuelve null cuando el archivo se ve normal. El umbral es deliberadamente
+ * alto (90 % de los renglones con cantidad, mínimo 20) porque un falso
+ * positivo frena una carga legítima.
+ */
+export function cantidadesSospechosas(filas: { cantidad: number }[]): { conCantidad: number; multiplos: number } | null {
+  const conCantidad = filas.filter((f) => f.cantidad !== 0).length;
+  if (conCantidad < 20) return null;
+  const multiplos = filas.filter((f) => f.cantidad !== 0 && Number.isInteger(f.cantidad / 100)).length;
+  return multiplos / conCantidad >= 0.9 ? { conCantidad, multiplos } : null;
+}
+
 /** Fecha SIESA en formato M/D/AA (americano) → { ms, anio, mes }. */
 export function parseFechaMDY(v: unknown): { ms: number; anio: number; mes: number } | null {
   const m = String(v ?? "").trim().match(/(\d{1,2})\/(\d{1,2})\/(\d{2,4})/);

@@ -14,7 +14,8 @@
 import "server-only";
 import { prisma } from "@/lib/db";
 import { DATASETS, parseDataset, type DatasetKey } from "./importar-siesa-pendientes";
-import { leerRenglones, type FilaVenta } from "./importar-ventas";
+import { leerRenglones, cantidadesSospechosas, type FilaVenta } from "./importar-ventas";
+import { CargaRequiereConfirmacion, esConfirmacionPendiente } from "./carga-confirmacion";
 import { escribirAgregados, docABitVenta } from "./escribir-ventas";
 
 export { DATASETS, type DatasetKey };
@@ -95,7 +96,7 @@ export interface ArchivoEntrada { clave: DatasetKey; nombre: string; buffer: Buf
  * bitácora en CargaSiesa (true por defecto). La carga in-app pasa false y
  * registra aparte con el usuario que la subió.
  */
-export async function procesarCarga(archivos: ArchivoEntrada[], origenIp?: string, registrar = true): Promise<ResultadoCarga> {
+export async function procesarCarga(archivos: ArchivoEntrada[], origenIp?: string, registrar = true, confirmado = false): Promise<ResultadoCarga> {
   const res: ResultadoCarga = { ok: true, datasets: {}, errores: [] };
   const titulo = (k: DatasetKey) => DATASETS.find((d) => d.clave === k)!.titulo;
 
@@ -103,6 +104,17 @@ export async function procesarCarga(archivos: ArchivoEntrada[], origenIp?: strin
     try {
       if (a.clave === "ventas") {
         const { filas, sinFecha, hoja } = leerRenglones(a.buffer);
+        // Puerta de la columna Cantidad ×100: se pregunta antes de escribir,
+        // porque una vez guardada la cifra mala nadie la vuelve a mirar.
+        const sospecha = confirmado ? null : cantidadesSospechosas(filas);
+        if (sospecha) {
+          throw new CargaRequiereConfirmacion(
+            `De ${sospecha.conCantidad} renglón(es) con cantidad, ${sospecha.multiplos} traen un múltiplo exacto de 100 ` +
+            "(100, 200, 300…). Así se ve la columna Cantidad cuando sale del Excel con formato de PORCENTAJE: " +
+            "queda multiplicada por cien y un tornillo aparece como 100 unidades. Revisa el formato de esa columna " +
+            "en el archivo antes de cargarlo — la plata no se afecta, pero las cantidades y el costo unitario sí.",
+          );
+        }
         const { cargadas, estrategia } = await persistirVentas(filas);
         res.datasets[a.clave] = { titulo: titulo(a.clave), archivo: a.nombre, hoja, filas: filas.length, cargadas, omitidas: sinFecha, estrategia };
         continue;
@@ -111,6 +123,9 @@ export async function procesarCarga(archivos: ArchivoEntrada[], origenIp?: strin
       const { cargadas, estrategia } = await persistir(a.clave, parsed.rows);
       res.datasets[a.clave] = { titulo: titulo(a.clave), archivo: a.nombre, hoja: parsed.hoja, filas: parsed.rows.length, cargadas, omitidas: parsed.omitidas, estrategia };
     } catch (e) {
+      // Una confirmación pendiente NO es un error: nada se escribió y la
+      // pregunta tiene que llegar entera hasta la pantalla de carga.
+      if (esConfirmacionPendiente(e)) throw e;
       res.ok = false;
       const msg = e instanceof Error ? e.message : "error";
       res.errores.push(`${titulo(a.clave)} (${a.nombre}): ${msg}`);

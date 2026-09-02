@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { limpiarMonto, parseFechaMDY } from "./importar-ventas";
+import { limpiarMonto, parseFechaMDY, cantidadesSospechosas } from "./importar-ventas";
 
 describe("limpiarMonto (ventas)", () => {
   it("limpia formato con $ y separadores", () => {
@@ -25,6 +25,28 @@ describe("limpiarMonto (ventas)", () => {
     it("con separador de miles", () => assert.equal(limpiarMonto("1,500%"), 15));
     it("no toca las celdas normales", () => assert.equal(limpiarMonto("200"), 200));
   });
+});
+
+describe("cantidadesSospechosas (columna Cantidad ×100)", () => {
+  const cant = (ns: number[]) => ns.map((cantidad) => ({ cantidad }));
+  // Un archivo real: unidades sueltas, casi nunca redondas.
+  const normal = cant([1, 2, 1, 6, 3, 14, 2, 1, 1, 4, 8, 2, 1, 5, 1, 2, 3, 1, 1, 2, 100, 200]);
+  // Uno con la columna inflada: TODO múltiplo de 100.
+  const inflado = cant([100, 200, 100, 600, 300, 1400, 200, 100, 100, 400, 800, 200,
+    100, 500, 100, 200, 300, 100, 100, 200, 100, 300]);
+
+  it("un archivo normal pasa", () => assert.equal(cantidadesSospechosas(normal), null));
+  it("un archivo inflado se detiene", () => {
+    const r = cantidadesSospechosas(inflado);
+    assert.ok(r);
+    assert.equal(r.conCantidad, 22);
+    assert.equal(r.multiplos, 22);
+  });
+  it("los ceros no cuentan", () => assert.equal(cantidadesSospechosas(cant([0, 0, 0, 100, 200])), null));
+  it("pocos renglones no alcanzan para acusar", () =>
+    assert.equal(cantidadesSospechosas(cant([100, 200, 300])), null));
+  it("una minoría redonda no basta", () =>
+    assert.equal(cantidadesSospechosas(cant([...Array(19).fill(1), 100, 200, 300])), null));
 });
 
 describe("parseFechaMDY", () => {

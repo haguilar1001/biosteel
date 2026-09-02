@@ -67,8 +67,8 @@ export interface CargaDef {
 const nf = new Intl.NumberFormat("es-CO");
 
 /** Procesa un dataset SIESA reutilizando procesarCarga (un archivo a la vez). */
-async function procesarSiesa(clave: DatasetKey, titulo: string, buffer: Buffer, nombre: string, ip?: string): Promise<ResultadoDataset> {
-  const res = await procesarCarga([{ clave, nombre, buffer }], ip, false);
+async function procesarSiesa(clave: DatasetKey, titulo: string, buffer: Buffer, nombre: string, ip?: string, confirmado?: boolean): Promise<ResultadoDataset> {
+  const res = await procesarCarga([{ clave, nombre, buffer }], ip, false, confirmado);
   const d = res.datasets[clave];
   if (!d) throw new Error(res.errores[0] ?? "No se pudo procesar el archivo.");
   return { ...d, titulo };
@@ -88,7 +88,7 @@ export const CARGAS: CargaDef[] = [
   {
     clave: "ventas", titulo: "Ventas x Item", grupo: "Comercial", permiso: "carga.ventas",
     archivoSugerido: "2026.xlsx",
-    procesar: (b, n, ip) => procesarSiesa("ventas", "Ventas x Item", b, n, ip),
+    procesar: (b, n, ip, confirmado) => procesarSiesa("ventas", "Ventas x Item", b, n, ip, confirmado),
   },
   {
     clave: "facturacion", titulo: "Facturación por Usuario", grupo: "Comercial", permiso: "carga.facturacion",
