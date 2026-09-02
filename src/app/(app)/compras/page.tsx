@@ -21,6 +21,7 @@ import { TopRanking } from "../_components/charts/TopRanking";
 import {
   resumenCompras, comprasPorMes, ordenesPorModeloCompra, entradasPorCiudad,
   comprasPorProveedor, ordenesPorEstado, comprasPorTipoCompra, corteDePendientes,
+  comprasSinInstalacion,
   filtrosIgnorados, SIN_CLASIFICAR, MES_CORTO,
 } from "@/lib/negocio/compras";
 import { resolverFiltro, type ParamsCompras } from "./_filtro";
@@ -49,6 +50,10 @@ export default async function ComprasPage({ searchParams }: { searchParams: Prom
   ]);
 
   const ignorados = filtrosIgnorados(f);
+  const instalacionActiva = c.instalaciones.find((i) => i.valor === f.instalacion);
+  // Al filtrar por instalación, lo que no tiene bodega catalogada se cae de
+  // los cuatro KPI. Se cuenta aparte para poder decirlo.
+  const fuera = f.instalacion ? await comprasSinInstalacion(f) : null;
 
   // Antigüedad de la foto de pendientes. Es una FOTO: si no se vuelve a subir
   // el archivo, el KPI se queda quieto y parece un dato al día. Pasó en
@@ -105,6 +110,7 @@ export default async function ComprasPage({ searchParams }: { searchParams: Prom
               {f.proveedor ?? "Todos los proveedores"}
               {f.linea ? ` · ${f.linea}` : ""}
               {f.tipoCompra ? ` · ${f.tipoCompra}` : ""}
+              {instalacionActiva ? ` · instalación ${instalacionActiva.label}` : ""}
               {corte ? ` · pendientes al ${formatFechaSello(corte)}` : ""}
             </div>
           </div>
@@ -160,12 +166,13 @@ export default async function ComprasPage({ searchParams }: { searchParams: Prom
       {/* Una cifra estimada o un filtro que no aplica cambiarían la lectura
           del KPI sin avisar; mejor decirlo que dejar comparar peras con
           manzanas. */}
-      {kpi.entradasEstimadas || ignorados.facturas.length ? (
+      {kpi.entradasEstimadas || ignorados.facturas.length || fuera?.valor ? (
         <div className="card" style={{ marginBottom: 12 }}>
           <div className="card-body" style={{ padding: "10px 14px", fontSize: 12.5, color: "var(--muted)" }}>
             ⚠️ Ojo con estas tarjetas:
             {kpi.entradasEstimadas ? <> <b>Entradas por Compras</b> incluye periodos que el reporte de entradas por compra todavía no cubre, así que esa parte se atribuyó por marca del producto: es una aproximación. Carga el reporte del periodo para que salga del documento.</> : null}
-            {ignorados.facturas.length ? <> <b>Facturado</b> ignora {ignorados.facturas.join(" y ")} (el documento CCP es de cabecera, sin línea de producto).</> : null}
+            {ignorados.facturas.length ? <> <b>Facturado</b> ignora {ignorados.facturas.join(" y ")}: el documento CCP es de cabecera y no trae ni línea de producto ni bodega.</> : null}
+            {fuera?.valor ? <> Al filtrar por instalación quedan fuera <b><Monto value={fuera.valor} /></b> de {fuera.bodegas.join(", ")}: {fuera.bodegas.length === 1 ? "esa bodega no está" : "esas bodegas no están"} en el catálogo, así que no {fuera.bodegas.length === 1 ? "pertenece" : "pertenecen"} a ninguna instalación.</> : null}
           </div>
         </div>
       ) : null}

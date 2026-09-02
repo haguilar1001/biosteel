@@ -29,6 +29,7 @@
 import "server-only";
 import { prisma } from "@/lib/db";
 import { Prisma } from "@prisma/client";
+import { NOMBRE_INSTALACION } from "./inventario-osteo";
 
 export const MES_LARGO = ["", "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
   "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
@@ -64,6 +65,12 @@ export interface FiltroCompras {
   proveedor?: string;
   linea?: string;
   tipoCompra?: string;
+  /**
+   * 101 propio · 102 consignación · 106 aprovechamiento. Ninguna fuente de
+   * compras la trae: se deduce de la BODEGA con el catálogo InvBodega, el
+   * mismo puente que usa Osteosíntesis.
+   */
+  instalacion?: number;
 }
 
 // ---------- Fragmentos de WHERE ----------
@@ -96,12 +103,28 @@ const porProveedorSql = (f: FiltroCompras): Prisma.Sql =>
 const porLineaSql = (f: FiltroCompras): Prisma.Sql =>
   f.linea ? Prisma.sql` AND m."linea" = ${f.linea}` : Prisma.empty;
 
+/**
+ * Instalación de las órdenes y los pendientes: la del catálogo de bodegas.
+ * Una bodega sin catalogar no pertenece a ninguna instalación, así que queda
+ * FUERA del filtro en vez de colarse en la que no es.
+ */
+const porInstalacionSql = (f: FiltroCompras): Prisma.Sql =>
+  f.instalacion && NOMBRE_INSTALACION[f.instalacion]
+    ? Prisma.sql` AND m."bodegaCodigo" IN (SELECT "codigo" FROM "InvBodega" WHERE "instalacion" = ${f.instalacion})`
+    : Prisma.empty;
+
+/** Igual, pero el movimiento de inventario sí declara su propia instalación. */
+const porInstalacionMovSql = (f: FiltroCompras): Prisma.Sql =>
+  f.instalacion && NOMBRE_INSTALACION[f.instalacion]
+    ? Prisma.sql` AND COALESCE(m."instalacion", (SELECT b."instalacion" FROM "InvBodega" b WHERE b."codigo" = m."bodegaCodigo")) = ${f.instalacion}`
+    : Prisma.empty;
+
 /** WHERE de órdenes y pendientes (tienen proveedor y línea). */
 function whereOrdenes(f: FiltroCompras): Prisma.Sql {
-  return Prisma.sql`${periodo(f, "fechaOrden")}${porProveedorSql(f)}${porLineaSql(f)}${porTipoCompra(f)}`;
+  return Prisma.sql`${periodo(f, "fechaOrden")}${porProveedorSql(f)}${porLineaSql(f)}${porTipoCompra(f)}${porInstalacionSql(f)}`;
 }
 function wherePendientes(f: FiltroCompras): Prisma.Sql {
-  return Prisma.sql`${periodo(f, "fechaEntrega")}${porProveedorSql(f)}${porLineaSql(f)}${porTipoCompra(f)}`;
+  return Prisma.sql`${periodo(f, "fechaEntrega")}${porProveedorSql(f)}${porLineaSql(f)}${porTipoCompra(f)}${porInstalacionSql(f)}`;
 }
 /** WHERE de facturas: sin línea (el documento CCP no la trae). */
 function whereFacturas(f: FiltroCompras): Prisma.Sql {
@@ -109,13 +132,16 @@ function whereFacturas(f: FiltroCompras): Prisma.Sql {
 }
 /** WHERE de entradas por compra: sin proveedor (el movimiento trae marca). */
 function whereEntradas(f: FiltroCompras): Prisma.Sql {
-  return Prisma.sql`m."tipoDoc" IN (${listaTipos()}) AND ${periodo(f, "fecha")}${porLineaSql(f)}`;
+  return Prisma.sql`m."tipoDoc" IN (${listaTipos()}) AND ${periodo(f, "fecha")}${porLineaSql(f)}${porInstalacionMovSql(f)}`;
 }
 
 /** Filtros que una fuente no puede aplicar tal cual (para avisarlo en pantalla). */
 export function filtrosIgnorados(f: FiltroCompras): { facturas: string[] } {
   const facturas: string[] = [];
   if (f.linea) facturas.push("línea");
+  // El documento CCP es de cabecera: no trae bodega, así que tampoco hay
+  // instalación que mirar.
+  if (f.instalacion) facturas.push("instalación");
   return { facturas };
 }
 
@@ -182,6 +208,49 @@ export async function tiposDeCompra(): Promise<string[]> {
   const tipos = filas.map((f) => f.tipoCompra);
   return tipos.length ? [...tipos, SIN_CLASIFICAR] : [];
 }
+
+/**
+ * Instalaciones presentes en las compras del año (101 · 102 · 106). Se
+ * consulta en vez de listar las tres siempre: ofrecer una opción que solo
+ * devuelve ceros hace dudar del dato, no del filtro.
+ */
+export async function instalacionesConCompras(anio: number): Promise<number[]> {
+  const filas = await prisma.$queryRaw<{ instalacion: number | null }[]>`
+    SELECT DISTINCT b."instalacion" AS instalacion
+      FROM "CompraOrden" m JOIN "InvBodega" b ON b."codigo" = m."bodegaCodigo"
+     WHERE m."anio" = ${anio}
+    UNION
+    SELECT DISTINCT COALESCE(m."instalacion", b."instalacion") AS instalacion
+      FROM "InvMovimiento" m LEFT JOIN "InvBodega" b ON b."codigo" = m."bodegaCodigo"
+     WHERE m."anio" = ${anio} AND m."tipoDoc" IN (${listaTipos()})
+    ORDER BY 1`;
+  return filas.map((r) => Number(r.instalacion)).filter((i) => NOMBRE_INSTALACION[i]);
+}
+
+/**
+ * Lo que NINGUNA instalación va a mostrar: órdenes y pendientes cuya bodega
+ * no está en el catálogo InvBodega. Sin catálogo no hay instalación, así que
+ * al filtrar esa plata se queda fuera; se avisa en pantalla para que no
+ * desaparezca en silencio (hoy: la 154P "PRESTAMO VALLESALUD SUR").
+ */
+export async function comprasSinInstalacion(f: FiltroCompras): Promise<{ valor: number; bodegas: string[] }> {
+  const sinInst: FiltroCompras = { ...f, instalacion: undefined };
+  const filas = await prisma.$queryRaw<{ bodega: string; valor: unknown }[]>`
+    SELECT m."bodegaCodigo" || ' · ' || MIN(m."bodegaDesc") AS bodega, SUM(m."valorNeto") AS valor
+      FROM "CompraOrden" m LEFT JOIN "InvBodega" b ON b."codigo" = m."bodegaCodigo"
+     WHERE ${whereOrdenes(sinInst)} AND b."codigo" IS NULL
+     GROUP BY m."bodegaCodigo"
+    UNION ALL
+    SELECT m."bodegaCodigo" || ' · ' || MIN(m."bodegaDesc") AS bodega, SUM(m."valorPendiente") AS valor
+      FROM "CompraPendiente" m LEFT JOIN "InvBodega" b ON b."codigo" = m."bodegaCodigo"
+     WHERE ${wherePendientes(sinInst)} AND b."codigo" IS NULL
+     GROUP BY m."bodegaCodigo"`;
+  const valor = filas.reduce((t, r) => t + n(r.valor), 0);
+  return { valor, bodegas: [...new Set(filas.map((r) => r.bodega))] };
+}
+
+/** Etiqueta del selector: "101 · Propio". */
+export const etiquetaInstalacion = (i: number): string => `${i} · ${NOMBRE_INSTALACION[i] ?? "?"}`;
 
 // ---------- Los cuatro KPI ----------
 

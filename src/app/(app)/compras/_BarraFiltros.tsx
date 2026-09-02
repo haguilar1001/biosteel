@@ -1,6 +1,7 @@
 // Barra de segmentadores del modulo Compras (Año · Mes · Dia · Proveedor ·
-// Linea · Tipo de compra). La logica de resolucion vive en _filtro.ts, para
-// que las rutas de exportacion puedan reutilizarla sin arrastrar JSX.
+// Linea · Tipo de compra · Instalacion). La logica de resolucion vive en
+// _filtro.ts, para que las rutas de exportacion puedan reutilizarla sin
+// arrastrar JSX.
 import { MES_LARGO } from "@/lib/negocio/compras";
 import { FiltroAuto } from "../_components/FiltroAuto";
 import type { ContextoFiltro } from "./_filtro";
@@ -51,6 +52,18 @@ export function BarraFiltros({ c, extra }: { c: ContextoFiltro; extra?: React.Re
           <select name="tipo" defaultValue={f.tipoCompra ?? ""} className="select" style={{ maxWidth: 200 }}>
             <option value="">Todos</option>
             {c.tipos.map((t) => <option key={t} value={t}>{t}</option>)}
+          </select>
+        </>
+      ) : null}
+
+      {/* Instalación: sale del catálogo de bodegas, así que solo se ofrece
+          si ese catálogo alcanza a ubicar las compras del año. */}
+      {c.instalaciones.length ? (
+        <>
+          <label className="flag" style={{ alignSelf: "center" }}>Instalación:</label>
+          <select name="inst" defaultValue={f.instalacion ?? ""} className="select" style={{ maxWidth: 200 }}>
+            <option value="">Todas</option>
+            {c.instalaciones.map((i) => <option key={i.valor} value={i.valor}>{i.label}</option>)}
           </select>
         </>
       ) : null}
