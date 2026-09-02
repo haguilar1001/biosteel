@@ -22,16 +22,19 @@ export const UMBRAL = 1;
 export const NOMBRE_INSTALACION: Record<number, string> = {
   101: "Propio",
   102: "Consignación",
-  // 103 y 104 aparecieron con el balance por bodega (bodegas 203 "PRUEBA" y
-  // 204 "PRÉSTAMO PXP CAMPBELL"). Nunca tienen saldo, así que no van en los
-  // selectores; están aquí para que la etiqueta exista si algún día lo tienen.
+  // La 103 apareció con el balance por bodega (bodega 203 "PRUEBA"). Nunca
+  // tiene saldo, así que no va en los selectores; está aquí para que la
+  // etiqueta exista si algún día lo tiene.
   103: "Prueba",
-  104: "Préstamo PXP",
+  104: "Préstamo",
   106: "Aprovechamiento",
 };
 
-/** Instalaciones que sí mueven material: las que van en los selectores. */
-export const INSTALACIONES_CON_MATERIAL = [101, 102, 106] as const;
+/**
+ * Instalaciones que sí mueven material: las que van en los selectores.
+ * La 104 (préstamo, bodegas "…4P") entró al catálogo el 2026-09-02.
+ */
+export const INSTALACIONES_CON_MATERIAL = [101, 102, 104, 106] as const;
 
 export const MES_CORTO = ["", "Ene", "Feb", "Mar", "Abr", "May", "Jun",
   "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];

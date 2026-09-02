@@ -15,7 +15,7 @@ import {
   aniosConMovimientos, mesesConMovimientos, bodegas, marcasConMovimientos,
   resumenMovimientos, movimientosPorTipo, movimientosPorBodegaFiltrado, detalleMovimientos,
   saldoDelPeriodo, mesesConBodega, bodegasConSaldo,
-  NOMBRE_INSTALACION, MES_CORTO, type FiltroMovimientos,
+  NOMBRE_INSTALACION, INSTALACIONES_CON_MATERIAL, MES_CORTO, type FiltroMovimientos,
 } from "@/lib/negocio/inventario-osteo";
 
 const MES_LARGO = ["", "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
@@ -137,7 +137,7 @@ export default async function MovimientosPage({
             <label className="flag" style={{ alignSelf: "center" }}>Instalación:</label>
             <select name="inst" defaultValue={instalacion ?? ""} className="select">
               <option value="">Todas</option>
-              {[101, 102, 106].map((i) => <option key={i} value={i}>{i} · {NOMBRE_INSTALACION[i]}</option>)}
+              {INSTALACIONES_CON_MATERIAL.map((i) => <option key={i} value={i}>{i} · {NOMBRE_INSTALACION[i]}</option>)}
             </select>
             <label className="flag" style={{ alignSelf: "center" }}>Tipo:</label>
             <select name="tipo" defaultValue={tipoDoc ?? ""} className="select" style={{ maxWidth: 260 }}>

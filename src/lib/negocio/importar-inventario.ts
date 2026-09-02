@@ -20,10 +20,16 @@ import { prisma } from "@/lib/db";
 
 const BATCH = 5000;
 
-/** Instalaciones válidas del balance. En la 106 el costo es SIEMPRE 0. */
+/**
+ * Instalaciones válidas. En la 106 el costo es SIEMPRE 0.
+ * La 104 (préstamo, bodegas terminadas en "4P") se agregó al catálogo el
+ * 2026-09-02: hasta entonces sus bodegas no estaban clasificadas y quedaban
+ * fuera de los filtros por instalación.
+ */
 export const INSTALACIONES: Record<number, string> = {
   101: "Material propio",
   102: "Material en consignación",
+  104: "Préstamo",
   106: "Aprovechamiento",
 };
 
@@ -109,7 +115,9 @@ export function parseTablasAuxiliares(buffer: Buffer): BodegaParsed[] {
     const codigo = txt(r[iCod]); if (!codigo) continue;
     const instalacion = Math.trunc(num(r[iInst]));
     if (!INSTALACIONES[instalacion]) {
-      throw new Error(`La bodega ${codigo} tiene instalación "${txt(r[iInst])}"; solo se admiten 101, 102 o 106.`);
+      throw new Error(
+        `La bodega ${codigo} tiene instalación "${txt(r[iInst])}"; solo se admiten ${Object.keys(INSTALACIONES).join(", ")}.`,
+      );
     }
     out.set(codigo, {
       codigo, descripcion: txt(r[iDesc]), ciudad: iCiu != null ? txt(r[iCiu]) : "",

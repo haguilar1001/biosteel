@@ -11,6 +11,7 @@ import {
   type ParametrosReposicion, type FiltroReposicion,
 } from "@/lib/negocio/reposicion";
 import { proveedoresConPedidos, marcasConPedidos, lineasConPedidos, ciudadesConPedidos } from "@/lib/negocio/pedidos";
+import { INSTALACIONES_CON_MATERIAL } from "@/lib/negocio/inventario-osteo";
 
 export interface ParamsSugerencias {
   prov?: string; marca?: string; linea?: string; ciudad?: string;
@@ -102,7 +103,7 @@ export async function resolverSugerencias(sp: ParamsSugerencias): Promise<Contex
     linea: sp.linea && lineas.includes(sp.linea) ? sp.linea : undefined,
     ciudad: sp.ciudad && ciudades.includes(sp.ciudad) ? sp.ciudad : undefined,
     modeloCompra,
-    instalacion: [101, 102, 106].includes(Number(sp.inst)) ? Number(sp.inst) : undefined,
+    instalacion: (INSTALACIONES_CON_MATERIAL as readonly number[]).includes(Number(sp.inst)) ? Number(sp.inst) : undefined,
   };
 
   const resultado = await calcularReposicion(hasta, parametros, filtro);

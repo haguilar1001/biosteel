@@ -14,7 +14,7 @@ import { FiltroAuto } from "../../_components/FiltroAuto";
 import {
   aniosConBalance, conciliacion, cadenaDeSaldos, mesesConBalance,
   movimientosPorBodega, diferenciasPorReferencia, totalDiferencias,
-  NOMBRE_INSTALACION, MES_CORTO, UMBRAL,
+  NOMBRE_INSTALACION, INSTALACIONES_CON_MATERIAL, MES_CORTO, UMBRAL,
 } from "@/lib/negocio/inventario-osteo";
 
 
@@ -166,7 +166,7 @@ export default async function ConciliacionPage({
             <label className="flag" style={{ alignSelf: "center" }}>Instalación:</label>
             <select name="inst" defaultValue={inst ?? ""} className="select">
               <option value="">Todas</option>
-              {[101, 102, 106].map((i) => (
+              {INSTALACIONES_CON_MATERIAL.map((i) => (
                 <option key={i} value={i}>{i} · {NOMBRE_INSTALACION[i]}</option>
               ))}
             </select>

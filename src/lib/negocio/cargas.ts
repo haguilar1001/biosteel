@@ -17,7 +17,7 @@ import { parsePygExcel, persistirPyg } from "./importar-pyg-excel";
 import { sincronizarFlujoDesdeBuffer } from "./sync-flujo";
 import { parsePresupuesto, persistirPresupuesto } from "./importar-presupuesto";
 import {
-  parseTablasAuxiliares, persistirBodegas,
+  INSTALACIONES, parseTablasAuxiliares, persistirBodegas,
   parseBalance, persistirBalance, loQuePerderiaElBalance,
   parseMovimientos, persistirMovimientos, diasQueBorrariaMovimientos,
 } from "./importar-inventario";
@@ -160,7 +160,7 @@ export const CARGAS: CargaDef[] = [
       const bodegas = parseTablasAuxiliares(buffer);
       const cargadas = await persistirBodegas(bodegas);
       const inferidas = bodegas.filter((b) => b.inferida).length;
-      const porInst = [101, 102, 106].map((i) => `${i}: ${bodegas.filter((b) => b.instalacion === i).length}`).join(" · ");
+      const porInst = Object.keys(INSTALACIONES).map(Number).map((i) => `${i}: ${bodegas.filter((b) => b.instalacion === i).length}`).join(" · ");
       return {
         titulo: "Inventario · Tablas Auxiliares", archivo: nombre, hoja: "CÓDIGOS DE BODEGA",
         filas: bodegas.length, cargadas, omitidas: 0,

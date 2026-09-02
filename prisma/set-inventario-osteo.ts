@@ -14,7 +14,7 @@ import "./_env";
 import fs from "node:fs";
 import path from "node:path";
 import {
-  parseTablasAuxiliares, persistirBodegas,
+  INSTALACIONES, parseTablasAuxiliares, persistirBodegas,
   parseBalance, persistirBalance,
   parseMovimientos, persistirMovimientos, type MovimientosParsed,
 } from "../src/lib/negocio/importar-inventario";
@@ -49,7 +49,7 @@ async function main() {
     }
     const bodegas = parseTablasAuxiliares(fs.readFileSync(ruta));
     await persistirBodegas(bodegas);
-    const porInst = [101, 102, 106].map((i) => `${i}: ${bodegas.filter((b) => b.instalacion === i).length}`).join(" · ");
+    const porInst = Object.keys(INSTALACIONES).map(Number).map((i) => `${i}: ${bodegas.filter((b) => b.instalacion === i).length}`).join(" · ");
     const inferidas = bodegas.filter((b) => b.inferida);
     console.log(`   ✓ ${path.basename(ruta)} → ${bodegas.length} bodegas [${porInst}]`);
     if (inferidas.length) console.log(`     ${inferidas.length} con instalación inferida: ${inferidas.map((b) => b.codigo).join(", ")}`);
