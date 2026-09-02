@@ -896,6 +896,52 @@ model Nomina {
   @@index([proceso])
 }
 
+// ==========================================================
+// CAPACITACIONES (Gestión Humana) — consolidado del plan de formación.
+// Una fila = un colaborador en una capacitación: lo que sacó ANTES de la
+// charla y lo que sacó DESPUÉS, ambos sobre 100. El "% final" es el promedio
+// de los dos, tal como lo calcula el formato de Gestión Humana; se guarda el
+// valor del archivo y no uno recalculado, para que la app diga lo mismo que
+// el consolidado firmado.
+//
+// De aquí salen los dos indicadores del proceso:
+//   A · Ejecución = capacitaciones ejecutadas / planeadas   (meta > 70 %)
+//   B · Eficacia  = (post − pre) / pre                      (meta > 10 %)
+// ==========================================================
+model Capacitacion {
+  id           Int    @id @default(autoincrement())
+  anio         Int
+  mes          Int // 1–12
+  capacitacion String
+  colaborador  String
+
+  /// Evaluación previa, 0–100.
+  pre   Decimal @default(0) @db.Decimal(6, 2)
+  /// Evaluación posterior, 0–100.
+  post  Decimal @default(0) @db.Decimal(6, 2)
+  /// % final del formato (promedio de pre y post), 0–100.
+  final Decimal @default(0) @db.Decimal(6, 2)
+
+  observaciones String @default("")
+
+  @@unique([anio, mes, capacitacion, colaborador])
+  @@index([anio, mes])
+  @@index([colaborador])
+  @@index([capacitacion])
+}
+
+// Plan de formación: cuántas capacitaciones se planearon para el mes. Es el
+// DENOMINADOR del indicador de ejecución y no sale del consolidado (que solo
+// trae lo ejecutado), así que se lleva aparte. Sin plan del mes, la app
+// muestra lo ejecutado y dice que no hay plan contra el cual medirlo.
+model CapacitacionPlan {
+  anio      Int
+  mes       Int
+  planeadas Int @default(0)
+
+  @@id([anio, mes])
+}
+
 // =============== 13. NOTAS CRÉDITO (descuento financiero por IPS) ===============
 // Parámetros de descuento comercial por IPS/concepto con vigencia (fuente:
 // "Parametros Nota Crédito.xlsx"). Los consume el motor de reliquidación de

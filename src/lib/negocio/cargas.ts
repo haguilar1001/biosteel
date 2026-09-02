@@ -31,6 +31,7 @@ import {
 } from "./importar-compras";
 import { parseInstitucional, parseOrtopedistas, persistirEncuestas } from "./importar-encuestas";
 import { parseCirugias, persistirCirugias } from "./importar-cirugias";
+import { parseCapacitaciones, persistirCapacitaciones } from "./importar-capacitaciones";
 import { parsePedidos, persistirPedidos } from "./importar-pedidos";
 import {
   parseIndicadorCompras, persistirIndicadorCompras,
@@ -42,13 +43,13 @@ export type CargaClave = DatasetKey | "pyg" | "flujo" | "presupuesto"
   | "compras-tipos" | "compras-ordenes" | "compras-pendientes" | "compras-facturas"
   | "compras-entradas" | "pedidos"
   | "ind-compras" | "ind-proveedores"
-  | "encuestas-inst" | "encuestas-ortho" | "cirugias";
+  | "encuestas-inst" | "encuestas-ortho" | "cirugias" | "capacitaciones";
 
 /** Módulo al que pertenece el archivo; solo sirve para agrupar /cargar. */
-export type GrupoCarga = "Comercial" | "Financiero" | "Inventario" | "Compras" | "Pedidos" | "Calidad";
+export type GrupoCarga = "Comercial" | "Financiero" | "Inventario" | "Compras" | "Pedidos" | "Calidad" | "Gestión Humana";
 
 /** Orden en que se muestran los grupos en la pantalla de carga. */
-export const GRUPOS_CARGA: GrupoCarga[] = ["Comercial", "Financiero", "Inventario", "Compras", "Pedidos", "Calidad"];
+export const GRUPOS_CARGA: GrupoCarga[] = ["Comercial", "Financiero", "Inventario", "Compras", "Pedidos", "Calidad", "Gestión Humana"];
 
 export interface CargaDef {
   clave: CargaClave;
@@ -341,6 +342,23 @@ export const CARGAS: CargaDef[] = [
         titulo: "Cirugías · Consulta diaria", archivo: nombre, hoja: parse.hoja,
         filas: parse.filas.length + parse.omitidas, cargadas, omitidas: parse.omitidas,
         estrategia: `reemplaza todas las cirugías: ${nf.format(cargadas)} registros (dedup por documento)`,
+      };
+    },
+  },
+  {
+    // Gestión Humana lleva el consolidado en un libro con una hoja por
+    // capacitación; la app lee la hoja GENERAL, que es el resumen firmado.
+    clave: "capacitaciones", titulo: "Capacitaciones · Consolidado", grupo: "Gestión Humana", permiso: "carga.capacitaciones",
+    archivoSugerido: "CONSOLIDADO DE CAPACITACIONES I SEMESTRE 2026.xlsx",
+    async procesar(buffer, nombre) {
+      const p = parseCapacitaciones(buffer, nombre);
+      const cargadas = await persistirCapacitaciones(p);
+      const colaboradores = new Set(p.datos.map((d) => d.colaborador)).size;
+      return {
+        titulo: "Capacitaciones · Consolidado", archivo: nombre, hoja: p.hoja,
+        filas: p.filas, cargadas, omitidas: p.omitidas,
+        estrategia: `reemplaza ${p.periodos.length} periodo(s) [${p.periodos[0]} … ${p.periodos[p.periodos.length - 1]}]: ` +
+          `${nf.format(cargadas)} registro(s) · ${p.capacitaciones} capacitación(es) · ${colaboradores} colaborador(es)`,
       };
     },
   },

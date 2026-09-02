@@ -31,6 +31,7 @@ export const PERMISOS = [
   { clave: "compras.view", modulo: "Compras", descripcion: "Consultar el informe de compras (órdenes, pendientes y facturado)" },
   { clave: "pedidos.view", modulo: "Pedidos", descripcion: "Consultar el informe de pedidos y las sugerencias de compra" },
   { clave: "asistencia.manage", modulo: "Análisis", descripcion: "Registrar PQRS de Asistencia Técnica" },
+  { clave: "capacitaciones.view", modulo: "Nómina", descripcion: "Consultar el indicador de capacitaciones (plan de formación)" },
   { clave: "tercero.manage", modulo: "Administración", descripcion: "Crear y editar terceros" },
   { clave: "usuario.manage", modulo: "Administración", descripcion: "Gestionar usuarios" },
   { clave: "rol.manage", modulo: "Administración", descripcion: "Gestionar roles y permisos" },
@@ -57,6 +58,7 @@ export const PERMISOS = [
   { clave: "carga.indicador.compras", modulo: "Cargas", descripcion: "Cargar los indicadores de calidad de Compras (FOR-GC-011)" },
   { clave: "carga.encuestas", modulo: "Cargas", descripcion: "Cargar Encuestas de Satisfacción (institucional y ortopedistas)" },
   { clave: "carga.cirugias", modulo: "Cargas", descripcion: "Cargar Consulta de Cirugía Diaria" },
+  { clave: "carga.capacitaciones", modulo: "Cargas", descripcion: "Cargar el Consolidado de Capacitaciones (Gestión Humana)" },
 ] as const satisfies readonly PermisoDef[];
 
 export type PermisoClave = (typeof PERMISOS)[number]["clave"];
@@ -93,8 +95,8 @@ export const MATRIZ_ROLES: Record<RolNombre, Partial<Record<PermisoClave, Alcanc
     "carga.pendientes": T, "carga.ventas": T, "carga.facturacion": T, "carga.gastos": T,
     "carga.anuladas": T, "carga.pyg": T, "carga.flujo": T, "carga.presupuesto": T,
     "carga.inv.bodegas": T, "carga.inv.balance": T, "carga.inv.movimientos": T,
-    "carga.encuestas": T, "carga.cirugias": T,
-    "asistencia.manage": T,
+    "carga.encuestas": T, "carga.cirugias": T, "carga.capacitaciones": T,
+    "asistencia.manage": T, "capacitaciones.view": T,
   },
   Gerente: {
     "dashboard.view": T, "cartera.view": T, "recaudo.create": N, "cxp.view": T,
@@ -102,7 +104,7 @@ export const MATRIZ_ROLES: Record<RolNombre, Partial<Record<PermisoClave, Alcanc
     "inventario.view": T, "inventario.manage": N, "osteo.view": T, "ventas.manage": T,
     "recepcion.view": T, "recepcion.manage": N,
     "compras.view": T, "pedidos.view": T,
-    "asistencia.manage": T,
+    "asistencia.manage": T, "capacitaciones.view": T,
     "usuario.manage": N, "rol.manage": N, "parametro.manage": N, "auditoria.view": T,
   },
   "Tesorería / Cartera": {
@@ -110,7 +112,7 @@ export const MATRIZ_ROLES: Record<RolNombre, Partial<Record<PermisoClave, Alcanc
     "pago.create": T, "nota.manage": T, "reporte.view": T, "tercero.manage": T,
     "inventario.view": T, "inventario.manage": T, "osteo.view": T, "flujo.manage": T, "ventas.manage": T,
     "recepcion.view": T, "recepcion.manage": T,
-    "compras.view": T, "pedidos.view": T,
+    "compras.view": T, "pedidos.view": T, "capacitaciones.view": T,
     "usuario.manage": N, "rol.manage": N, "parametro.manage": N, "auditoria.view": N,
   },
   Vendedor: {

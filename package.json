@@ -42,6 +42,7 @@
     "db:inventario-osteo": "node --max-old-space-size=8192 --import tsx --conditions=react-server prisma/set-inventario-osteo.ts",
     "db:permisos": "tsx prisma/set-permisos.ts",
     "db:asistencia": "tsx prisma/set-asistencia.ts",
+    "db:capacitaciones": "node --import tsx --conditions=react-server prisma/set-capacitaciones.ts",
     "db:ventas-recalcular": "node --max-old-space-size=8192 node_modules/tsx/dist/cli.mjs prisma/set-ventas-recalcular.ts",
     "db:compras": "node --max-old-space-size=8192 --import tsx --conditions=react-server prisma/set-compras.ts",
     "db:pedidos": "node --max-old-space-size=8192 --import tsx --conditions=react-server prisma/set-pedidos.ts",

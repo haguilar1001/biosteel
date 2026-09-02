@@ -1,6 +1,7 @@
 // ==========================================================
 // Nómina · Resumen — costo de personal del año (solo BioSteel). KPIs (costo
-// mensual/anual, empleados, salario promedio), anillo por tipo de contrato,
+// mensual/anual, empleados, salario promedio) con su variación contra el año
+// anterior, anillo por tipo de contrato,
 // composición del costo, ranking por proceso y por ciudad, y comparativo por
 // proceso vs año anterior. Selector de año.
 // ==========================================================
@@ -29,8 +30,10 @@ export default async function NominaPage({ searchParams }: { searchParams: Promi
   const anioAnt = anio - 1;
   const hayAnterior = anios.includes(anioAnt);
 
-  const [kpi, procesos, ciudades, comp, compProceso] = await Promise.all([
+  const [kpi, kpiAnt, procesos, ciudades, comp, compProceso] = await Promise.all([
     resumenAnual(anio),
+    // El año anterior solo se pide para poder mostrar la variación de cada KPI.
+    hayAnterior ? resumenAnual(anioAnt) : Promise.resolve(null),
     porProceso(anio),
     porCiudad(anio),
     composicionCosto(anio),
@@ -59,12 +62,30 @@ export default async function NominaPage({ searchParams }: { searchParams: Promi
         </div>
       </div>
 
-      {/* KPIs */}
+      {/* KPIs, cada uno con su variación contra el año anterior. En costo de
+          personal subir NO es bueno, así que el verde es para la baja; en
+          empleados no hay bueno ni malo y va en gris. */}
       <div className="kpis" style={{ marginBottom: 12 }}>
-        <div className="kpi kc k-egreso"><div className="klabel">Costo mensual</div><div className="kval num"><Monto value={kpi.costoMensual} /></div></div>
-        <div className="kpi kc k-egreso"><div className="klabel">Costo anual (×12)</div><div className="kval num"><Monto value={kpi.costoAnual} /></div></div>
-        <div className="kpi kc"><div className="klabel">Empleados</div><div className="kval num">{formatNumero(kpi.headcount)}</div></div>
-        <div className="kpi kc k-w"><div className="klabel">Salario base prom.</div><div className="kval num"><Monto value={kpi.salarioPromedio} /></div></div>
+        <div className="kpi kc k-egreso">
+          <div className="klabel">Costo mensual</div>
+          <div className="kval num"><Monto value={kpi.costoMensual} /></div>
+          <Variacion actual={kpi.costoMensual} anterior={kpiAnt?.costoMensual} anioAnt={anioAnt} plata />
+        </div>
+        <div className="kpi kc k-egreso">
+          <div className="klabel">Costo anual (×12)</div>
+          <div className="kval num"><Monto value={kpi.costoAnual} /></div>
+          <Variacion actual={kpi.costoAnual} anterior={kpiAnt?.costoAnual} anioAnt={anioAnt} plata />
+        </div>
+        <div className="kpi kc">
+          <div className="klabel">Empleados</div>
+          <div className="kval num">{formatNumero(kpi.headcount)}</div>
+          <Variacion actual={kpi.headcount} anterior={kpiAnt?.headcount} anioAnt={anioAnt} neutro sufijo=" empleado(s)" />
+        </div>
+        <div className="kpi kc k-w">
+          <div className="klabel">Salario base prom.</div>
+          <div className="kval num"><Monto value={kpi.salarioPromedio} /></div>
+          <Variacion actual={kpi.salarioPromedio} anterior={kpiAnt?.salarioPromedio} anioAnt={anioAnt} plata />
+        </div>
       </div>
 
       {/* Composición + rankings por proceso y ciudad, en una sola fila. */}
@@ -105,5 +126,40 @@ export default async function NominaPage({ searchParams }: { searchParams: Promi
         />
       )}
     </>
+  );
+}
+
+/**
+ * Variación de un KPI contra el mismo dato del año anterior: cuánto y en qué
+ * porcentaje. Sin año anterior cargado no se inventa nada, se dice.
+ *
+ * El color sigue el SIGNIFICADO, no el signo: en costo de personal subir es
+ * malo y bajar es bueno. Los conteos (empleados) van en gris porque más o
+ * menos gente no es en sí bueno ni malo.
+ */
+function Variacion({
+  actual, anterior, anioAnt, plata = false, neutro = false, sufijo = "",
+}: {
+  actual: number;
+  anterior?: number;
+  anioAnt: number;
+  plata?: boolean;
+  neutro?: boolean;
+  sufijo?: string;
+}) {
+  if (anterior == null) {
+    return <div className="ksub" style={{ color: "var(--muted)" }}>sin {anioAnt} para comparar</div>;
+  }
+  const dif = actual - anterior;
+  const pct = anterior !== 0 ? (dif / Math.abs(anterior)) * 100 : null;
+  const color = neutro || dif === 0 ? "var(--muted)" : dif > 0 ? "var(--bad)" : "var(--ok)";
+  const flecha = dif === 0 ? "=" : dif > 0 ? "▲" : "▼";
+  const abs = Math.abs(dif);
+  return (
+    <div className="ksub" style={{ color }}>
+      {flecha}{" "}
+      {plata ? <Monto value={abs} /> : <>{formatNumero(abs)}{sufijo}</>}
+      {pct != null ? ` (${Math.abs(pct).toFixed(1).replace(".", ",")} %)` : ""} vs {anioAnt}
+    </div>
   );
 }

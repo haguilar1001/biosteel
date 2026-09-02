@@ -47,6 +47,7 @@ export const MENU_BASE: MenuGrupoDef[] = [
   { id: "nomina", label: "Nómina", icon: "👥", items: [
     { href: "/nomina", label: "👥 Resumen", permiso: "cxp.view" },
     { href: "/nomina/empleados", label: "🧑‍💼 Empleados", permiso: "cxp.view" },
+    { href: "/nomina/capacitaciones", label: "🎓 Capacitaciones", permiso: "capacitaciones.view" },
   ] },
   { id: "asistec", label: "Asistencia Técnica", icon: "🩺", items: [
     { href: "/asistencia/cirugias", label: "🔪 Cirugías", permiso: "cxp.view" },

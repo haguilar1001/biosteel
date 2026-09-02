@@ -5,6 +5,7 @@ import { SubNav } from "../_components/SubNav";
 const ITEMS = [
   { href: "/nomina", label: "Resumen" },
   { href: "/nomina/empleados", label: "Empleados" },
+  { href: "/nomina/capacitaciones", label: "Capacitaciones" },
 ];
 
 export default async function NominaLayout({ children }: { children: React.ReactNode }) {
@@ -13,8 +14,8 @@ export default async function NominaLayout({ children }: { children: React.React
     <>
       <div className="page-head" style={{ marginBottom: 8 }}>
         <div>
-          <div className="eyebrow">Nómina</div>
-          <h1>Costo de Personal</h1>
+          <div className="eyebrow">Gestión Humana</div>
+          <h1>Nómina</h1>
         </div>
       </div>
       <SubNav items={ITEMS} />

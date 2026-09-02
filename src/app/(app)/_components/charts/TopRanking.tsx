@@ -21,12 +21,15 @@ export function TopRanking({
   color = "var(--brand)",
   step = 5,
   inicial = 10,
+  formato = cop,
 }: {
   items: RankItem[];
   titulo: string;
   color?: string;
   step?: number;
   inicial?: number;
+  /** Cómo se escribe el valor. Por defecto pesos; los rankings que no son de plata pasan el suyo. */
+  formato?: (v: number) => string;
 }) {
   const [n, setN] = useState(Math.min(inicial, items.length || inicial));
   const top = items.slice(0, n);
@@ -56,7 +59,7 @@ export function TopRanking({
                       {t.label}
                       {t.sub && <span className="flag" style={{ marginLeft: 8, fontWeight: 600 }}>· {t.sub}</span>}
                     </span>
-                    <span className="rank-val num">{cop(t.valor)}</span>
+                    <span className="rank-val num">{formato(t.valor)}</span>
                   </div>
                   <div className="rank-bar">
                     <div style={{ width: `${Math.max(2, (Math.abs(t.valor) / max) * 100)}%`, background: color }} />
