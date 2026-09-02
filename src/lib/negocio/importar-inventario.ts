@@ -264,6 +264,38 @@ export async function parseBalance(buffer: Buffer, nombreArchivo: string, anioPo
   return { ...periodo, hoja, filas: leidas, datos, porBodega, bodegasNuevas, choques, descRellenadas, descFaltantes };
 }
 
+/**
+ * Malla de seguridad del balance. El balance es una foto mensual, no diaria,
+ * así que aquí lo que se puede perder es DETALLE:
+ *   · un export viejo (sin columna Bodega) encima de un mes que ya la tiene;
+ *   · un archivo con bastantes menos filas que las guardadas (recortado,
+ *     filtrado o de una sola bodega).
+ * Devuelve null cuando el mes no está cargado o el archivo lo cubre.
+ */
+export async function loQuePerderiaElBalance(b: BalanceParsed): Promise<string | null> {
+  const nfl = new Intl.NumberFormat("es-CO");
+  const donde = { anio: b.anio, mes: b.mes };
+  const guardadas = await prisma.invBalance.count({ where: donde });
+  if (!guardadas) return null; // mes nuevo: no hay nada que perder
+
+  if (!b.porBodega) {
+    const conBodega = await prisma.invBalance.count({ where: { ...donde, bodegaCodigo: { not: "" } } });
+    if (conBodega) {
+      return `${MESES[b.mes - 1]} ${b.anio} ya está cargado con detalle por bodega (${nfl.format(conBodega)} fila(s)) ` +
+        "y este archivo es del export viejo, que solo llega hasta instalación: se perdería el detalle por bodega.";
+    }
+  }
+
+  // 5 % de tolerancia: dentro del mismo mes un reexport legítimo se mueve
+  // poco, y los ítems que quedan en cero se descartan al cargar.
+  if (b.datos.length < guardadas * 0.95) {
+    return `${MESES[b.mes - 1]} ${b.anio} tiene ${nfl.format(guardadas)} fila(s) cargadas y el archivo solo trae ` +
+      `${nfl.format(b.datos.length)}: quedarían ${nfl.format(guardadas - b.datos.length)} menos.`;
+  }
+
+  return null;
+}
+
 /** Reemplaza el balance del mes (idempotente: se puede recargar el archivo). */
 export async function persistirBalance(b: BalanceParsed): Promise<number> {
   // Las bodegas que el balance ubica y el catálogo no tiene se dan de alta
@@ -370,6 +402,47 @@ export function parseMovimientos(buffer: Buffer, catalogo: Map<string, number>):
     });
   }
   return { hoja, filas: leidas, periodos: [...periodos].sort(), bodegasNuevas, bodegasDesconocidas, choques, datos };
+}
+
+/**
+ * Malla de seguridad del reemplazo: días que YA están cargados y el archivo
+ * no trae, es decir, lo que se perdería al subirlo. Devuelve null cuando el
+ * archivo cubre todo lo guardado (el caso normal: se exporta el mes completo).
+ *
+ * Es la contracara de reemplazar por mes: subir el export de un solo día
+ * borraría el resto del mes en silencio. Ver carga-confirmacion.ts.
+ */
+export async function diasQueBorrariaMovimientos(m: MovimientosParsed): Promise<string | null> {
+  const nfl = new Intl.NumberFormat("es-CO");
+  const avisos: string[] = [];
+
+  for (const periodo of m.periodos) {
+    const [anio, mes] = periodo.split("-").map(Number) as [number, number];
+    const enArchivo = new Set(
+      m.datos
+        .filter((d) => d.anio === anio && d.mes === mes)
+        .map((d) => (d.fecha as Date).getUTCDate()),
+    );
+    const guardados = await prisma.$queryRaw<{ dia: number; filas: bigint }[]>`
+      SELECT EXTRACT(DAY FROM "fecha")::int AS dia, COUNT(*) AS filas
+        FROM "InvMovimiento" WHERE "anio" = ${anio} AND "mes" = ${mes}
+       GROUP BY 1 ORDER BY 1`;
+
+    const perdidos = guardados.filter((g) => !enArchivo.has(g.dia));
+    if (!perdidos.length) continue;
+
+    const movs = perdidos.reduce((t, g) => t + Number(g.filas), 0);
+    const dias = perdidos.map((g) => g.dia);
+    const lista = dias.length > 8
+      ? `${dias.slice(0, 8).join(", ")}… y ${dias.length - 8} más`
+      : dias.join(", ");
+    avisos.push(
+      `${MESES[mes - 1]} ${anio}: el archivo no trae ${dias.length} día(s) que ya están cargados (${lista}), ` +
+      `así que se borrarían ${nfl.format(movs)} movimiento(s) de esos días.`,
+    );
+  }
+
+  return avisos.length ? avisos.join(" ") : null;
 }
 
 /**

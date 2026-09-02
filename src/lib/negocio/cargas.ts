@@ -18,9 +18,10 @@ import { sincronizarFlujoDesdeBuffer } from "./sync-flujo";
 import { parsePresupuesto, persistirPresupuesto } from "./importar-presupuesto";
 import {
   parseTablasAuxiliares, persistirBodegas,
-  parseBalance, persistirBalance,
-  parseMovimientos, persistirMovimientos,
+  parseBalance, persistirBalance, loQuePerderiaElBalance,
+  parseMovimientos, persistirMovimientos, diasQueBorrariaMovimientos,
 } from "./importar-inventario";
+import { CargaRequiereConfirmacion } from "./carga-confirmacion";
 import {
   parseOrdenes, persistirOrdenes,
   parsePendientesDespacho, persistirPendientesDespacho,
@@ -55,7 +56,12 @@ export interface CargaDef {
   grupo: GrupoCarga;
   permiso: PermisoClave;
   archivoSugerido: string;
-  procesar(buffer: Buffer, nombre: string, ip?: string): Promise<ResultadoDataset>;
+  /**
+   * `confirmado` = el usuario ya dijo que sí a un reemplazo que iba a borrar
+   * datos. Solo lo miran las cargas que reemplazan un periodo entero
+   * (inventario); las demás lo ignoran. Ver carga-confirmacion.ts.
+   */
+  procesar(buffer: Buffer, nombre: string, ip?: string, confirmado?: boolean): Promise<ResultadoDataset>;
 }
 
 const nf = new Intl.NumberFormat("es-CO");
@@ -165,9 +171,13 @@ export const CARGAS: CargaDef[] = [
   {
     clave: "inv-balance", titulo: "Inventario · Balance mensual", grupo: "Inventario", permiso: "carga.inv.balance",
     archivoSugerido: "1. BALANCE ENERO.xlsx",
-    async procesar(buffer, nombre) {
+    async procesar(buffer, nombre, _ip, confirmado) {
       const b = await parseBalance(buffer, nombre);
       if (!b.datos.length) throw new Error("El balance no trae ninguna fila con saldo o movimiento.");
+      if (!confirmado) {
+        const perdida = await loQuePerderiaElBalance(b);
+        if (perdida) throw new CargaRequiereConfirmacion(perdida);
+      }
       const cargadas = await persistirBalance(b);
       const detalle = b.porBodega ? "por bodega" : "solo por instalación (export viejo, sin columna Bodega)";
       const desc = b.descRellenadas || b.descFaltantes
@@ -187,10 +197,14 @@ export const CARGAS: CargaDef[] = [
   {
     clave: "inv-movimientos", titulo: "Inventario · Movimientos", grupo: "Inventario", permiso: "carga.inv.movimientos",
     archivoSugerido: "MOVIMIENTOS DE INVENTARIO.xlsx",
-    async procesar(buffer, nombre) {
+    async procesar(buffer, nombre, _ip, confirmado) {
       const catalogo = new Map((await prisma.invBodega.findMany({ select: { codigo: true, instalacion: true } })).map((b) => [b.codigo, b.instalacion]));
       const m = parseMovimientos(buffer, catalogo);
       if (!m.datos.length) throw new Error("El archivo no trae movimientos con instalación identificable.");
+      if (!confirmado) {
+        const perdida = await diasQueBorrariaMovimientos(m);
+        if (perdida) throw new CargaRequiereConfirmacion(perdida);
+      }
       const cargadas = await persistirMovimientos(m);
       const nuevas = m.bodegasNuevas.size ? ` · ${m.bodegasNuevas.size} bodega(s) dadas de alta desde el archivo [${[...m.bodegasNuevas.keys()].join(", ")}]` : "";
       const choque = m.choques.size ? ` · ${m.choques.size} bodega(s) donde el catálogo dice otra instalación (manda el archivo): ${[...m.choques].map(([k, v]) => `${k} ${v.catalogo}→${v.archivo}`).join(", ")}` : "";

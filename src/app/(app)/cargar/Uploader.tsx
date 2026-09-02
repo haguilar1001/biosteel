@@ -2,8 +2,13 @@
 // ==========================================================
 // Uploader in-app: sube cada archivo en su propia petición (secuencial) a
 // /api/cargas (autenticada por sesión). Muestra progreso y resumen por archivo.
+//
+// Las cargas de inventario REEMPLAZAN el mes entero. Cuando el archivo trae
+// menos de lo que ya está cargado, la API responde 409 sin haber escrito nada
+// y aquí se para la fila a preguntar: solo con un sí explícito se reenvía el
+// mismo archivo con `confirmar=1`.
 // ==========================================================
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 export interface UltimaCargaVista { fecha: string; usuario: string | null }
 
@@ -26,6 +31,18 @@ export function Uploader({ datasets }: { datasets: DatasetPermitido[] }) {
   const [cargando, setCargando] = useState(false);
   const [progreso, setProgreso] = useState<string | null>(null);
   const [res, setRes] = useState<Resultado | null>(null);
+
+  // Pregunta de reemplazo en curso. La subida se queda esperando la respuesta
+  // en `responder`, así que el orden de los archivos no se altera.
+  const [pregunta, setPregunta] = useState<{ titulo: string; mensaje: string } | null>(null);
+  const responder = useRef<((sigue: boolean) => void) | null>(null);
+  const preguntar = (titulo: string, mensaje: string) =>
+    new Promise<boolean>((resolve) => { responder.current = resolve; setPregunta({ titulo, mensaje }); });
+  const contestar = (sigue: boolean) => {
+    setPregunta(null);
+    responder.current?.(sigue);
+    responder.current = null;
+  };
 
   const total = Object.values(files).filter(Boolean).length;
 
@@ -50,13 +67,34 @@ export function Uploader({ datasets }: { datasets: DatasetPermitido[] }) {
     const errores: string[] = [];
     let ok = true;
 
+    /** Un envío del archivo. `confirmado` = el usuario ya autorizó el reemplazo. */
+    const subir = async (clave: string, confirmado: boolean) => {
+      const fd = new FormData();
+      fd.append(clave, files[clave]!);
+      if (confirmado) fd.append("confirmar", "1");
+      const r = await fetch("/api/cargas", { method: "POST", body: fd });
+      const j = await r.json().catch(() => ({}));
+      return { r, j };
+    };
+
     for (const d of seleccion) {
       setProgreso(d.titulo);
       try {
-        const fd = new FormData();
-        fd.append(d.clave, files[d.clave]!);
-        const r = await fetch("/api/cargas", { method: "POST", body: fd });
-        const j = await r.json().catch(() => ({}));
+        let { r, j } = await subir(d.clave, false);
+
+        // 409 = el archivo borraría datos ya cargados y no se escribió nada.
+        if (r.status === 409 && j.confirmar) {
+          setProgreso(null);
+          const sigue = await preguntar(d.titulo, j.confirmar.mensaje as string);
+          if (!sigue) {
+            ok = false;
+            errores.push(`${d.titulo}: cancelado. NO se reemplazó nada, lo que estaba cargado sigue igual.`);
+            continue;
+          }
+          setProgreso(d.titulo);
+          ({ r, j } = await subir(d.clave, true));
+        }
+
         if (r.status === 401) { ok = false; errores.push(j.error || "Sesión no válida."); break; }
         if (j.datasets) Object.assign(acumulado, j.datasets);
         if (j.errores?.length) { ok = false; errores.push(...j.errores); }
@@ -129,10 +167,36 @@ export function Uploader({ datasets }: { datasets: DatasetPermitido[] }) {
           {cargando ? "Cargando y procesando…" : total ? `Cargar ${total} archivo${total > 1 ? "s" : ""}` : "Elige al menos un archivo"}
         </button>
 
-        {cargando && (
+        {cargando && !pregunta && (
           <p className="flag" style={{ textAlign: "center", margin: 0 }}>
             {progreso ? <>Subiendo <strong>{progreso}</strong>… </> : null}Los archivos grandes pueden tardar. No cierres esta página.
           </p>
+        )}
+
+        {pregunta && (
+          <div style={{ border: "2px solid #E0A400", borderRadius: 12, overflow: "hidden" }}>
+            <div style={{ background: "#FBEBD5", color: "#9A5A00", padding: "10px 14px", fontWeight: 800 }}>
+              ⚠️ Este archivo borraría datos ya cargados
+            </div>
+            <div style={{ padding: 14, display: "flex", flexDirection: "column", gap: 10 }}>
+              <div>
+                <strong>{pregunta.titulo}</strong> reemplaza el mes completo, no lo suma.
+              </div>
+              <div style={{ fontSize: 13 }}>{pregunta.mensaje}</div>
+              <div className="flag" style={{ fontSize: 12 }}>
+                Si el archivo debía traer el mes entero, cancela y vuelve a exportarlo desde el día 1.
+                Todavía no se ha modificado nada.
+              </div>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <button onClick={() => contestar(false)} className="btn" style={{ fontWeight: 700 }}>
+                  Cancelar (no tocar nada)
+                </button>
+                <button onClick={() => contestar(true)} className="btn" style={{ background: "#9A5A00", color: "#fff", border: "none", fontWeight: 700 }}>
+                  Sí, reemplazar de todos modos
+                </button>
+              </div>
+            </div>
+          </div>
         )}
 
         {res && <ResultadoView res={res} />}
