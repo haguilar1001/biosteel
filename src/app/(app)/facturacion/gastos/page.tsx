@@ -16,7 +16,7 @@ import { aniosFacturacion, gastosPorMes, type GastoMes } from "@/lib/negocio/fac
  * Metas vigentes de los tres indicadores, en porcentaje.
  * · anuladas: pasó de 1 % a 3 % el 2026-09-03, por decisión del proceso.
  */
-const METAS = { valor: 90, tiempo: 75, anuladas: 3 } as const;
+const METAS = { valor: 90, tiempo: 70, anuladas: 3 } as const;
 
 const MES_ABBR = ["", "Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
 const nf = new Intl.NumberFormat("es-CO");
