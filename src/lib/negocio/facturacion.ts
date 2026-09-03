@@ -110,7 +110,7 @@ export interface GastoMes {
   pctCumplido: number;      // cumpl05 / nGastos  (meta >=75%)
   pctValor: number;         // vrFacturaMes / vrGastos (meta >=90%)
   pctCantidad: number;      // nFacturasMes / nGastos
-  pctAnuladas: number;      // notasAnulacion / nFacturasMes (meta <=1%)
+  pctAnuladas: number;      // notasAnulacion / nFacturasMes (meta <=3%, la fija la pantalla)
 }
 
 /** Todos los indicadores mensuales de gastos/facturación/anuladas del año. */
