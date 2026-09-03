@@ -7,7 +7,19 @@
 import { useState } from "react";
 
 const nf = new Intl.NumberFormat("es-CO", { maximumFractionDigits: 0 });
-const cop = (v: number) => `$ ${nf.format(Math.round(v))}`;
+
+/**
+ * Cómo se escribe el valor de cada fila. Es un CATÁLOGO y no una función que
+ * llegue por props: este es un componente cliente, y una función no cruza la
+ * frontera desde el servidor (Next la rechaza al renderizar, no al compilar).
+ */
+const FORMATOS = {
+  cop: (v: number) => `$ ${nf.format(Math.round(v))}`,
+  entero: (v: number) => nf.format(Math.round(v)),
+  pct: (v: number) => `${v.toFixed(1).replace(".", ",")} %`,
+} as const;
+
+export type FormatoRank = keyof typeof FORMATOS;
 
 export interface RankItem {
   label: string;
@@ -21,16 +33,17 @@ export function TopRanking({
   color = "var(--brand)",
   step = 5,
   inicial = 10,
-  formato = cop,
+  formato = "cop",
 }: {
   items: RankItem[];
   titulo: string;
   color?: string;
   step?: number;
   inicial?: number;
-  /** Cómo se escribe el valor. Por defecto pesos; los rankings que no son de plata pasan el suyo. */
-  formato?: (v: number) => string;
+  /** Cómo se escribe el valor. Por defecto pesos; los que no son de plata piden otro. */
+  formato?: FormatoRank;
 }) {
+  const escribir = FORMATOS[formato];
   const [n, setN] = useState(Math.min(inicial, items.length || inicial));
   const top = items.slice(0, n);
   const max = Math.max(1, ...top.map((t) => Math.abs(t.valor)));
@@ -59,7 +72,7 @@ export function TopRanking({
                       {t.label}
                       {t.sub && <span className="flag" style={{ marginLeft: 8, fontWeight: 600 }}>· {t.sub}</span>}
                     </span>
-                    <span className="rank-val num">{formato(t.valor)}</span>
+                    <span className="rank-val num">{escribir(t.valor)}</span>
                   </div>
                   <div className="rank-bar">
                     <div style={{ width: `${Math.max(2, (Math.abs(t.valor) / max) * 100)}%`, background: color }} />

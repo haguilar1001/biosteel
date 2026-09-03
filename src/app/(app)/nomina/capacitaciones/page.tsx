@@ -274,7 +274,7 @@ export default async function CapacitacionesPage({ searchParams }: { searchParam
             sub: `${MES_CORTO[c.mes]} · ${c.participantes} part.`,
           }))}
           color="var(--brand)"
-          formato={pct}
+          formato="pct"
         />
         <TopRanking
           titulo="Colaboradores · de menor a mayor promedio"
@@ -284,7 +284,7 @@ export default async function CapacitacionesPage({ searchParams }: { searchParam
             sub: `${c.capacitaciones} capacitación(es)`,
           }))}
           color="var(--cat-3, #5BB4E5)"
-          formato={pct}
+          formato="pct"
         />
       </div>
 
