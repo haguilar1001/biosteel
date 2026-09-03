@@ -18,7 +18,7 @@ import { LineasMensuales } from "../../_components/charts/LineasMensuales";
 import { TopRanking } from "../../_components/charts/TopRanking";
 import {
   aniosConCapacitaciones, registros, resumen, porMes, porCapacitacion,
-  porColaborador, distribucion, ejecucion, nivelDe,
+  porColaborador, distribucion, ejecucion, nivelDe, nivelMejora,
   META_EJECUCION, META_EFICACIA, MES_CORTO, MES_LARGO,
 } from "@/lib/negocio/capacitaciones";
 
@@ -292,7 +292,7 @@ export default async function CapacitacionesPage({ searchParams }: { searchParam
       <div className="card">
         <div className="chart-head">
           Detalle por colaborador y capacitación
-          <span className="hact">{formatNumero(detalle.length)} registro(s)</span>
+          <span className="hact">nivel por mejora (post − pre) · {formatNumero(detalle.length)} registro(s)</span>
         </div>
         <div className="card-body">
           <div className="toolbar" style={{ marginBottom: 10, flexWrap: "wrap", gap: 6 }}>
@@ -309,12 +309,16 @@ export default async function CapacitacionesPage({ searchParams }: { searchParam
               <thead>
                 <tr>
                   <th>Mes</th><th>Capacitación</th><th>Colaborador</th>
-                  <th className="r">Pre</th><th className="r">Post</th><th className="r">% final</th><th>Nivel</th>
+                  <th className="r">Pre</th><th className="r">Post</th><th className="r">Mejora</th>
+                  <th className="r">% final</th><th>Nivel</th>
                 </tr>
               </thead>
               <tbody>
                 {detalle.map((r) => {
-                  const n = nivelDe(r.final);
+                  // El nivel de la fila mide cuánto SUBIÓ, no qué tan alto
+                  // quedó: por eso sale de la mejora y no del % final.
+                  const mejora = r.post - r.pre;
+                  const n = nivelMejora(mejora);
                   return (
                     <tr key={r.id}>
                       <td>{MES_LARGO[r.mes]}</td>
@@ -322,6 +326,7 @@ export default async function CapacitacionesPage({ searchParams }: { searchParam
                       <td>{r.colaborador}</td>
                       <td className="r num">{pct(r.pre)}</td>
                       <td className="r num">{pct(r.post)}</td>
+                      <td className="r num">{pts(mejora)} pts</td>
                       <td className="r num" style={{ fontWeight: 700 }}>{pct(r.final)}</td>
                       <td><span className={`tag ${n.clase}`}>{n.label}</span></td>
                     </tr>

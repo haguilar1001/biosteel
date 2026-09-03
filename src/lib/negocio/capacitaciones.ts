@@ -45,6 +45,25 @@ export function nivelDe(pct: number): (typeof NIVELES)[number] {
   return NIVELES.find((n) => pct >= n.desde) ?? NIVELES[NIVELES.length - 1]!;
 }
 
+/**
+ * Nivel de UNA fila del detalle, por la MEJORA EN PUNTOS (post − pre).
+ *
+ * Es otra pregunta que la de NIVELES: allá se mide qué tan alto quedó el
+ * colaborador, aquí cuánto se movió. Alguien que llega en 100 y termina en
+ * 100 tiene un desempeño excelente y una mejora de cero — la capacitación no
+ * le aportó nada, y esta columna es la que lo dice.
+ *
+ * Los cuatro casos son los del informe de Gestión Humana: por encima de 10
+ * puntos cumple; quedarse igual "se mantuvo"; bajar es un retroceso; y subir
+ * algo pero sin llegar a los 10 puntos no cumple.
+ */
+export function nivelMejora(mejora: number): { clave: string; label: string; clase: string } {
+  if (mejora > 10) return { clave: "cumple", label: "Cumple", clase: "t-ok" };
+  if (mejora === 0) return { clave: "mantuvo", label: "Se mantuvo", clase: "t-w1" };
+  if (mejora < 0) return { clave: "retrocedio", label: "Retrocedió", clase: "t-bad" };
+  return { clave: "no-cumple", label: "No cumple", clase: "t-bad" };
+}
+
 export interface Registro {
   id: number; anio: number; mes: number;
   capacitacion: string; colaborador: string;
