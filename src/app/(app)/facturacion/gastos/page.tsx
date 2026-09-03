@@ -1,6 +1,6 @@
 // Gastos: indicadores mensuales (según medidas DAX):
 //  · VR facturado / VR gastos (meta ≥90%)
-//  · Tiempo de facturación 0–3 días (meta ≥75%)
+//  · Tiempo de facturación 0–5 días (meta ≥75%)
 //  · Facturas anuladas (meta ≤1%)
 import { requirePermiso } from "@/server/auth-context";
 import { formatPorcentaje } from "@/lib/format";
@@ -29,12 +29,12 @@ export default async function GastosPage({ searchParams }: { searchParams: Promi
   const t = meses.reduce((a, m) => ({
     nGastos: a.nGastos + m.nGastos, vrGastos: a.vrGastos + m.vrGastos,
     nFacturasMes: a.nFacturasMes + m.nFacturasMes, vrFacturaMes: a.vrFacturaMes + m.vrFacturaMes,
-    cumpl03: a.cumpl03 + m.cumpl03, cumpl47: a.cumpl47 + m.cumpl47, cumpl8: a.cumpl8 + m.cumpl8,
+    cumpl05: a.cumpl05 + m.cumpl05, cumpl68: a.cumpl68 + m.cumpl68, cumpl9: a.cumpl9 + m.cumpl9,
     pendientes: a.pendientes + m.pendientes, vrPendientes: a.vrPendientes + m.vrPendientes,
     notasAnulacion: a.notasAnulacion + m.notasAnulacion,
-  }), { nGastos: 0, vrGastos: 0, nFacturasMes: 0, vrFacturaMes: 0, cumpl03: 0, cumpl47: 0, cumpl8: 0, pendientes: 0, vrPendientes: 0, notasAnulacion: 0 });
+  }), { nGastos: 0, vrGastos: 0, nFacturasMes: 0, vrFacturaMes: 0, cumpl05: 0, cumpl68: 0, cumpl9: 0, pendientes: 0, vrPendientes: 0, notasAnulacion: 0 });
   const tPctValor = t.vrGastos ? (t.vrFacturaMes / t.vrGastos) * 100 : 0;
-  const tPctCumplido = t.nGastos ? (t.cumpl03 / t.nGastos) * 100 : 0;
+  const tPctCumplido = t.nGastos ? (t.cumpl05 / t.nGastos) * 100 : 0;
   const tPctAnul = t.nFacturasMes ? (t.notasAnulacion / t.nFacturasMes) * 100 : 0;
 
   return (
@@ -81,20 +81,20 @@ export default async function GastosPage({ searchParams }: { searchParams: Promi
         </div>
       </div>
 
-      {/* Tiempo de facturación 0–3 días (≥75%) */}
+      {/* Tiempo de facturación 0–5 días (≥75%) */}
       <div className="card" style={{ marginBottom: 12 }}>
-        <div className="chart-head">Tiempo de facturación (0–3 días) <span className="hact">meta ≥ 75 %</span></div>
+        <div className="chart-head">Tiempo de facturación (0–5 días) <span className="hact">meta ≥ 75 %</span></div>
         <div className="tbl-wrap">
           <table className="tabla-fit">
-            <thead><tr><th>Mes</th><th className="r"># Gastos</th><th className="r">Cumpl. 0–3</th><th className="r">4–7</th><th className="r">≥ 8</th><th className="r">Pendientes</th><th className="r">Vr. pendientes</th><th className="r">% cumplido</th></tr></thead>
+            <thead><tr><th>Mes</th><th className="r"># Gastos</th><th className="r">Cumpl. 0–5</th><th className="r">6–8</th><th className="r">&gt; 8</th><th className="r">Pendientes</th><th className="r">Vr. pendientes</th><th className="r">% cumplido</th></tr></thead>
             <tbody>
               {meses.map((m) => (
                 <tr key={m.mes}>
                   <td style={{ fontWeight: 600 }}>{MES_ABBR[m.mes]}</td>
                   <td className="r num">{nf.format(m.nGastos)}</td>
-                  <td className="r num" style={{ fontWeight: 700 }}>{nf.format(m.cumpl03)}</td>
-                  <td className="r num">{nf.format(m.cumpl47)}</td>
-                  <td className="r num">{nf.format(m.cumpl8)}</td>
+                  <td className="r num" style={{ fontWeight: 700 }}>{nf.format(m.cumpl05)}</td>
+                  <td className="r num">{nf.format(m.cumpl68)}</td>
+                  <td className="r num">{nf.format(m.cumpl9)}</td>
                   <td className="r num">{nf.format(m.pendientes)}</td>
                   <td className="r num flag"><Monto value={m.vrPendientes} /></td>
                   <td className="r num" style={{ fontWeight: 700 }}>{formatPorcentaje(m.pctCumplido)}{marca(m.pctCumplido >= 75)}</td>
@@ -103,9 +103,9 @@ export default async function GastosPage({ searchParams }: { searchParams: Promi
               <tr className="fila-total">
                 <td style={{ fontWeight: 800 }}>Total</td>
                 <td className="r num" style={{ fontWeight: 800 }}>{nf.format(t.nGastos)}</td>
-                <td className="r num" style={{ fontWeight: 800 }}>{nf.format(t.cumpl03)}</td>
-                <td className="r num" style={{ fontWeight: 800 }}>{nf.format(t.cumpl47)}</td>
-                <td className="r num" style={{ fontWeight: 800 }}>{nf.format(t.cumpl8)}</td>
+                <td className="r num" style={{ fontWeight: 800 }}>{nf.format(t.cumpl05)}</td>
+                <td className="r num" style={{ fontWeight: 800 }}>{nf.format(t.cumpl68)}</td>
+                <td className="r num" style={{ fontWeight: 800 }}>{nf.format(t.cumpl9)}</td>
                 <td className="r num" style={{ fontWeight: 800 }}>{nf.format(t.pendientes)}</td>
                 <td className="r num" style={{ fontWeight: 800 }}><Monto value={t.vrPendientes} /></td>
                 <td className="r num" style={{ fontWeight: 800 }}>{formatPorcentaje(tPctCumplido)}{marca(tPctCumplido >= 75)}</td>
