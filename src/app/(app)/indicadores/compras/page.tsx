@@ -18,6 +18,7 @@ import { requirePermiso } from "@/server/auth-context";
 import { formatNumero, formatPorcentaje } from "@/lib/format";
 import { Medidor } from "../../_components/charts/Medidor";
 import { LineasMensuales } from "../../_components/charts/LineasMensuales";
+import { Buscador } from "../../_components/Buscador";
 import {
   resumenIndicador, resumenEvaluacion, aniosConIndicador, mesesConEvaluacion,
   META_ORDENES, META_PROVEEDOR, PUNTAJE_MAXIMO, MES_CORTO, MES_LARGO,
@@ -27,6 +28,9 @@ const MES_ABBR = ["", "ENE", "FEB", "MAR", "ABR", "MAY", "JUN", "JUL", "AGO", "S
 
 const pct1 = (v: number) => `${v.toFixed(1).replace(".", ",")} %`;
 const pts = (v: number) => v.toFixed(2).replace(".", ",");
+
+/** Insensible a mayúsculas y tildes, para que "sanpedro" encuentre "SAMPEDRO". */
+const normaliza = (s: string) => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
 
 /** Semáforo de un porcentaje contra su meta. */
 function tag(valor: number | null, meta: number) {
@@ -39,7 +43,7 @@ function tag(valor: number | null, meta: number) {
 export default async function IndicadoresComprasPage({
   searchParams,
 }: {
-  searchParams: Promise<{ anio?: string; meses?: string }>;
+  searchParams: Promise<{ anio?: string; meses?: string; prov?: string }>;
 }) {
   await requirePermiso("cxp.view");
   const sp = await searchParams;
@@ -93,6 +97,16 @@ export default async function IndicadoresComprasPage({
   const sinDiligenciar = 12 - base.conDato.length;
 
   const maxCriterio = Math.max(1, ...ev.porCriterio.map((c) => c.maximo));
+
+  // Filtro de proveedor: solo acota la tabla de calificación de abajo. Los
+  // KPI y las gráficas de arriba (promedio del período, criterios) siguen
+  // hablando de TODOS los proveedores evaluados, no de la búsqueda — si no,
+  // buscar "ALLOGRAFT" haría parecer que el período entero saca 100 %.
+  const q = (sp.prov ?? "").trim();
+  const filasProveedor = q
+    ? ev.filas.filter((f) => normaliza(f.proveedor).includes(normaliza(q)))
+    : ev.filas;
+  const qsBase = { anio: String(anio), ...(seleccion.length ? { meses: seleccion.join(",") } : {}) };
 
   return (
     <>
@@ -388,7 +402,19 @@ export default async function IndicadoresComprasPage({
       <div className="card">
         <div className="chart-head">
           Calificación por Proveedor
-          <span className="hact">{formatNumero(ev.filas.length)} proveedores · clic en las columnas para ordenar</span>
+          <span className="hact">
+            {q ? `${formatNumero(filasProveedor.length)} de ${formatNumero(ev.filas.length)}` : formatNumero(ev.filas.length)} proveedores
+            · clic en las columnas para ordenar
+          </span>
+        </div>
+        <div className="card-body" style={{ paddingBottom: 0 }}>
+          <Buscador
+            action="/indicadores/compras"
+            q={q || undefined}
+            placeholder="Buscar proveedor…"
+            extra={qsBase}
+            limpiarHref={`/indicadores/compras?${new URLSearchParams(qsBase).toString()}`}
+          />
         </div>
         <div className="tbl-wrap">
           <table className="tabla-fit">
@@ -405,7 +431,7 @@ export default async function IndicadoresComprasPage({
               </tr>
             </thead>
             <tbody>
-              {ev.filas.map((f) => (
+              {filasProveedor.map((f) => (
                 <tr key={f.proveedor}>
                   <td style={{ fontWeight: 600 }} title={f.enCatalogo ? undefined : "Evaluado, pero no aparece en la hoja PROVEEDORES ACTIVOS"}>
                     {f.proveedor}{f.enCatalogo ? "" : " *"}
@@ -431,7 +457,11 @@ export default async function IndicadoresComprasPage({
               ))}
               {ev.filas.length === 0 ? (
                 <tr><td colSpan={ev.porCriterio.length + 5}><div className="empty">Sin evaluaciones en el período.</div></td></tr>
-              ) : (
+              ) : filasProveedor.length === 0 ? (
+                <tr><td colSpan={ev.porCriterio.length + 5}><div className="empty">Ningún proveedor coincide con “{q}”.</div></td></tr>
+              ) : !q ? (
+                // El promedio es del PERÍODO completo: con una búsqueda activa no
+                // corresponde a lo que se ve en la tabla, así que se oculta.
                 <tr className="fila-total">
                   <td style={{ fontWeight: 800 }}>Promedio</td>
                   <td />
@@ -444,7 +474,7 @@ export default async function IndicadoresComprasPage({
                   <td className="r num" style={{ fontWeight: 800 }}>{ev.promedio != null ? pct1(ev.promedio) : "—"}</td>
                   <td />
                 </tr>
-              )}
+              ) : null}
             </tbody>
           </table>
         </div>
