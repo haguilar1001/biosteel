@@ -1735,6 +1735,10 @@ model RecepcionItem {
   cantRecibida   Decimal          @default(0) @db.Decimal(18, 2)
   lote           String           @default("")
   fechaCaducidad DateTime?        @db.Date
+  /// Marcado explícito de "no aplica" (compras nacionales: no todo material
+  /// vence). Distinto de fechaCaducidad = null por omisión: aquí el usuario
+  /// SÍ dijo que no aplica, no que se le olvidó diligenciarla.
+  caducidadNoAplica Boolean       @default(false)
   observaciones  String           @default("")
 
   criterios RecepcionCriterio[]

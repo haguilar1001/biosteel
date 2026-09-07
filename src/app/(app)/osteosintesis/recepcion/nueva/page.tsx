@@ -1,6 +1,6 @@
 // Formulario de nueva Recepción Técnica (FOR-ALM-005).
 import { requirePermiso } from "@/server/auth-context";
-import { proveedoresSugeridos, siguienteConsecutivo, monedas, CRITERIOS_IMPORTACION, DOCS_IMPORTACION, tipoRecepcionLabel } from "@/lib/negocio/recepcion";
+import { proveedoresSugeridos, siguienteConsecutivo, monedas, CRITERIOS_IMPORTACION, DOCS_IMPORTACION, tipoRecepcionLabel, codigoFormato } from "@/lib/negocio/recepcion";
 import type { TipoRecepcion } from "@prisma/client";
 import RecepcionForm from "./RecepcionForm";
 
@@ -20,7 +20,7 @@ export default async function NuevaRecepcionPage({
         <div>
           <div className="eyebrow">Inventarios · Recepción Técnica</div>
           <h1>Nueva recepción · {tipoRecepcionLabel(tipo)}</h1>
-          <p>Recibo a satisfacción de dispositivos médicos (FOR-ALM-005) · consecutivo {consecutivo}</p>
+          <p>Recibo a satisfacción de dispositivos médicos ({codigoFormato(tipo)}) · consecutivo {consecutivo}</p>
         </div>
         <div className="toolbar"><a href="/osteosintesis/recepcion" className="btn">← Volver</a></div>
       </div>

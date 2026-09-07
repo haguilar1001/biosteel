@@ -31,6 +31,8 @@ const itemSchema = z.object({
   cantRecibida: z.coerce.number().min(0).default(0),
   lote: z.string().trim().default(""),
   fechaCaducidad: z.string().trim().optional(),
+  /** Nacional: marcado explícito de que este ítem no vence. */
+  caducidadNoAplica: z.boolean().default(false),
   observaciones: z.string().trim().default(""),
   criterios: z.array(z.string().trim().min(1)).length(CRITERIOS_IMPORTACION.length),
 });
@@ -135,7 +137,10 @@ export async function crearRecepcionAction(_prev: RecepcionState, fd: FormData):
           orden: i,
           codigo: it.codigo, descripcion: it.descripcion,
           cantPedida: it.cantPedida, cantRecibida: it.cantRecibida, lote: it.lote,
-          fechaCaducidad: aFecha(it.fechaCaducidad), observaciones: it.observaciones,
+          // Si marcó "no aplica" se ignora cualquier fecha que hubiera quedado
+          // en el estado: la intención explícita manda sobre el dato suelto.
+          fechaCaducidad: it.caducidadNoAplica ? null : aFecha(it.fechaCaducidad),
+          caducidadNoAplica: it.caducidadNoAplica, observaciones: it.observaciones,
           criterios: {
             create: it.criterios.map((res, k) => ({
               orden: k,

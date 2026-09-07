@@ -1,6 +1,10 @@
 "use client";
 // ==========================================================
-// Formulario del FOR-ALM-005. Secciones 1–4 + ítems con sus 9 criterios.
+// Formulario de Recepción Técnica. Importación es FOR-ALM-005 (secciones
+// 1–4 completas); Nacional es FOR-ALM-008: mismo formato base, pero sin la
+// sección 2 (verificación documental de importación) ni moneda/guía de
+// transporte/transportador — Compras nacionales no tiene esos documentos.
+// Las secciones que sí quedan se renumeran (1, 2, 3) para no dejar un hueco.
 // Al guardar, ofrece abrir el PDF del recibo a satisfacción.
 // ==========================================================
 import { useState, useActionState, useRef } from "react";
@@ -62,7 +66,10 @@ const aCant = (v: unknown) => {
 interface CriterioUI { nombre: string; especificacion: string; opciones: string[] }
 interface ItemForm {
   codigo: string; descripcion: string;
-  cantPedida: string; cantRecibida: string; lote: string; fechaCaducidad: string; observaciones: string;
+  cantPedida: string; cantRecibida: string; lote: string; fechaCaducidad: string;
+  /** Nacional: el material no vence. Distinto de dejar la fecha en blanco. */
+  caducidadNoAplica: boolean;
+  observaciones: string;
   criterios: string[];
 }
 interface Props {
@@ -135,9 +142,14 @@ const VALIDA_FACTURA = ["SI", "NO"];
 
 export default function RecepcionForm({ tipo, consecutivo, proveedores, monedas, criterios, docs }: Props) {
   const [state, action, pending] = useActionState<RecepcionState, FormData>(crearRecepcionAction, {});
+  // Numeración de secciones: en nacional no existe la 2 (documental de
+  // importación), así que la de ítems y la de disposición se corren.
+  const secInspeccion = tipo === "nacional" ? 2 : 3;
+  const secDisposicion = tipo === "nacional" ? 3 : 4;
   const nuevoItem = (): ItemForm => ({
     codigo: "", descripcion: "", cantPedida: "", cantRecibida: "",
-    lote: "", fechaCaducidad: "", observaciones: "", criterios: criterios.map((c) => c.opciones[0] ?? "Conforme"),
+    lote: "", fechaCaducidad: "", caducidadNoAplica: false,
+    observaciones: "", criterios: criterios.map((c) => c.opciones[0] ?? "Conforme"),
   });
   const [items, setItems] = useState<ItemForm[]>([nuevoItem()]);
   const [docVals, setDocVals] = useState<Record<string, string>>(() => Object.fromEntries(docs.map((d) => [d.campo, "na"])));
@@ -174,6 +186,10 @@ export default function RecepcionForm({ tipo, consecutivo, proveedores, monedas,
 
   const setItem = (i: number, k: keyof ItemForm, v: string) =>
     setItems((prev) => prev.map((it, idx) => (idx === i ? { ...it, [k]: v } : it)));
+  /** "No aplica" en fecha de caducidad: al marcarlo, borra lo que hubiera en la fecha. */
+  const toggleCaducidadNoAplica = (i: number) =>
+    setItems((prev) => prev.map((it, idx) =>
+      idx === i ? { ...it, caducidadNoAplica: !it.caducidadNoAplica, fechaCaducidad: it.caducidadNoAplica ? it.fechaCaducidad : "" } : it));
   const setCrit = (i: number, c: number, v: string) =>
     setItems((prev) => prev.map((it, idx) => (idx === i ? { ...it, criterios: it.criterios.map((x, k) => (k === c ? v : x)) } : it)));
   const addItem = () => setItems((p) => [...p, nuevoItem()]);
@@ -230,6 +246,7 @@ export default function RecepcionForm({ tipo, consecutivo, proveedores, monedas,
           cantRecibida: aCant(cel(fila, "cantRecibida")),
           lote: String(cel(fila, "lote") ?? "").trim(),
           fechaCaducidad: aISO(cel(fila, "fechaCaducidad")),
+          caducidadNoAplica: false,
           observaciones: String(cel(fila, "observaciones") ?? "").trim(),
           criterios: criterios.map((c) => c.opciones[0] ?? "Conforme"),
         });
@@ -280,19 +297,29 @@ export default function RecepcionForm({ tipo, consecutivo, proveedores, monedas,
             <div className="field"><label>Registro INVIMA</label><input name="registroInvima" /></div>
             <div className="field"><label>Factura / Remisión</label><input name="facturaRemision" /></div>
             <div className="field"><label>Valor factura</label><input name="valorFactura" type="number" min={0} step="0.01" /></div>
-            <div className="field"><label>Moneda</label>
-              <select name="monedaFactura" defaultValue="USD">
-                {monedas.map((m) => <option key={m.codigo} value={m.codigo}>{m.codigo} · {m.nombre}</option>)}
-              </select>
-            </div>
-            <div className="field"><label>N° guía transporte</label><input name="guiaTransporte" /></div>
-            <div className="field"><label>Transportador</label><input name="transportador" /></div>
+            {tipo === "importacion" ? (
+              <>
+                <div className="field"><label>Moneda</label>
+                  <select name="monedaFactura" defaultValue="USD">
+                    {monedas.map((m) => <option key={m.codigo} value={m.codigo}>{m.codigo} · {m.nombre}</option>)}
+                  </select>
+                </div>
+                <div className="field"><label>N° guía transporte</label><input name="guiaTransporte" /></div>
+                <div className="field"><label>Transportador</label><input name="transportador" /></div>
+              </>
+            ) : (
+              // Nacional: compra en pesos y sin guía de transporte internacional.
+              <input type="hidden" name="monedaFactura" value="COP" />
+            )}
             <div className="field"><label>Cant. ODC</label><input name="cantOdc" type="number" min={0} /></div>
           </div>
         </div>
       </div>
 
-      {/* 2. Verificación documental */}
+      {/* 2. Verificación documental — solo aplica a importación (packing
+          list, documentos de importación, condiciones de transporte
+          internacional). Nacional no la tiene. */}
+      {tipo === "importacion" && (
       <div className="card" style={{ marginBottom: 12 }}>
         <div className="chart-head">2. Verificación documental previa</div>
         <div className="card-body">
@@ -338,10 +365,11 @@ export default function RecepcionForm({ tipo, consecutivo, proveedores, monedas,
           <div className="field" style={{ marginTop: 8 }}><label>Observación transporte</label><input name="transObservacion" /></div>
         </div>
       </div>
+      )}
 
-      {/* 3. Inspección física por ítem */}
+      {/* 3. Inspección física por ítem (2. en nacional) */}
       <div className="card" style={{ marginBottom: 12 }}>
-        <div className="chart-head">3. Inspección física de los dispositivos</div>
+        <div className="chart-head">{secInspeccion}. Inspección física de los dispositivos</div>
         <div className="card-body" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           {/* Carga masiva: plantilla + importación de Excel para recepciones grandes */}
           <div style={{ border: "1px dashed var(--line)", borderRadius: 8, padding: "10px 12px", background: "var(--brand-tint)" }}>
@@ -372,7 +400,17 @@ export default function RecepcionForm({ tipo, consecutivo, proveedores, monedas,
                 <div className="field"><label>Cant. pedida</label><input type="number" min={0} value={it.cantPedida} onChange={(e) => setItem(i, "cantPedida", e.target.value)} className="select" /></div>
                 <div className="field"><label>Cant. recibida</label><input type="number" min={0} value={it.cantRecibida} onChange={(e) => setItem(i, "cantRecibida", e.target.value)} className="select" /></div>
                 <div className="field"><label>Lote</label><input value={it.lote} onChange={(e) => setItem(i, "lote", e.target.value)} className="select" /></div>
-                <div className="field"><label>Fecha caducidad</label><input type="date" value={it.fechaCaducidad} onChange={(e) => setItem(i, "fechaCaducidad", e.target.value)} className="select" /></div>
+                <div className="field"><label>Fecha caducidad</label>
+                  <input type="date" value={it.fechaCaducidad} disabled={it.caducidadNoAplica}
+                    onChange={(e) => setItem(i, "fechaCaducidad", e.target.value)} className="select" />
+                  {/* Nacional: no todo material vence (instrumental, aditamentos…). */}
+                  {tipo === "nacional" && (
+                    <label className="flag" style={{ display: "inline-flex", alignItems: "center", gap: 4, marginTop: 4, cursor: "pointer" }}>
+                      <input type="checkbox" checked={it.caducidadNoAplica} onChange={() => toggleCaducidadNoAplica(i)} />
+                      No aplica
+                    </label>
+                  )}
+                </div>
                 <div className="field" style={{ gridColumn: "span 2" }}><label>Observaciones</label><input value={it.observaciones} onChange={(e) => setItem(i, "observaciones", e.target.value)} className="select" /></div>
               </div>
               <div className="subhead" style={{ margin: "10px 0 6px" }}>Criterios de inspección</div>
@@ -406,11 +444,12 @@ export default function RecepcionForm({ tipo, consecutivo, proveedores, monedas,
         </div>
       </div>
 
-      {/* 4. Disposición final */}
+      {/* 4. Disposición final (3. en nacional). El badge PRO-DT-005 §7.4 es
+          del procedimiento de importación; nacional no lo referencia. */}
       <div className="card" style={{ marginBottom: 12 }}>
         <div className="chart-head">
-          4. Disposición del lote y decisión final
-          <span className="hact">PRO-DT-005 §7.4</span>
+          {secDisposicion}. Disposición del lote y decisión final
+          {tipo === "importacion" && <span className="hact">PRO-DT-005 §7.4</span>}
         </div>
         <div className="card-body">
           <div className="form-grid">

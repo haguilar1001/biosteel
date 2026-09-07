@@ -79,6 +79,22 @@ export type CampoDoc = (typeof DOCS_IMPORTACION)[number]["campo"];
 export function tipoRecepcionLabel(t: TipoRecepcion): string {
   return { importacion: "Importación", nacional: "Compras Nacionales" }[t];
 }
+/**
+ * Código del formato controlado: FOR-ALM-005 para importación (el
+ * histórico), FOR-ALM-008 para nacional (solicitado por Compras el
+ * 2026-09-07: mismo formato base, menos campos, consecutivo propio).
+ */
+export function codigoFormato(t: TipoRecepcion): string {
+  return t === "importacion" ? "FOR-ALM-005" : "FOR-ALM-008";
+}
+/**
+ * Numeración de las secciones del formulario: en nacional la sección 2
+ * (Verificación documental de importación) no existe, así que 3 y 4 se
+ * corren a 2 y 3 para no dejar un hueco en el consecutivo de secciones.
+ */
+export function numeroSeccion(t: TipoRecepcion, seccionImportacion: 3 | 4): number {
+  return t === "importacion" ? seccionImportacion : seccionImportacion - 1;
+}
 export function verifDocLabel(v: VerifDoc): string {
   return { si: "Sí", no: "No", na: "N/A" }[v];
 }

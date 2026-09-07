@@ -4,7 +4,7 @@
 import { requirePermiso } from "@/server/auth-context";
 import { puede } from "@/lib/rbac/authorize";
 import { formatFecha, formatNumero } from "@/lib/format";
-import { listarRecepciones, tipoRecepcionLabel } from "@/lib/negocio/recepcion";
+import { listarRecepciones, tipoRecepcionLabel, codigoFormato } from "@/lib/negocio/recepcion";
 import type { TipoRecepcion } from "@prisma/client";
 
 const fmtValor = (v: number, moneda: string) =>
@@ -36,11 +36,18 @@ export default async function RecepcionPage({
         <div>
           <div className="eyebrow">Inventarios · Material</div>
           <h1>Recepción Técnica</h1>
-          <p>Recibo a satisfacción de dispositivos médicos (FOR-ALM-005) · {formatNumero(filas.length)} registros</p>
+          <p>
+            Recibo a satisfacción de dispositivos médicos ({tipo ? codigoFormato(tipo) : "FOR-ALM-005 / FOR-ALM-008"})
+            {" "}· {formatNumero(filas.length)} registros
+          </p>
         </div>
         {puedeGestionar && (
           <div className="toolbar">
-            <a href="/osteosintesis/recepcion/nueva?tipo=importacion" className="btn primary">➕ Nueva · Importación</a>
+            {/* Sigue la pestaña activa: en Nacionales crea una recepción
+                nacional, no una de importación por defecto. */}
+            <a href={`/osteosintesis/recepcion/nueva?tipo=${tipo === "nacional" ? "nacional" : "importacion"}`} className="btn primary">
+              ➕ Nueva · {tipoRecepcionLabel(tipo === "nacional" ? "nacional" : "importacion")}
+            </a>
           </div>
         )}
       </div>

@@ -1,12 +1,14 @@
 // ==========================================================
-// Recibo a Satisfacción de Dispositivos Médicos (FOR-ALM-005) — hoja imprimible.
+// Recibo a Satisfacción de Dispositivos Médicos — hoja imprimible.
+// Importación es FOR-ALM-005; Nacional es FOR-ALM-008, sin la sección
+// documental de importación ni moneda/guía/transportador.
 // ==========================================================
 import { formatFecha, formatFechaHoraSeg, formatNumero } from "@/lib/format";
 
 const fmtValor = (v: number, moneda: string) =>
   `${moneda} ${new Intl.NumberFormat("es-CO", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v)}`;
 import {
-  DOCS_IMPORTACION, verifDocLabel, claseOpcion, tipoRecepcionLabel,
+  DOCS_IMPORTACION, verifDocLabel, claseOpcion, tipoRecepcionLabel, codigoFormato, numeroSeccion,
   type RecepcionDetalle,
 } from "@/lib/negocio/recepcion";
 
@@ -30,6 +32,13 @@ export default function RecepcionDoc({ r }: { r: NonNullable<RecepcionDetalle> }
     r.transTempAdecuada && "Temp. adecuada", r.transTempNoAdecuada && "Temp. no adecuada",
   ].filter(Boolean).join(" · ") || "—";
 
+  const esImportacion = r.tipo === "importacion";
+  const version = esImportacion ? "v3" : "v1";
+  // Nacional no tiene sección documental: la de ítems y la de disposición
+  // se corren de 3/4 a 2/3, igual que en el formulario.
+  const secInspeccion = numeroSeccion(r.tipo, 3);
+  const secDisposicion = numeroSeccion(r.tipo, 4);
+
   return (
     <div className="sop-hoja">
       <div className="sop-head">
@@ -41,7 +50,7 @@ export default function RecepcionDoc({ r }: { r: NonNullable<RecepcionDetalle> }
           <span>Recibo a satisfacción de dispositivos médicos</span>
         </div>
         <div className="sop-doc">
-          <div className="t">FOR-ALM-005 · v3</div>
+          <div className="t">{codigoFormato(r.tipo)} · {version}</div>
           <div className="c">{r.consecutivo}</div>
         </div>
       </div>
@@ -62,13 +71,19 @@ export default function RecepcionDoc({ r }: { r: NonNullable<RecepcionDetalle> }
             <Campo k="Registro INVIMA" v={r.registroInvima || "—"} />
             <Campo k="Factura / Remisión" v={r.facturaRemision || "—"} />
             <Campo k="Valor factura" v={r.valorFactura ? fmtValor(r.valorFactura, r.monedaFactura) : "—"} />
-            <Campo k="N° guía transporte" v={r.guiaTransporte || "—"} />
-            <Campo k="Transportador" v={r.transportador || "—"} />
+            {esImportacion && (
+              <>
+                <Campo k="N° guía transporte" v={r.guiaTransporte || "—"} />
+                <Campo k="Transportador" v={r.transportador || "—"} />
+              </>
+            )}
             <Campo k="Cant. ODC" v={r.cantOdc != null ? formatNumero(r.cantOdc) : "—"} />
           </div>
         </div>
 
-        {/* 2. Documental */}
+        {/* 2. Documental — solo importación (packing list, DIM/DEX/BL,
+            condiciones de transporte internacional). */}
+        {esImportacion && (
         <div className="sop-sec">
           <h3>2. Verificación documental previa</h3>
           <div className="sop-grid">
@@ -79,10 +94,11 @@ export default function RecepcionDoc({ r }: { r: NonNullable<RecepcionDetalle> }
             {r.transObservacion && <Campo k="Observación transporte" v={r.transObservacion} full />}
           </div>
         </div>
+        )}
 
-        {/* 3. Inspección física */}
+        {/* 3. Inspección física (2. en nacional) */}
         <div className="sop-sec">
-          <h3>3. Inspección física de los dispositivos</h3>
+          <h3>{secInspeccion}. Inspección física de los dispositivos</h3>
           {r.items.map((it, i) => (
             <div key={it.id} style={{ marginBottom: 12 }}>
               <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 4 }}>
@@ -97,7 +113,7 @@ export default function RecepcionDoc({ r }: { r: NonNullable<RecepcionDetalle> }
                     <td className="num">{formatNumero(it.cantPedida)}</td>
                     <td className="num">{formatNumero(it.cantRecibida)}</td>
                     <td>{it.lote || "—"}</td>
-                    <td>{it.fechaCaducidad ? formatFecha(it.fechaCaducidad) : "—"}</td>
+                    <td>{it.caducidadNoAplica ? "No aplica" : it.fechaCaducidad ? formatFecha(it.fechaCaducidad) : "—"}</td>
                   </tr>
                 </tbody>
               </table>
@@ -119,9 +135,9 @@ export default function RecepcionDoc({ r }: { r: NonNullable<RecepcionDetalle> }
           ))}
         </div>
 
-        {/* 4. Disposición */}
+        {/* 4. Disposición (3. en nacional) */}
         <div className="sop-sec">
-          <h3>4. Disposición del lote y decisión final</h3>
+          <h3>{secDisposicion}. Disposición del lote y decisión final</h3>
           <div className="sop-grid">
             <Campo k="Resultado" v={r.resultado || "—"} />
             <Campo k="Área de destino" v={r.areaDestino || "—"} />
@@ -143,7 +159,7 @@ export default function RecepcionDoc({ r }: { r: NonNullable<RecepcionDetalle> }
 
       <div className="sop-foot">
         <span>Consecutivo {r.consecutivo} · registrado {formatFechaHoraSeg(r.createdAt)}{r.notas ? ` · ${r.notas}` : ""}</span>
-        <span>FOR-ALM-005 v3 · sistema BioSteel</span>
+        <span>{codigoFormato(r.tipo)} {version} · sistema BioSteel</span>
       </div>
     </div>
   );
