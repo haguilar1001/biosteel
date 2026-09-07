@@ -144,10 +144,13 @@ export const CARGAS: CargaDef[] = [
       const parse = parsePresupuesto(buffer);
       if (!parse.filas.length) throw new Error("No se encontraron valores de presupuesto (hoja Presupuesto_Terceros, columnas ENE..DIC).");
       const { cargadas, meses } = await persistirPresupuesto(prisma, anio, parse);
+      const ignoradas = parse.columnasIgnoradas.length
+        ? ` · ⚠️ columna(s) sin reconocer, revisa el encabezado: ${parse.columnasIgnoradas.join(", ")}`
+        : "";
       return {
         titulo: "Presupuesto de Egresos", archivo: nombre, hoja: parse.hoja,
         filas: parse.filas.length, cargadas, omitidas: parse.omitidas,
-        estrategia: `reemplaza ${anio} meses [${meses.join(", ")}]: ${nf.format(cargadas)} renglones de presupuesto`,
+        estrategia: `reemplaza ${anio} meses [${meses.join(", ")}]: ${nf.format(cargadas)} renglones de presupuesto${ignoradas}`,
       };
     },
   },

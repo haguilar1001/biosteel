@@ -27,6 +27,9 @@ async function main() {
   for (const f of parse.filas) totalPorMes.set(f.mes, (totalPorMes.get(f.mes) ?? 0) + f.valor);
   console.log(`   Filas: ${parse.filas.length} · meses: ${parse.meses.join(", ")}`);
   for (const m of parse.meses) console.log(`   · mes ${String(m).padStart(2, "0")}: ${nf.format(Math.round(totalPorMes.get(m) ?? 0))}`);
+  if (parse.columnasIgnoradas.length) {
+    console.warn(`   ⚠️ columna(s) sin reconocer como GRUPO/TERCERO/mes: ${parse.columnasIgnoradas.join(", ")}`);
+  }
 
   if (DRY) { console.log("📘 DRY-RUN: no se escribió nada."); return; }
   const r = await persistirPresupuesto(prisma, ANIO, parse);
