@@ -296,7 +296,9 @@ export default function RecepcionForm({ tipo, consecutivo, proveedores, monedas,
             </div>
             <div className="field"><label>Registro INVIMA</label><input name="registroInvima" /></div>
             <div className="field"><label>Factura / Remisión</label><input name="facturaRemision" /></div>
-            <div className="field"><label>Valor factura</label><input name="valorFactura" type="number" min={0} step="0.01" /></div>
+            {tipo === "importacion" && (
+              <div className="field"><label>Valor factura</label><input name="valorFactura" type="number" min={0} step="0.01" /></div>
+            )}
             {tipo === "importacion" ? (
               <>
                 <div className="field"><label>Moneda</label>

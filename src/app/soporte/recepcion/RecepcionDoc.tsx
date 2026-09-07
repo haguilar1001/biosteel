@@ -70,7 +70,7 @@ export default function RecepcionDoc({ r }: { r: NonNullable<RecepcionDetalle> }
             <Campo k="N° ODC / Pedido" v={r.odcPedido || "—"} />
             <Campo k="Registro INVIMA" v={r.registroInvima || "—"} />
             <Campo k="Factura / Remisión" v={r.facturaRemision || "—"} />
-            <Campo k="Valor factura" v={r.valorFactura ? fmtValor(r.valorFactura, r.monedaFactura) : "—"} />
+            {esImportacion && <Campo k="Valor factura" v={r.valorFactura ? fmtValor(r.valorFactura, r.monedaFactura) : "—"} />}
             {esImportacion && (
               <>
                 <Campo k="N° guía transporte" v={r.guiaTransporte || "—"} />
