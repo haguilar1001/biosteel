@@ -9,8 +9,15 @@
 // Cerrar sin aplicar (clic afuera o Escape) descarta la selección a medias:
 // solo "Aplicar" confirma, para que marcar varias casillas no dispare un
 // envío por cada clic.
+//
+// El panel se dibuja en un portal a document.body, con `position: fixed` y
+// coordenadas calculadas del botón: las tarjetas de la app usan
+// `overflow: hidden` (para las esquinas redondeadas) y un panel absoluto
+// normal se recortaba ahí, quedando "escondido" detrás de las tarjetas de
+// abajo en vez de flotar sobre ellas.
 // ==========================================================
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
 export interface OpcionMulti { value: string; label: string; sub?: string }
 
@@ -27,16 +34,35 @@ export function MultiSelect({
   const [abierto, setAbierto] = useState(false);
   const [pendiente, setPendiente] = useState<Set<string>>(new Set(selected));
   const [busqueda, setBusqueda] = useState("");
-  const ref = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState({ top: 0, left: 0, width: 0 });
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
 
   // Si la URL cambió por fuera (otro filtro, navegación), el pendiente se
   // resincroniza con lo ya aplicado.
   useEffect(() => { setPendiente(new Set(selected)); }, [selected.join(",")]);
 
+  // Posición del panel: se recalcula al abrir y mientras esté abierto, para
+  // que siga al botón si la página se desplaza o cambia de tamaño (el panel
+  // vive en position:fixed, relativo a la ventana, no a la tarjeta).
+  useLayoutEffect(() => {
+    if (!abierto) return;
+    const ubicar = () => {
+      const r = wrapRef.current?.getBoundingClientRect();
+      if (r) setPos({ top: r.bottom + 4, left: r.left, width: r.width });
+    };
+    ubicar();
+    window.addEventListener("scroll", ubicar, true);
+    window.addEventListener("resize", ubicar);
+    return () => { window.removeEventListener("scroll", ubicar, true); window.removeEventListener("resize", ubicar); };
+  }, [abierto]);
+
   useEffect(() => {
     if (!abierto) return;
     const fuera = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) { setPendiente(new Set(selected)); setAbierto(false); }
+      const t = e.target as Node;
+      if (wrapRef.current?.contains(t) || panelRef.current?.contains(t)) return;
+      setPendiente(new Set(selected)); setAbierto(false);
     };
     const esc = (e: KeyboardEvent) => { if (e.key === "Escape") { setPendiente(new Set(selected)); setAbierto(false); } };
     document.addEventListener("mousedown", fuera);
@@ -64,7 +90,7 @@ export function MultiSelect({
     //
     // El <form> es ANCESTRO de este componente, no descendiente: closest()
     // sube por el árbol; querySelector() solo baja y nunca lo habría encontrado.
-    ref.current?.closest("form")?.requestSubmit();
+    wrapRef.current?.closest("form")?.requestSubmit();
   };
 
   const resumen = selected.length === 0 ? placeholder
@@ -72,7 +98,7 @@ export function MultiSelect({
     : `${selected.length} seleccionados`;
 
   return (
-    <div ref={ref} style={{ position: "relative", display: "inline-block" }}>
+    <div ref={wrapRef} style={{ position: "relative", display: "inline-block" }}>
       <input type="hidden" name={name} value={[...pendiente].join(",")} />
       <button
         type="button"
@@ -86,11 +112,12 @@ export function MultiSelect({
         <span aria-hidden style={{ opacity: 0.6 }}>▾</span>
       </button>
 
-      {abierto && (
+      {abierto && createPortal(
         <div
+          ref={panelRef}
           role="listbox"
           style={{
-            position: "absolute", zIndex: 40, top: "calc(100% + 4px)", left: 0, width: Math.max(ancho, 240),
+            position: "fixed", zIndex: 1000, top: pos.top, left: pos.left, width: Math.max(pos.width, ancho, 240),
             background: "var(--surface)", border: "1px solid var(--line)", borderRadius: "var(--r-sm)",
             boxShadow: "var(--elev, 0 4px 16px rgba(0,0,0,.15))", padding: 8, display: "flex", flexDirection: "column", gap: 6,
           }}
@@ -127,7 +154,8 @@ export function MultiSelect({
             <button type="button" className="btn" onClick={() => { setPendiente(new Set(selected)); setAbierto(false); }}>Cancelar</button>
             <button type="button" className="btn primary" onClick={aplicar}>Aplicar</button>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   );
