@@ -1,7 +1,11 @@
 // ==========================================================
 // Informe de Consumos — indicadores de venta neta, costo, utilidad y
 // % Utilidad del período, y ese mismo % desglosado por proveedor (MARCA).
-// Filtros de año y mes (auto-envío).
+// Todos los filtros (año, mes, lista, proveedor, ciudad, IPS, instalación)
+// admiten selección múltiple; cada uno viaja en la URL como valores unidos
+// por coma (?marca=A,B,C), igual que ya hacía "meses". Año es la excepción:
+// uno solo, porque el resto del informe (KPIs, tabla, listas) se lee "del
+// año X" y mezclar dos rompería esa lectura.
 // ==========================================================
 import { requirePermiso } from "@/server/auth-context";
 import { formatPorcentaje, formatNumero } from "@/lib/format";
@@ -10,17 +14,30 @@ import {
   aniosConVenta, mesesConVenta, ipsConVenta, ciudadesDeIps,
   marcasFiltradas, ipsPorMarcaFiltrado, itemsPorMarcaFiltrado,
   listasConVenta, utilidadPorLista, ipsPorLista, itemsPorListaIps, marcasConVenta,
+  instalacionesConVenta,
   SIN_LISTA, type FiltroConsumo,
 } from "@/lib/negocio/ventas";
 import { FiltroAuto } from "../../_components/FiltroAuto";
+import { MultiSelect, type OpcionMulti } from "../../_components/MultiSelect";
 import { nombreLista } from "@/lib/negocio/listas-precio";
 
 const MESES = ["", "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+const MES_CORTO = ["", "Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
 const margen = (venta: number, costo: number) => (venta > 0 ? ((venta - costo) / venta) * 100 : 0);
 
+/** "?marca=A,B,C" → ["A","B","C"], solo los valores que sí existen entre las opciones. */
+function listaDe(crudo: string | undefined, validos: Set<string>): string[] {
+  if (!crudo) return [];
+  return [...new Set(crudo.split(",").map((s) => s.trim()).filter(Boolean))].filter((v) => validos.has(v));
+}
 type OrdenCol = "marca" | "venta" | "costo" | "utilidad" | "margen";
 
-export default async function ConsumosPage({ searchParams }: { searchParams: Promise<{ anio?: string; mes?: string; orden?: string; dir?: string; vista?: string; ips?: string; ciudad?: string; lista?: string; marca?: string }> }) {
+interface Params {
+  anio?: string; mes?: string; orden?: string; dir?: string; vista?: string;
+  ips?: string; ciudad?: string; lista?: string; marca?: string; instalacion?: string;
+}
+
+export default async function ConsumosPage({ searchParams }: { searchParams: Promise<Params> }) {
   await requirePermiso("cxp.view");
   const sp = await searchParams;
 
@@ -30,24 +47,40 @@ export default async function ConsumosPage({ searchParams }: { searchParams: Pro
   }
   const anio = sp.anio && anios.includes(Number(sp.anio)) ? Number(sp.anio) : anios[anios.length - 1]!;
   const mesesDisp = await mesesConVenta(anio);
-  const mesSel = sp.mes && mesesDisp.includes(Number(sp.mes)) ? Number(sp.mes) : undefined;
+  const mesesSet = new Set(mesesDisp.map(String));
+  const meses = listaDe(sp.mes, mesesSet).map(Number).sort((a, b) => a - b);
+  const mesesQ = meses.length ? meses : undefined;
 
-  const meses = mesSel ? [mesSel] : undefined;
-  // Opciones del filtro: todas las IPS del período (sin filtrar), para que el
-  // selector no se vacíe a sí mismo al escoger una.
-  const opcionesIps = await ipsConVenta(anio, meses);
+  // Opciones del filtro: todas SIN filtrar (año/mes aparte), para que elegir
+  // una no vacíe al resto de las opciones del propio selector.
+  const opcionesIps = await ipsConVenta(anio, mesesQ);
   const ciudades = ciudadesDeIps(opcionesIps);
-  const ipsSel = sp.ips && opcionesIps.some((o) => o.ips === sp.ips) ? sp.ips : undefined;
-  const ciudadSel = !ipsSel && sp.ciudad && ciudades.some((c) => c.ciudad === sp.ciudad) ? sp.ciudad : undefined;
-  // Listas de precios del año: se ofrecen sin filtrar (igual que las IPS) para
-  // que el selector no se vacíe a sí mismo al escoger una.
+  const ipsValidas = new Set(opcionesIps.map((o) => o.ips));
+  const ipsSel = listaDe(sp.ips, ipsValidas);
+  const ciudadesValidas = new Set(ciudades.map((c) => c.ciudad));
+  // La ciudad solo aplica si no hay IPS puntuales elegidas (mismo criterio de antes).
+  const ciudadSel = ipsSel.length ? [] : listaDe(sp.ciudad, ciudadesValidas);
+
   const listasDisp = await listasConVenta(anio);
-  const listaSel = sp.lista && (listasDisp.includes(sp.lista) || sp.lista === SIN_LISTA) ? sp.lista : undefined;
-  // Proveedores del periodo: también se ofrecen sin filtrar, para que elegir
-  // uno no deje el selector con una sola opción y sin manera de volver.
-  const marcasDisp = await marcasConVenta(anio, meses);
-  const marcaSel = sp.marca && marcasDisp.includes(sp.marca) ? sp.marca : undefined;
-  const filtro: FiltroConsumo = { anio, meses, ips: ipsSel, ciudad: ciudadSel, lista: listaSel, marca: marcaSel };
+  const listasValidas = new Set([...listasDisp, SIN_LISTA]);
+  const listaSel = listaDe(sp.lista, listasValidas);
+
+  const marcasDisp = await marcasConVenta(anio, mesesQ);
+  const marcasValidas = new Set(marcasDisp);
+  const marcaSel = listaDe(sp.marca, marcasValidas);
+
+  const instalacionesDisp = await instalacionesConVenta(anio, mesesQ);
+  const instalacionesValidas = new Set(instalacionesDisp.map((i) => String(i.valor)));
+  const instalacionSel = listaDe(sp.instalacion, instalacionesValidas).map(Number);
+
+  const filtro: FiltroConsumo = {
+    anio, meses: mesesQ,
+    ips: ipsSel.length ? ipsSel : undefined,
+    ciudad: ciudadSel.length ? ciudadSel : undefined,
+    lista: listaSel.length ? listaSel : undefined,
+    marca: marcaSel.length ? marcaSel : undefined,
+    instalacion: instalacionSel.length ? instalacionSel : undefined,
+  };
 
   const [marcasBase, ipsMap, itemsMap, porLista, ipsListaMap, itemsListaMap] = await Promise.all([
     marcasFiltradas(filtro, opcionesIps),
@@ -67,7 +100,9 @@ export default async function ConsumosPage({ searchParams }: { searchParams: Pro
   const sinCiudad = opcionesIps.filter((o) => !o.ciudad);
   const utilidad = venta - costo;
   const maxVenta = marcas.length ? Math.max(...marcas.map((m) => m.valor)) : 1;
-  const periodo = mesSel ? `${MESES[mesSel]} ${anio}` : `${anio}`;
+  const periodo = meses.length === 1 ? `${MESES[meses[0]!]} ${anio}`
+    : meses.length > 1 ? `${meses.map((m) => MES_CORTO[m]).join(", ")} ${anio}`
+    : `${anio}`;
   const GRID = "minmax(160px, 2fr) 150px 150px 150px 90px 90px";
   const GRID_ITEM = "minmax(200px, 3fr) 80px 120px 130px 130px 130px 90px";
   const GRID_LISTA = "minmax(200px, 2fr) 140px 130px 130px 100px 100px";
@@ -94,8 +129,9 @@ export default async function ConsumosPage({ searchParams }: { searchParams: Pro
   const vista: "ips" | "item" = sp.vista === "ips" ? "ips" : "item";
   // Todo lo que filtra viaja en los enlaces de orden y de vista: cambiar de
   // columna o de desglose no puede borrar el filtro que el usuario puso.
-  const filtroQS = `${ipsSel ? `&ips=${encodeURIComponent(ipsSel)}` : ""}${ciudadSel ? `&ciudad=${encodeURIComponent(ciudadSel)}` : ""}${listaSel ? `&lista=${encodeURIComponent(listaSel)}` : ""}${marcaSel ? `&marca=${encodeURIComponent(marcaSel)}` : ""}`;
-  const base = `/ventas/consumos?anio=${anio}${mesSel ? `&mes=${mesSel}` : ""}${filtroQS}`;
+  const qsPart = (nombre: string, arr: (string | number)[]) => (arr.length ? `&${nombre}=${encodeURIComponent(arr.join(","))}` : "");
+  const filtroQS = `${qsPart("ips", ipsSel)}${qsPart("ciudad", ciudadSel)}${qsPart("lista", listaSel)}${qsPart("marca", marcaSel)}${qsPart("instalacion", instalacionSel)}`;
+  const base = `/ventas/consumos?anio=${anio}${qsPart("mes", meses)}${filtroQS}`;
   const ordenBase = `${base}&vista=${vista}`;
   const linkVista = (v: "ips" | "item") => `${base}&orden=${orden}&dir=${dir}&vista=${v}`;
   const thOrden = (key: OrdenCol, label: string, defDir: "asc" | "desc" = "desc") => {
@@ -108,6 +144,15 @@ export default async function ConsumosPage({ searchParams }: { searchParams: Pro
     );
   };
 
+  const hayFiltro = meses.length || ipsSel.length || ciudadSel.length || listaSel.length || marcaSel.length || instalacionSel.length;
+
+  const opMeses: OpcionMulti[] = mesesDisp.map((m) => ({ value: String(m), label: MESES[m]! }));
+  const opListas: OpcionMulti[] = [...listasDisp.map((l) => ({ value: l, label: nombreLista(l) })), { value: SIN_LISTA, label: SIN_LISTA }];
+  const opMarcas: OpcionMulti[] = marcasDisp.map((m) => ({ value: m, label: m }));
+  const opCiudades: OpcionMulti[] = ciudades.map((c) => ({ value: c.ciudad, label: c.ciudad, sub: `${c.ips} IPS` }));
+  const opIps: OpcionMulti[] = opcionesIps.map((o) => ({ value: o.ips, label: o.ips, sub: o.ciudad || undefined }));
+  const opInstalaciones: OpcionMulti[] = instalacionesDisp.map((i) => ({ value: String(i.valor), label: i.label }));
+
   return (
     <>
       <div className="card" style={{ marginBottom: 12 }}>
@@ -115,14 +160,15 @@ export default async function ConsumosPage({ searchParams }: { searchParams: Pro
           <div>
             <div className="eyebrow" style={{ fontSize: 15 }}>Informe de Consumos · {periodo} · {marcas.length} proveedores</div>
             <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 3 }}>
-              {marcaSel ? <>Solo <b>{marcaSel}</b> · </> : null}
-              {ipsSel ? <>Solo <b>{ipsSel}</b></>
-                : ciudadSel ? <>Solo <b>{ciudadSel}</b> · {ciudades.find((c) => c.ciudad === ciudadSel)?.ips ?? 0} IPS</>
+              {marcaSel.length ? <>Solo <b>{marcaSel.length === 1 ? marcaSel[0] : `${marcaSel.length} proveedores`}</b> · </> : null}
+              {instalacionSel.length ? <>Instalación <b>{instalacionSel.join(", ")}</b> · </> : null}
+              {ipsSel.length ? <>Solo <b>{ipsSel.length === 1 ? ipsSel[0] : `${ipsSel.length} IPS`}</b></>
+                : ciudadSel.length ? <>Solo <b>{ciudadSel.length === 1 ? ciudadSel[0] : `${ciudadSel.length} ciudades`}</b></>
                 : <>Todas las IPS</>}
             </div>
           </div>
           <FiltroAuto className="toolbar">
-            {/* Preserva vista/orden al cambiar año o mes. */}
+            {/* Preserva vista/orden al cambiar cualquier filtro. */}
             <input type="hidden" name="vista" value={vista} />
             <input type="hidden" name="orden" value={orden} />
             <input type="hidden" name="dir" value={dir} />
@@ -135,52 +181,34 @@ export default async function ConsumosPage({ searchParams }: { searchParams: Pro
               {anios.map((a) => <option key={a} value={a}>{a}</option>)}
             </select>
             <label className="flag" style={{ alignSelf: "center" }}>Mes:</label>
-            <select name="mes" defaultValue={mesSel ?? ""} className="select">
-              <option value="">Todos los meses</option>
-              {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
-                <option key={m} value={m}>{MESES[m]}</option>
-              ))}
-            </select>
+            <MultiSelect name="mes" options={opMeses} selected={meses.map(String)} placeholder="Todos" />
             {/* Lista de precios: es la tarifa aplicada al renglón, y lo que
                 permite ver qué tarifa deja el ítem en pérdida. Solo aparece
                 cuando hay datos con lista cargada. */}
             {hayListas ? (
               <>
                 <label className="flag" style={{ alignSelf: "center" }}>Lista:</label>
-                <select name="lista" defaultValue={listaSel ?? ""} className="select" style={{ maxWidth: 260 }}>
-                  <option value="">Todas</option>
-                  {listasDisp.map((l) => <option key={l} value={l}>{nombreLista(l)}</option>)}
-                  <option value={SIN_LISTA}>{SIN_LISTA}</option>
-                </select>
+                <MultiSelect name="lista" options={opListas} selected={listaSel} placeholder="Todas" />
               </>
             ) : null}
-            {/* Proveedor (MARCA): deja el informe entero —KPIs, tabla y listas—
-                en un solo proveedor, para leer su utilidad al detalle. */}
+            {/* Proveedor (MARCA): acota el informe entero —KPIs, tabla y listas—
+                a uno o varios proveedores, para leer su utilidad al detalle. */}
             <label className="flag" style={{ alignSelf: "center" }}>Proveedor:</label>
-            <select name="marca" defaultValue={marcaSel ?? ""} className="select" style={{ maxWidth: 280 }}>
-              <option value="">Todos</option>
-              {marcasDisp.map((m) => <option key={m} value={m}>{m}</option>)}
-            </select>
+            <MultiSelect name="marca" options={opMarcas} selected={marcaSel} placeholder="Todos" ancho={280} />
+            {/* Instalación: bodega que despachó (101 propio · 102 consignación ·
+                104 préstamo · 106 aprovechamiento), deducida contra el mismo
+                catálogo de Compras/Osteosíntesis por nombre de bodega. */}
+            {opInstalaciones.length ? (
+              <>
+                <label className="flag" style={{ alignSelf: "center" }}>Instalación:</label>
+                <MultiSelect name="instalacion" options={opInstalaciones} selected={instalacionSel.map(String)} placeholder="Todas" ancho={200} />
+              </>
+            ) : null}
             <label className="flag" style={{ alignSelf: "center" }}>Ciudad:</label>
-            <select name="ciudad" defaultValue={ciudadSel ?? ""} className="select">
-              <option value="">Todas</option>
-              {ciudades.map((c) => <option key={c.ciudad} value={c.ciudad}>{c.ciudad} ({c.ips} IPS)</option>)}
-            </select>
+            <MultiSelect name="ciudad" options={opCiudades} selected={ciudadSel} placeholder="Todas" />
             <label className="flag" style={{ alignSelf: "center" }}>IPS:</label>
-            <select name="ips" defaultValue={ipsSel ?? ""} className="select" style={{ maxWidth: 300 }}>
-              <option value="">Todas</option>
-              {ciudades.map((c) => (
-                <optgroup key={c.ciudad} label={c.ciudad}>
-                  {opcionesIps.filter((o) => o.ciudad === c.ciudad).map((o) => <option key={o.ips} value={o.ips}>{o.ips}</option>)}
-                </optgroup>
-              ))}
-              {sinCiudad.length > 0 && (
-                <optgroup label="Sin ciudad en Terceros">
-                  {sinCiudad.map((o) => <option key={o.ips} value={o.ips}>{o.ips}</option>)}
-                </optgroup>
-              )}
-            </select>
-            {(mesSel || ipsSel || ciudadSel || listaSel || marcaSel)
+            <MultiSelect name="ips" options={opIps} selected={ipsSel} placeholder="Todas" ancho={300} />
+            {hayFiltro
               ? <a href={`/ventas/consumos?anio=${anio}&orden=${orden}&dir=${dir}&vista=${vista}`} className="btn">Limpiar filtros</a>
               : null}
           </FiltroAuto>
@@ -221,7 +249,7 @@ export default async function ConsumosPage({ searchParams }: { searchParams: Pro
             <span />
           </div>
           {marcas.length === 0 ? (
-            <div className="empty">Sin datos por proveedor{mesSel ? ` en ${MESES[mesSel]}` : ""}.</div>
+            <div className="empty">Sin datos por proveedor{periodo ? ` en ${periodo}` : ""}.</div>
           ) : (
             marcas.map((m) => {
               const pct = margen(m.valor, m.costo);
@@ -300,7 +328,9 @@ export default async function ConsumosPage({ searchParams }: { searchParams: Pro
       </div>
 
       {/* Utilidad por Lista de Precios (abajo). Cada fila es un filtro: al
-          hacer clic acota todo el informe a esa lista. */}
+          hacer clic acota todo el informe a esa lista (reemplaza cualquier
+          selección múltiple que hubiera arriba, para no confundir dos
+          maneras de elegir lista al mismo tiempo). */}
       {hayListas ? (
         <div className="card" style={{ marginTop: 12 }}>
           <div className="chart-head">
@@ -320,10 +350,10 @@ export default async function ConsumosPage({ searchParams }: { searchParams: Pro
             {porLista.map((l) => {
               const u = l.valor - l.costo;
               const pct = margen(l.valor, l.costo);
-              const activo = listaSel === l.lista;
+              const activo = listaSel.length === 1 && listaSel[0] === l.lista;
               const href = activo
                 ? `${base}&orden=${orden}&dir=${dir}&vista=${vista}`
-                : `${base}&orden=${orden}&dir=${dir}&vista=${vista}&lista=${encodeURIComponent(l.lista)}`;
+                : `/ventas/consumos?anio=${anio}${qsPart("mes", meses)}${qsPart("ips", ipsSel)}${qsPart("ciudad", ciudadSel)}${qsPart("marca", marcaSel)}${qsPart("instalacion", instalacionSel)}&orden=${orden}&dir=${dir}&vista=${vista}&lista=${encodeURIComponent(l.lista)}`;
               const ipsList = ipsListaMap.get(l.lista) ?? [];
               return (
                 <details key={l.lista} className="cons-det" open={activo}>

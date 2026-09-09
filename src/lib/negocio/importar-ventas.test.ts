@@ -1,6 +1,9 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { limpiarMonto, parseFechaMDY, cantidadesSospechosas } from "./importar-ventas";
+import {
+  limpiarMonto, parseFechaMDY, cantidadesSospechosas,
+  normalizaBodega, mapaInstalacionPorBodega, resolverInstalacion,
+} from "./importar-ventas";
 
 describe("limpiarMonto (ventas)", () => {
   it("limpia formato con $ y separadores", () => {
@@ -54,4 +57,54 @@ describe("parseFechaMDY", () => {
     assert.deepEqual(parseFechaMDY("8/11/26"), { ms: Date.UTC(2026, 7, 11), anio: 2026, mes: 8 });
   });
   it("rechaza basura", () => assert.equal(parseFechaMDY("no es fecha"), null));
+});
+
+// Instalación de Consumos: el reporte de ventas solo trae el NOMBRE de la
+// bodega (no el código), así que se cruza por descripción normalizada contra
+// el mismo catálogo InvBodega de Compras/Osteosíntesis.
+describe("normalizaBodega", () => {
+  it("mayúsculas, sin tildes, espacios simples", () => {
+    assert.equal(normalizaBodega("bodega   cAmpbéll"), "BODEGA CAMPBELL");
+  });
+});
+
+describe("mapaInstalacionPorBodega + resolverInstalacion", () => {
+  const catalogo = [
+    { descripcion: "BODEGA CAMPBELL", instalacion: 101 },
+    { descripcion: "CONSIGNACION VALLESALUD", instalacion: 102 },
+    { descripcion: "APROVECHAMIENTO CAMPBELL", instalacion: 106 },
+    { descripcion: "PRESTAMO VALLESALUD SUR", instalacion: 104 },
+    { descripcion: "BODEGA SAN FERNANDO", instalacion: 101 },
+    { descripcion: "BODEGA UNDIDAD MEDICA TRAUMA DEL VALLE", instalacion: 101 },
+    { descripcion: "BODEGA VALLE SALUD NORTE", instalacion: 101 },
+    { descripcion: "BODEGA VALLE  SALUD SUR", instalacion: 101 },
+  ];
+  const mapa = mapaInstalacionPorBodega(catalogo);
+
+  it("cruza exacto (insensible a mayúsculas/tildes)", () => {
+    assert.equal(resolverInstalacion("Bodega Campbell", mapa), 101);
+    assert.equal(resolverInstalacion("CONSIGNACION VALLESALUD", mapa), 102);
+    assert.equal(resolverInstalacion("aprovechamiento campbell", mapa), 106);
+    assert.equal(resolverInstalacion("PRESTAMO VALLESALUD SUR", mapa), 104);
+  });
+
+  // Los 4 nombres de VentaDoc.bod que no calzan letra por letra contra su
+  // nombre en el catálogo (verificado el 2026-09-09 contra las 70 bodegas
+  // reales de ventas: estos 4 son los únicos que necesitan alias).
+  it("resuelve los 4 alias conocidos de ventas", () => {
+    assert.equal(resolverInstalacion("SEDE SAN FERNANDO", mapa), 101);
+    assert.equal(resolverInstalacion("UNIDAD MEDICA TRAUMA DEL VALLE", mapa), 101);
+    assert.equal(resolverInstalacion("VALLE SALUD SEDE NORTE", mapa), 101);
+    assert.equal(resolverInstalacion("VALLE SALUD SEDE SUR", mapa), 101);
+    // Con tilde, como llega el dato real ("Notas ítem" del reporte no siempre la trae, pero la bodega sí).
+    assert.equal(resolverInstalacion("UNIDAD MÉDICA TRAUMA DEL VALLE", mapa), 101);
+  });
+
+  it("una bodega que no está en el catálogo ni en los alias vuelve null", () => {
+    assert.equal(resolverInstalacion("BODEGA NUEVA SIN CATALOGAR", mapa), null);
+  });
+
+  it("bodega vacía vuelve null", () => {
+    assert.equal(resolverInstalacion("", mapa), null);
+  });
 });

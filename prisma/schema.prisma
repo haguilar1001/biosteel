@@ -1348,9 +1348,19 @@ model VentaItemIps {
   /// dos márgenes distintos que no hay que sumar en uno solo.
   lista       String  @default("")
 
-  @@unique([anio, mes, marca, referencia, ips, lista])
+  /// Instalación de la bodega que despachó (101 propio · 102 consignación ·
+  /// 104 préstamo · 106 aprovechamiento), deducida de VentaDoc.bod contra el
+  /// catálogo InvBodega — el mismo que usan Compras y Osteosíntesis. NULL
+  /// cuando la bodega no cruza contra el catálogo (no debería pasar salvo
+  /// bodegas nuevas sin catalogar). Entra en la llave por la misma razón que
+  /// `lista`: el mismo ítem despachado de dos bodegas distintas en el mismo
+  /// mes son dos orígenes que no hay que sumar en uno solo.
+  instalacion Int?
+
+  @@unique([anio, mes, marca, referencia, ips, lista, instalacion])
   @@index([anio, mes])
   @@index([ips])
+  @@index([instalacion])
   @@index([marca])
   @@index([nit])
   @@index([lista])

@@ -66,6 +66,9 @@ async function main() {
   const res = await escribirAgregados(prisma, filas);
   for (const anio of res.anios.sort((a, b) => a - b)) console.log(`   ✅ ${anio}: venta neta $ ${fmt(res.netoPorAnio.get(anio) ?? 0)}`);
   console.log(`✅ Ventas cargadas: ${fmt(filas.length)} renglones · NC total $ ${fmt(res.totalNC)}`);
+  if (res.bodegasSinInstalacion.length) {
+    console.warn(`   ⚠️ ${res.bodegasSinInstalacion.length} bodega(s) sin instalación (falta en Tablas Auxiliares): ${res.bodegasSinInstalacion.join(", ")}`);
+  }
 }
 
 main()

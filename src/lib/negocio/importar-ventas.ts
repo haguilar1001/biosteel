@@ -20,6 +20,51 @@ export interface FilaVenta extends VentaRow {
   lista: string;      // "Desc. lista de precios": la tarifa aplicada
 }
 
+/**
+ * Instalación de la bodega que despachó, a partir del texto de "Desc.
+ * bodega" del reporte de ventas (no trae código, solo el nombre). Se cruza
+ * contra el mismo catálogo InvBodega de Compras/Osteosíntesis por
+ * descripción normalizada — es el mismo bodegaje, dos reportes distintos.
+ *
+ * Cuatro bodegas de ventas no calzan letra por letra contra su nombre en el
+ * catálogo (abreviaciones o una palabra de más/menos); se resuelven a mano
+ * aquí. Verificado el 2026-09-09: cubren el 100 % de las ~290 mil filas de
+ * VentaDoc — nunca ha aparecido una bodega de ventas que el catálogo no
+ * reconozca ni por su nombre exacto ni por este alias.
+ */
+const ALIAS_BODEGA_VENTAS: Record<string, string> = {
+  "SEDE SAN FERNANDO": "BODEGA SAN FERNANDO",
+  "UNIDAD MEDICA TRAUMA DEL VALLE": "BODEGA UNDIDAD MEDICA TRAUMA DEL VALLE",
+  "VALLE SALUD SEDE NORTE": "BODEGA VALLE SALUD NORTE",
+  "VALLE SALUD SEDE SUR": "BODEGA VALLE  SALUD SUR",
+};
+
+/** "Bodega X" → "BODEGA X", sin tildes ni espacios repetidos, para cruzar contra el catálogo. */
+export function normalizaBodega(s: string): string {
+  return s.normalize("NFD").replace(/[̀-ͯ]/g, "").toUpperCase().replace(/\s+/g, " ").trim();
+}
+
+/**
+ * Arma el mapa "descripción de bodega normalizada" → instalación, listo
+ * para resolverInstalacion(). Se construye una sola vez por carga a partir
+ * del catálogo InvBodega (el mismo que ya usan Compras/Osteosíntesis).
+ */
+export function mapaInstalacionPorBodega(catalogo: { descripcion: string; instalacion: number }[]): Map<string, number> {
+  const mapa = new Map<string, number>();
+  for (const b of catalogo) mapa.set(normalizaBodega(b.descripcion), b.instalacion);
+  for (const [alias, real] of Object.entries(ALIAS_BODEGA_VENTAS)) {
+    const inst = mapa.get(normalizaBodega(real));
+    if (inst != null) mapa.set(normalizaBodega(alias), inst);
+  }
+  return mapa;
+}
+
+/** Instalación de un renglón por su "Desc. bodega"; null si la bodega no cruza. */
+export function resolverInstalacion(bod: string, mapa: Map<string, number>): number | null {
+  if (!bod) return null;
+  return mapa.get(normalizaBodega(bod)) ?? null;
+}
+
 /** "$ 1,234.00" / "(1,234)" → número. Tolerante a formato es-CO con símbolo. */
 export function limpiarMonto(v: unknown): number {
   if (v == null) return 0;
@@ -145,7 +190,11 @@ export interface FilaClienteAgg { anio: number; mes: number; clienteNombre: stri
 export interface FilaMarcaAgg { anio: number; mes: number; marca: string; valor: number; costo: number }
 export interface FilaMarcaIpsAgg { anio: number; mes: number; marca: string; ips: string; valor: number; costo: number }
 export interface FilaItemAgg { anio: number; mes: number; marca: string; referencia: string; descripcion: string; cantidad: number; valor: number; costo: number }
-export interface FilaItemIpsAgg extends FilaItemAgg { ips: string; nit: string | null; lista: string }
+export interface FilaItemIpsAgg extends FilaItemAgg {
+  ips: string; nit: string | null; lista: string;
+  /** Instalación de la bodega que despachó; null si no cruzó contra el catálogo. */
+  instalacion: number | null;
+}
 export interface FilaDiaAgg { anio: number; mes: number; dia: number; valor: number; costo: number }
 
 export interface AgregadosVenta {
@@ -180,7 +229,10 @@ function construirNanMeses(filas: FilaVenta[]): Map<string, Set<string>> {
  * `venta neta = Σ(Valor subtotal local) − Σ(NOTA_CREDITO)` (todos los renglones;
  * NC sólo en FET). Aplica los parámetros y las exclusiones dados.
  */
-export function agregarVentas(filas: FilaVenta[], params: ParamNC[], excluidos: Set<string>): AgregadosVenta {
+export function agregarVentas(
+  filas: FilaVenta[], params: ParamNC[], excluidos: Set<string>,
+  mapaInstalacion: Map<string, number> = new Map(),
+): AgregadosVenta {
   const ctx: CtxNC = { params, nanMeses: construirNanMeses(filas), excluidos };
   const porLinea = new Map<string, FilaLineaAgg>();
   const porCliente = new Map<string, FilaClienteAgg>();
@@ -233,16 +285,17 @@ export function agregarVentas(filas: FilaVenta[], params: ParamNC[], excluidos: 
     eI.cantidad += r.cantidad; eI.valor += neto; eI.costo += r.costo;
     porItem.set(kI, eI);
 
-    // Mismo detalle, abierto por IPS y por LISTA DE PRECIOS: es lo que
-    // permite filtrar el consumo por cliente, ciudad o tarifa sin volver a
-    // recorrer VentaDoc. La lista va en la llave porque el mismo ítem se le
-    // puede vender a la misma IPS con dos tarifas en el mismo mes, y son dos
-    // márgenes distintos: sumarlos escondería justo el que está en pérdida.
-    const kII = `${kI}|${r.cliente}|${r.lista}`;
+    // Mismo detalle, abierto por IPS, LISTA DE PRECIOS e INSTALACIÓN: es lo
+    // que permite filtrar el consumo por cliente, ciudad, tarifa o bodega de
+    // origen sin volver a recorrer VentaDoc. Cada una va en la llave por la
+    // misma razón: el mismo ítem despachado dos veces con un dato distinto
+    // (tarifa, bodega) son dos historias que no hay que sumar en una sola.
+    const instalacion = resolverInstalacion(r.bod, mapaInstalacion);
+    const kII = `${kI}|${r.cliente}|${r.lista}|${instalacion}`;
     const eII = porItemIps.get(kII) ?? {
       anio: r.anio, mes: r.mes, marca: r.marca, referencia: ref,
       descripcion: (r.notas || "").trim() || ref, ips: r.cliente, nit: r.nit,
-      lista: r.lista,
+      lista: r.lista, instalacion,
       cantidad: 0, valor: 0, costo: 0,
     };
     eII.cantidad += r.cantidad; eII.valor += neto; eII.costo += r.costo;

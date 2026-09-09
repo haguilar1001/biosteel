@@ -85,8 +85,11 @@ async function persistirVentas(filas: FilaVenta[]): Promise<Persistencia> {
   }));
   await insertar((d) => prisma.ventaDoc.createMany({ data: d as never }), docs);
   const todos = await prisma.ventaDoc.findMany();
-  await escribirAgregados(prisma, todos.map(docABitVenta));
-  return { cargadas: filas.length, estrategia: `${fechas.length} fecha(s) nueva(s)/actualizada(s); venta neta recalculada sobre ${todos.length} renglones` };
+  const res = await escribirAgregados(prisma, todos.map(docABitVenta));
+  const avisoBodegas = res.bodegasSinInstalacion.length
+    ? ` · ⚠️ ${res.bodegasSinInstalacion.length} bodega(s) sin instalación (falta en Tablas Auxiliares): ${res.bodegasSinInstalacion.join(", ")}`
+    : "";
+  return { cargadas: filas.length, estrategia: `${fechas.length} fecha(s) nueva(s)/actualizada(s); venta neta recalculada sobre ${todos.length} renglones${avisoBodegas}` };
 }
 
 export interface ArchivoEntrada { clave: DatasetKey; nombre: string; buffer: Buffer; }

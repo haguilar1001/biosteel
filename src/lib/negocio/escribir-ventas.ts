@@ -7,7 +7,7 @@
 // ambos caminos (misma agregarVentas).
 // ==========================================================
 import type { PrismaClient } from "@prisma/client";
-import { agregarVentas, type FilaVenta } from "./importar-ventas";
+import { agregarVentas, mapaInstalacionPorBodega, normalizaBodega, type FilaVenta } from "./importar-ventas";
 import { nroClave, type ParamNC } from "./nota-credito";
 
 const BATCH = 5000;
@@ -17,19 +17,27 @@ async function crearEnLotes<T>(rows: T[], fn: (chunk: T[]) => Promise<unknown>) 
   for (let i = 0; i < rows.length; i += BATCH) await fn(rows.slice(i, i + BATCH));
 }
 
-export interface ResultadoRecalculo { netoPorAnio: Map<number, number>; totalNC: number; anios: number[]; }
+export interface ResultadoRecalculo {
+  netoPorAnio: Map<number, number>; totalNC: number; anios: number[];
+  /** Nombres de bodega que NO cruzaron contra InvBodega: quedaron sin instalación. */
+  bodegasSinInstalacion: string[];
+}
 
 /** Recalcula y escribe todos los agregados de venta desde los renglones dados. */
 export async function escribirAgregados(prisma: PrismaClient, filas: FilaVenta[]): Promise<ResultadoRecalculo> {
-  const [pRows, xRows, ajustes] = await Promise.all([
+  const [pRows, xRows, ajustes, bodegas] = await Promise.all([
     prisma.parametroNotaCredito.findMany(),
     prisma.exclusionNC.findMany({ where: { concepto: "TODOS" } }),
     prisma.ajusteVenta.findMany(),
+    // Mismo catálogo de Compras/Osteosíntesis: de ahí sale la instalación
+    // (101/102/104/106) de cada renglón, cruzando por nombre de bodega.
+    prisma.invBodega.findMany({ select: { descripcion: true, instalacion: true } }),
   ]);
   const params: ParamNC[] = pRows.map((p) => ({ ips: p.ips, concepto: p.concepto, pct: p.pct.toNumber(), ini: p.fechaInicio.getTime(), fin: p.fechaFin.getTime() }));
   const excluidos = new Set(xRows.map((x) => nroClave(x.nroDocumento)));
+  const mapaInstalacion = mapaInstalacionPorBodega(bodegas);
 
-  const agg = agregarVentas(filas, params, excluidos);
+  const agg = agregarVentas(filas, params, excluidos, mapaInstalacion);
 
   // Ajustes manuales (mensuales) como línea sintética por concepto (igual que el CLI).
   // IMPORTANTE: solo se aplican a años PRESENTES en este lote. Si el archivo trae
@@ -73,14 +81,20 @@ export async function escribirAgregados(prisma: PrismaClient, filas: FilaVenta[]
     await crearEnLotes(M, (c) => prisma.ventaMarca.createMany({ data: c.map((e) => ({ anio: e.anio, mes: e.mes, marca: e.marca, valor: r2(e.valor), costo: r2(e.costo) })) }));
     await crearEnLotes(MI, (c) => prisma.ventaMarcaIps.createMany({ data: c.map((e) => ({ anio: e.anio, mes: e.mes, marca: e.marca, ips: e.ips, valor: r2(e.valor), costo: r2(e.costo) })) }));
     await crearEnLotes(I, (c) => prisma.ventaItem.createMany({ data: c.map((e) => ({ anio: e.anio, mes: e.mes, marca: e.marca, referencia: e.referencia, descripcion: e.descripcion, cantidad: r2(e.cantidad), valor: r2(e.valor), costo: r2(e.costo) })) }));
-    await crearEnLotes(II, (c) => prisma.ventaItemIps.createMany({ data: c.map((e) => ({ anio: e.anio, mes: e.mes, marca: e.marca, referencia: e.referencia, descripcion: e.descripcion, ips: e.ips, nit: e.nit, lista: e.lista, cantidad: r2(e.cantidad), valor: r2(e.valor), costo: r2(e.costo) })) }));
+    await crearEnLotes(II, (c) => prisma.ventaItemIps.createMany({ data: c.map((e) => ({ anio: e.anio, mes: e.mes, marca: e.marca, referencia: e.referencia, descripcion: e.descripcion, ips: e.ips, nit: e.nit, lista: e.lista, instalacion: e.instalacion, cantidad: r2(e.cantidad), valor: r2(e.valor), costo: r2(e.costo) })) }));
   }
 
   // Venta neta por día: reemplazo total (sin ajustes mensuales).
   await prisma.ventaDia.deleteMany({});
   await crearEnLotes(agg.porDia, (c) => prisma.ventaDia.createMany({ data: c.map((e) => ({ anio: e.anio, mes: e.mes, dia: e.dia, valor: r2(e.valor), costo: r2(e.costo) })) }));
 
-  return { netoPorAnio: agg.netoPorAnio, totalNC: agg.totalNC, anios };
+  // Nombra las bodegas del lote que no cruzaron contra el catálogo, para que
+  // el aviso diga cuáles corregir en vez de solo "algo quedó sin instalación".
+  const sinCruce = new Set<string>();
+  for (const f of filas) {
+    if (f.bod && !mapaInstalacion.has(normalizaBodega(f.bod))) sinCruce.add(f.bod);
+  }
+  return { netoPorAnio: agg.netoPorAnio, totalNC: agg.totalNC, anios, bodegasSinInstalacion: [...sinCruce].sort() };
 }
 
 /** Convierte una fila de VentaDoc (BD) a FilaVenta para recalcular. */

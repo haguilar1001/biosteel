@@ -8,6 +8,7 @@
 import "server-only";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
+import { NOMBRE_INSTALACION } from "./inventario-osteo";
 
 export interface FilaLinea {
   linea: string;
@@ -302,11 +303,14 @@ export function ciudadesDeIps(ips: OpcionIps[]): { ciudad: string; ips: number; 
 export interface FiltroConsumo {
   anio: number;
   meses?: number[];
-  ips?: string;
-  ciudad?: string;
-  lista?: string;
-  /** Proveedor (columna MARCA del renglón). Acota TODO el informe a uno solo. */
-  marca?: string;
+  /** Selección múltiple: vacío o ausente = todas. */
+  ips?: string[];
+  ciudad?: string[];
+  lista?: string[];
+  /** Proveedor (columna MARCA del renglón). */
+  marca?: string[];
+  /** Instalación de la bodega que despachó (101/102/104/106). */
+  instalacion?: number[];
 }
 
 /** Etiqueta de los renglones cuyo archivo de origen no traía lista de precios. */
@@ -339,6 +343,7 @@ export async function utilidadPorLista(f: FiltroConsumo, opciones: OpcionIps[]):
       ...(f.meses && f.meses.length ? { mes: { in: f.meses } } : {}),
       ...(ips ? { ips: { in: ips } } : {}),
       ...soloMarca(f),
+      ...soloInstalacion(f),
     },
     _sum: { valor: true, costo: true },
   });
@@ -364,6 +369,7 @@ export async function ipsPorLista(f: FiltroConsumo, opciones: OpcionIps[]): Prom
       ...(f.meses && f.meses.length ? { mes: { in: f.meses } } : {}),
       ...(ips ? { ips: { in: ips } } : {}),
       ...soloMarca(f),
+      ...soloInstalacion(f),
     },
     _sum: { valor: true, costo: true },
   });
@@ -390,6 +396,7 @@ export async function itemsPorListaIps(f: FiltroConsumo, opciones: OpcionIps[]):
       ...(f.meses && f.meses.length ? { mes: { in: f.meses } } : {}),
       ...(ips ? { ips: { in: ips } } : {}),
       ...soloMarca(f),
+      ...soloInstalacion(f),
     },
     _sum: { valor: true, costo: true, cantidad: true },
   });
@@ -412,19 +419,25 @@ export async function itemsPorListaIps(f: FiltroConsumo, opciones: OpcionIps[]):
   return mapa;
 }
 
-/** Recorte por lista de precios; "(sin lista)" busca la cadena vacía. */
+/** Recorte por lista(s) de precios; "(sin lista)" busca la cadena vacía. Selección múltiple. */
 function soloLista(f: FiltroConsumo) {
-  if (!f.lista) return {};
-  return { lista: f.lista === SIN_LISTA ? "" : f.lista };
+  if (!f.lista || !f.lista.length) return {};
+  return { lista: { in: f.lista.map((l) => (l === SIN_LISTA ? "" : l)) } };
 }
 
 /**
- * Recorte por proveedor (MARCA). Se aplica a TODAS las consultas del informe,
- * incluido el desglose por lista de precios: el sentido del filtro es ver la
- * utilidad de un solo proveedor de punta a punta, no solo en una tabla.
+ * Recorte por proveedor(es) (MARCA). Se aplica a TODAS las consultas del
+ * informe, incluido el desglose por lista de precios: el sentido del filtro
+ * es ver la utilidad de uno o varios proveedores de punta a punta, no solo
+ * en una tabla. Selección múltiple.
  */
 function soloMarca(f: FiltroConsumo) {
-  return f.marca ? { marca: f.marca } : {};
+  return f.marca && f.marca.length ? { marca: { in: f.marca } } : {};
+}
+
+/** Recorte por instalación de la bodega que despachó. Selección múltiple. */
+function soloInstalacion(f: FiltroConsumo) {
+  return f.instalacion && f.instalacion.length ? { instalacion: { in: f.instalacion } } : {};
 }
 
 /**
@@ -442,10 +455,27 @@ export async function marcasConVenta(anio: number, meses?: number[]): Promise<st
   return filas.map((f) => f.marca);
 }
 
-/** Nombres de IPS que caen dentro del filtro (una sola, una ciudad, o todas). */
+/**
+ * Instalaciones (101/102/104/106) con venta en el periodo, con su etiqueta
+ * lista para el selector. Sin filtrar, mismo criterio que los demás.
+ */
+export async function instalacionesConVenta(anio: number, meses?: number[]): Promise<{ valor: number; label: string }[]> {
+  const filas = await prisma.ventaItemIps.findMany({
+    where: { anio, ...(meses && meses.length ? { mes: { in: meses } } : {}), instalacion: { not: null } },
+    distinct: ["instalacion"],
+    select: { instalacion: true },
+  });
+  return filas
+    .map((f) => f.instalacion!)
+    .filter((i) => NOMBRE_INSTALACION[i])
+    .sort((a, b) => a - b)
+    .map((i) => ({ valor: i, label: `${i} · ${NOMBRE_INSTALACION[i]}` }));
+}
+
+/** Nombres de IPS que caen dentro del filtro (unas cuantas, una/varias ciudades, o todas). */
 function ipsDelFiltro(opciones: OpcionIps[], f: FiltroConsumo): string[] | undefined {
-  if (f.ips) return [f.ips];
-  if (f.ciudad) return opciones.filter((o) => o.ciudad === f.ciudad).map((o) => o.ips);
+  if (f.ips && f.ips.length) return f.ips;
+  if (f.ciudad && f.ciudad.length) return opciones.filter((o) => f.ciudad!.includes(o.ciudad)).map((o) => o.ips);
   return undefined;
 }
 
@@ -458,6 +488,7 @@ export async function marcasFiltradas(f: FiltroConsumo, opciones: OpcionIps[]): 
     ...(lista ? { ips: { in: lista } } : {}),
     ...soloLista(f),
     ...soloMarca(f),
+    ...soloInstalacion(f),
   };
   const grupos = await prisma.ventaItemIps.groupBy({ by: ["marca"], where, _sum: { valor: true, costo: true } });
   return grupos
@@ -474,6 +505,7 @@ export async function ipsPorMarcaFiltrado(f: FiltroConsumo, opciones: OpcionIps[
     ...(lista ? { ips: { in: lista } } : {}),
     ...soloLista(f),
     ...soloMarca(f),
+    ...soloInstalacion(f),
   };
   const grupos = await prisma.ventaItemIps.groupBy({ by: ["marca", "ips"], where, _sum: { valor: true, costo: true } });
   const map = new Map<string, MarcaConIps["ips"]>();
@@ -495,6 +527,7 @@ export async function itemsPorMarcaFiltrado(f: FiltroConsumo, opciones: OpcionIp
     ...(lista ? { ips: { in: lista } } : {}),
     ...soloLista(f),
     ...soloMarca(f),
+    ...soloInstalacion(f),
   };
   const grupos = await prisma.ventaItemIps.groupBy({
     by: ["marca", "referencia", "descripcion"], where,

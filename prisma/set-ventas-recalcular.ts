@@ -35,6 +35,9 @@ async function main() {
 
   const [i, ii] = await Promise.all([prisma.ventaItem.count(), prisma.ventaItemIps.count()]);
   console.log(`\n📊 VentaItem: ${fmt(i)} filas · VentaItemIps: ${fmt(ii)} filas`);
+  if (res.bodegasSinInstalacion.length) {
+    console.warn(`\n⚠️ ${res.bodegasSinInstalacion.length} bodega(s) sin instalación (falta en Tablas Auxiliares): ${res.bodegasSinInstalacion.join(", ")}`);
+  }
 }
 
 main()
